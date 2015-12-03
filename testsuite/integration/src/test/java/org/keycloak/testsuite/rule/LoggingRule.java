@@ -16,12 +16,11 @@ public class LoggingRule implements TestRule {
         log = Logger.getLogger(test.getClass());
     }
 
-    public Statement apply(Statement base, Description description) {
-        return this.statement(base, description);
-    }
-
-    private Statement statement(final Statement base, final Description description) {
+    @Override
+    public Statement apply(final Statement base, final Description description) {
         return new Statement() {
+
+            @Override
             public void evaluate() throws Throwable {
                 log.debugf("Before %s", description.getMethodName());
 
@@ -32,6 +31,8 @@ public class LoggingRule implements TestRule {
                 }
 
             }
+
         };
     }
+
 }
