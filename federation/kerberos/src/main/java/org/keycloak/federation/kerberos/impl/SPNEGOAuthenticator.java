@@ -45,7 +45,7 @@ public class SPNEGOAuthenticator {
     private static final Logger log = Logger.getLogger(SPNEGOAuthenticator.class);
 
     private final KerberosServerSubjectAuthenticator kerberosSubjectAuthenticator;
-    private final String spnegoToken;
+    private String spnegoToken;
     private final CommonKerberosConfig kerberosConfig;
 
     private boolean authenticated = false;

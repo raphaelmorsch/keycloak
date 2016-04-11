@@ -49,6 +49,7 @@ import org.keycloak.models.UserFederationProviderModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.mappers.UserSessionNoteMapper;
+import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.services.managers.RealmManager;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.OAuthClient;
@@ -57,6 +58,7 @@ import org.keycloak.testsuite.pages.BypassKerberosPage;
 import org.keycloak.testsuite.pages.LoginPage;
 import org.keycloak.testsuite.rule.KeycloakRule;
 import org.keycloak.testsuite.rule.WebResource;
+import org.keycloak.utils.CredentialHelper;
 import org.openqa.selenium.WebDriver;
 
 /**
@@ -155,6 +157,46 @@ public abstract class AbstractKerberosTest {
         Response spnegoResponse = spnegoLogin("MyDuke", "theduke");
         Assert.assertEquals(302, spnegoResponse.getStatus());
 
+        events.expectLogin()
+                .client("kerberos-app")
+                .user(keycloakRule.getUser("test", "myduke").getId())
+                .detail(Details.REDIRECT_URI, KERBEROS_APP_URL)
+                        //.detail(Details.AUTH_METHOD, "spnego")
+                .detail(Details.USERNAME, "myduke")
+                .assertEvent();
+
+        String location = spnegoResponse.getLocation().toString();
+        driver.navigate().to(location);
+
+        String pageSource = driver.getPageSource();
+        Assert.assertTrue(pageSource.contains("Kerberos Test") && pageSource.contains("Kerberos servlet secured content"));
+
+        spnegoResponse.close();
+        events.clear();
+    }
+
+
+    // KEYCLOAK-2102
+    @Test
+    public void spnegoKerberosNotDefaultBrowserMechanism() throws Exception {
+        KeycloakRule keycloakRule = getKeycloakRule();
+        keycloakRule.update(new KeycloakRule.KeycloakSetup() {
+
+            @Override
+            public void config(RealmManager manager, RealmModel adminstrationRealm, RealmModel appRealm) {
+                CredentialHelper.setRequiredCredential(manager.getSession(), CredentialRepresentation.KERBEROS, appRealm);
+            }
+
+        });
+        AssertEvents events = getAssertEvents();
+
+        spnegoSchemeFactory.setCustomToken("YHsGBisGAQUFAqBxMG+gMDAuBgorBgEEAYI3AgIKBgkqhkiC9xIBAgIGCSqGSIb3EgECAgYKKwYBBAGCNwICHqI7BDlOVExNU1NQAAEAAACXsgjiBgAGADMAAAALAAsAKAAAAAYBsR0AAAAPVDQzMC1UTUcyNDBGQUNFVFM=");
+
+        Response spnegoResponse = spnegoLogin("hnelson", "secret");
+
+        Assert.assertEquals(302, spnegoResponse.getStatus());
+
+        // TODO: Common method...
         events.expectLogin()
                 .client("kerberos-app")
                 .user(keycloakRule.getUser("test", "myduke").getId())

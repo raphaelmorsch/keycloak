@@ -106,6 +106,11 @@ public class KerberosLdapTest extends AbstractKerberosTest {
     }
 
 
+    // @Test
+    public void testSleep() throws Exception {
+        Thread.sleep(10000000);
+    }
+
     @Test
     public void spnegoLoginTest() throws Exception {
         spnegoLoginTestImpl();

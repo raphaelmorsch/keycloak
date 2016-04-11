@@ -17,6 +17,7 @@
 
 package org.keycloak.testsuite.federation;
 
+import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
 
 import javax.security.auth.Subject;
@@ -31,6 +32,7 @@ import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSManager;
 import org.ietf.jgss.GSSName;
 import org.ietf.jgss.Oid;
+import org.keycloak.common.util.Base64;
 import org.keycloak.federation.kerberos.CommonKerberosConfig;
 import org.keycloak.federation.kerberos.impl.KerberosUsernamePasswordAuthenticator;
 
@@ -46,6 +48,8 @@ public class KeycloakSPNegoSchemeFactory extends SPNegoSchemeFactory {
     private String username;
     private String password;
 
+    private String customToken;
+
 
     public KeycloakSPNegoSchemeFactory(CommonKerberosConfig kerberosConfig) {
         super(true, false);
@@ -56,6 +60,10 @@ public class KeycloakSPNegoSchemeFactory extends SPNegoSchemeFactory {
     public void setCredentials(String username, String password) {
         this.username = username;
         this.password = password;
+    }
+
+    public void setCustomToken(String customToken) {
+        this.customToken = customToken;
     }
 
 
@@ -74,6 +82,14 @@ public class KeycloakSPNegoSchemeFactory extends SPNegoSchemeFactory {
 
         @Override
         protected byte[] generateGSSToken(byte[] input, Oid oid, String authServer, Credentials credentials) throws GSSException {
+            if (input.length == 0 && customToken != null) {
+                try {
+                    return Base64.decode(customToken);
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            }
+
             KerberosUsernamePasswordAuthenticator authenticator = new KerberosUsernamePasswordAuthenticator(kerberosConfig);
             try {
                 Subject clientSubject = authenticator.authenticateSubject(username, password);
