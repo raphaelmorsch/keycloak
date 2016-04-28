@@ -270,9 +270,7 @@ public class UserFederationMapperTest extends AbstractAdminTest {
         Assert.assertEquals("ldap-1", rep.getFederationProviderDisplayName());
         Assert.assertEquals(federationMapperType, rep.getFederationMapperType());
 
-        if (config == null) {
-            config = new String[] {};
-        }
+        Assert.assertMap(rep.getConfig(), config);
         Assert.assertEquals(rep.getConfig().size() * 2, config.length);
         for (int i=0 ; i<config.length ; i+=2) {
             String key = config[i];

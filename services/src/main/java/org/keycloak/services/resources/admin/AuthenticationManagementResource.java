@@ -701,6 +701,7 @@ public class AuthenticationManagementResource {
      *
      * @param execution Execution id
      * @param id Configuration id
+     * @deprecated Use rather {@link #getAuthenticatorConfig(String)}
      */
     @Path("/executions/{executionId}/config/{id}")
     @GET
@@ -937,6 +938,7 @@ public class AuthenticationManagementResource {
     /**
      * Create new authenticator configuration
      * @param rep JSON describing new authenticator configuration
+     * @deprecated Use {@link #newExecutionConfig(String, AuthenticatorConfigRepresentation)} instead
      */
     @Path("config")
     @POST

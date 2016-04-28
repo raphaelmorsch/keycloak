@@ -127,12 +127,7 @@ public interface AuthenticationManagementResource {
     @Path("/executions/{executionId}/config")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    Response newExecutionConfig(@PathParam("executionId") String execution, AuthenticatorConfigRepresentation config);
-
-    @Path("/executions/{executionId}/config/{id}")
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    AuthenticatorConfigRepresentation getAuthenticatorConfig(@PathParam("executionId") String execution,@PathParam("id") String id);
+    Response newExecutionConfig(@PathParam("executionId") String executionId, AuthenticatorConfigRepresentation config);
 
     @Path("unregistered-required-actions")
     @GET
@@ -172,11 +167,6 @@ public interface AuthenticationManagementResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     Map<String, List<ConfigPropertyRepresentation>> getPerClientConfigDescription();
-
-    @Path("config")
-    @POST
-    @Consumes(MediaType.APPLICATION_JSON)
-    Response createAuthenticatorConfig(AuthenticatorConfigRepresentation config);
 
     @Path("config/{id}")
     @GET

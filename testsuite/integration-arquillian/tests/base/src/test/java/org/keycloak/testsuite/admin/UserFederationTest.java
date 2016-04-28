@@ -332,16 +332,8 @@ public class UserFederationTest extends AbstractAdminTest {
         Assert.assertEquals(fullSyncPeriod, rep.getFullSyncPeriod());
         Assert.assertEquals(changeSyncPeriod, rep.getChangedSyncPeriod());
         Assert.assertEquals(lastSync, rep.getLastSync());
-        if (config == null) {
-            config = new String[] {};
-        }
 
-        Assert.assertEquals(rep.getConfig().size() * 2, config.length);
-        for (int i=0 ; i<config.length ; i+=2) {
-            String key = config[i];
-            String value = config[i+1];
-            Assert.assertEquals(value, rep.getConfig().get(key));
-        }
+        Assert.assertMap(rep.getConfig(), config);
     }
 
 
