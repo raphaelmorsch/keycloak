@@ -40,7 +40,7 @@ public interface ClientTemplatesResource {
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response create(ClientTemplateRepresentation clientRepresentation);
+    public ClientTemplateRepresentation create(ClientTemplateRepresentation clientRepresentation);
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)

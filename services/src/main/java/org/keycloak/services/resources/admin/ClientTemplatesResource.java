@@ -17,6 +17,7 @@
 package org.keycloak.services.resources.admin;
 
 import org.jboss.resteasy.annotations.cache.NoCache;
+import org.jboss.resteasy.spi.BadRequestException;
 import org.jboss.resteasy.spi.NotFoundException;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
 import org.keycloak.events.admin.OperationType;
@@ -107,7 +108,8 @@ public class ClientTemplatesResource {
      */
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response createClientTemplate(final @Context UriInfo uriInfo, final ClientTemplateRepresentation rep) {
+    @Produces(MediaType.APPLICATION_JSON)
+    public ClientTemplateRepresentation createClientTemplate(final @Context UriInfo uriInfo, final ClientTemplateRepresentation rep) {
         auth.requireManage();
 
         try {
@@ -115,9 +117,12 @@ public class ClientTemplatesResource {
 
             adminEvent.operation(OperationType.CREATE).resourcePath(uriInfo, clientModel.getId()).representation(rep).success();
 
-            return Response.created(uriInfo.getAbsolutePathBuilder().path(clientModel.getId()).build()).build();
+            rep.setId(clientModel.getId());
+
+            return rep;
         } catch (ModelDuplicateException e) {
-            return ErrorResponse.exists("Client Template " + rep.getName() + " already exists");
+            throw new BadRequestException("Client Template " + rep.getName() + " already exists");
+            //return ErrorResponse.exists("Client Template " + rep.getName() + " already exists");
         }
     }
 

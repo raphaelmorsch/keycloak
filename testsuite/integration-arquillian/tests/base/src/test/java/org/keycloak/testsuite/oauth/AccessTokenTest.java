@@ -775,14 +775,14 @@ public class AccessTokenTest extends AbstractKeycloakTest {
         ClientTemplateRepresentation rep = new ClientTemplateRepresentation();
         rep.setName("template");
         rep.setProtocol("oidc");
-        Response response = realm.clientTemplates().create(rep);
+        /*Response response = realm.clientTemplates().create(rep);
         assertEquals(201, response.getStatus());
         URI templateUri = response.getLocation();
-        response.close();
-        ClientTemplateResource templateResource = adminClient.proxy(ClientTemplateResource.class, templateUri);
+        response.close();*/
+        ClientTemplateResource templateResource = adminClient.proxy(ClientTemplateResource.class, new URI("foo"));
         ProtocolMapperModel hard = HardcodedClaim.create("hard", "hard", "coded", "String", false, null, true, true);
         ProtocolMapperRepresentation mapper = ModelToRepresentation.toRepresentation(hard);
-        response = templateResource.getProtocolMappers().createMapper(mapper);
+        Response response = templateResource.getProtocolMappers().createMapper(mapper);
         assertEquals(201, response.getStatus());
         response.close();
         List<ClientRepresentation> clients = realm.clients().findAll();
