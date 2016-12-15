@@ -177,7 +177,7 @@ public class UserStorageMapperTest extends AbstractAdminTest {
         // Create role mapper will fail
         UserFederationMapperRepresentation roleMapper = createMapperRep("role-mapper", RoleLDAPFederationMapperFactory.PROVIDER_ID,
                 RoleMapperConfig.ROLES_DN, "ou=roles,dc=keycloak,dc=org",
-                RoleMapperConfig.MODE, "READ_ONLY");
+                RoleMapperConfig.MODE, "UNSYNCED");
         Response response = ldapProviderResource().addMapper(roleMapper);
         Assert.assertEquals(400, response.getStatus());
         response.close();
@@ -195,7 +195,7 @@ public class UserStorageMapperTest extends AbstractAdminTest {
         roleMapper = findMapperByName(mappers, "role-mapper");
         assertMapper(roleMapper, roleMapperId, "role-mapper", RoleLDAPFederationMapperFactory.PROVIDER_ID,
                 RoleMapperConfig.ROLES_DN, "ou=roles,dc=keycloak,dc=org",
-                RoleMapperConfig.MODE, "READ_ONLY",
+                RoleMapperConfig.MODE, "UNSYNCED",
                 RoleMapperConfig.USE_REALM_ROLES_MAPPING, "true");
 
 

@@ -21,6 +21,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.ModelException;
+import org.keycloak.models.ModelReadOnlyException;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleContainerModel;
 import org.keycloak.models.RoleModel;
@@ -314,7 +315,7 @@ public class RoleLDAPStorageMapper extends AbstractLDAPStorageMapper implements 
             if (roleContainer.equals(realm)) {
                 Set<RoleModel> ldapRoleMappings = getLDAPRoleMappingsConverted();
 
-                if (config.getMode() == LDAPGroupMapperMode.LDAP_ONLY) {
+                if (config.getMode() == LDAPGroupMapperMode.LDAP_ONLY || config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
                     // Use just role mappings from LDAP
                     return ldapRoleMappings;
                 } else {
@@ -333,7 +334,7 @@ public class RoleLDAPStorageMapper extends AbstractLDAPStorageMapper implements 
             if (roleContainer.equals(client)) {
                 Set<RoleModel> ldapRoleMappings = getLDAPRoleMappingsConverted();
 
-                if (config.getMode() == LDAPGroupMapperMode.LDAP_ONLY) {
+                if (config.getMode() == LDAPGroupMapperMode.LDAP_ONLY || config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
                     // Use just role mappings from LDAP
                     return ldapRoleMappings;
                 } else {
@@ -356,19 +357,19 @@ public class RoleLDAPStorageMapper extends AbstractLDAPStorageMapper implements 
 
         @Override
         public void grantRole(RoleModel role) {
-            if (config.getMode() == LDAPGroupMapperMode.LDAP_ONLY) {
+            if (role.getContainer().equals(roleContainer)) {
 
-                if (role.getContainer().equals(roleContainer)) {
-
+                if (config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
+                    throw new ModelReadOnlyException("LDAP role mappings are read-only");
+                } else if (config.getMode() == LDAPGroupMapperMode.LDAP_ONLY) {
                     // We need to create new role mappings in LDAP
                     cachedLDAPRoleMappings = null;
                     addRoleMappingInLDAP(role.getName(), ldapUser);
-                } else {
-                    super.grantRole(role);
+                    return;
                 }
-            } else {
-                super.grantRole(role);
             }
+
+            super.grantRole(role);
         }
 
         @Override
@@ -377,7 +378,7 @@ public class RoleLDAPStorageMapper extends AbstractLDAPStorageMapper implements 
 
             Set<RoleModel> ldapRoleMappings = getLDAPRoleMappingsConverted();
 
-            if (config.getMode() == LDAPGroupMapperMode.LDAP_ONLY) {
+            if (config.getMode() == LDAPGroupMapperMode.LDAP_ONLY || config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
                 // For LDAP-only we want to retrieve role mappings of target container just from LDAP
                 Set<RoleModel> modelRolesCopy = new HashSet<>(modelRoleMappings);
                 for (RoleModel role : modelRolesCopy) {
@@ -419,6 +420,10 @@ public class RoleLDAPStorageMapper extends AbstractLDAPStorageMapper implements 
         public void deleteRoleMapping(RoleModel role) {
             if (role.getContainer().equals(roleContainer)) {
 
+                if (config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
+                    throw new ModelReadOnlyException("LDAP role mappings are read-only");
+                }
+
                 LDAPQuery ldapQuery = createRoleQuery();
                 LDAPQueryConditionsBuilder conditionsBuilder = new LDAPQueryConditionsBuilder();
                 Condition roleNameCondition = conditionsBuilder.equal(config.getRoleNameLdapAttribute(), role.getName());
@@ -428,14 +433,14 @@ public class RoleLDAPStorageMapper extends AbstractLDAPStorageMapper implements 
                 LDAPObject ldapRole = ldapQuery.getFirstResult();
 
                 if (ldapRole == null) {
-                    // Role mapping doesn't exist in LDAP. For LDAP_ONLY mode, we don't need to do anything. For READ_ONLY, delete it in local DB.
-                    if (config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
+                    // Role mapping doesn't exist in LDAP. For LDAP_ONLY mode, we don't need to do anything. For UNSYNCED, delete it in local DB.
+                    if (config.getMode() == LDAPGroupMapperMode.UNSYNCED) {
                         super.deleteRoleMapping(role);
                     }
                 } else {
-                    // Role mappings exists in LDAP. For LDAP_ONLY mode, we can just delete it in LDAP. For READ_ONLY we can't delete it -> throw error
-                    if (config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
-                        throw new ModelException("Not possible to delete LDAP role mappings as mapper mode is READ_ONLY");
+                    // Role mappings exists in LDAP. For LDAP_ONLY mode, we can just delete it in LDAP. For UNSYNCED we can't delete it -> throw error
+                    if (config.getMode() == LDAPGroupMapperMode.UNSYNCED) {
+                        throw new ModelException("Not possible to delete LDAP role mappings as mapper mode is UNSYNCED");
                     } else {
                         // Delete ldap role mappings
                         cachedLDAPRoleMappings = null;

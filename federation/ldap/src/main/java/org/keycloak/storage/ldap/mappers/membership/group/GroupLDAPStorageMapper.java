@@ -21,6 +21,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.ModelException;
+import org.keycloak.models.ModelReadOnlyException;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
@@ -577,7 +578,7 @@ public class GroupLDAPStorageMapper extends AbstractLDAPStorageMapper implements
         @Override
         public Set<GroupModel> getGroups() {
             Set<GroupModel> ldapGroupMappings = getLDAPGroupMappingsConverted();
-            if (config.getMode() == LDAPGroupMapperMode.LDAP_ONLY) {
+            if (config.getMode() == LDAPGroupMapperMode.LDAP_ONLY || config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
                 // Use just group mappings from LDAP
                 return ldapGroupMappings;
             } else {
@@ -590,6 +591,10 @@ public class GroupLDAPStorageMapper extends AbstractLDAPStorageMapper implements
 
         @Override
         public void joinGroup(GroupModel group) {
+            if (config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
+                throw new ModelReadOnlyException("LDAP group mappings are read-only");
+            }
+
             if (config.getMode() == LDAPGroupMapperMode.LDAP_ONLY) {
                 // We need to create new role mappings in LDAP
                 cachedLDAPGroupMappings = null;
@@ -601,6 +606,10 @@ public class GroupLDAPStorageMapper extends AbstractLDAPStorageMapper implements
 
         @Override
         public void leaveGroup(GroupModel group) {
+            if (config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
+                throw new ModelReadOnlyException("LDAP group mappings are read-only");
+            }
+
             LDAPQuery ldapQuery = createGroupQuery();
             LDAPQueryConditionsBuilder conditionsBuilder = new LDAPQueryConditionsBuilder();
             Condition roleNameCondition = conditionsBuilder.equal(config.getGroupNameLdapAttribute(), group.getName());
@@ -610,14 +619,14 @@ public class GroupLDAPStorageMapper extends AbstractLDAPStorageMapper implements
             LDAPObject ldapGroup = ldapQuery.getFirstResult();
 
             if (ldapGroup == null) {
-                // Group mapping doesn't exist in LDAP. For LDAP_ONLY mode, we don't need to do anything. For READ_ONLY, delete it in local DB.
-                if (config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
+                // Group mapping doesn't exist in LDAP. For LDAP_ONLY mode, we don't need to do anything. For UNSYNCED, delete it in local DB.
+                if (config.getMode() == LDAPGroupMapperMode.UNSYNCED) {
                     super.leaveGroup(group);
                 }
             } else {
-                // Group mappings exists in LDAP. For LDAP_ONLY mode, we can just delete it in LDAP. For READ_ONLY we can't delete it -> throw error
-                if (config.getMode() == LDAPGroupMapperMode.READ_ONLY) {
-                    throw new ModelException("Not possible to delete LDAP group mappings as mapper mode is READ_ONLY");
+                // Group mappings exists in LDAP. For LDAP_ONLY mode, we can just delete it in LDAP. For UNSYNCED we can't delete it -> throw error
+                if (config.getMode() == LDAPGroupMapperMode.UNSYNCED) {
+                    throw new ModelException("Not possible to delete LDAP group mappings as mapper mode is UNSYNCED");
                 } else {
                     // Delete ldap role mappings
                     cachedLDAPGroupMappings = null;

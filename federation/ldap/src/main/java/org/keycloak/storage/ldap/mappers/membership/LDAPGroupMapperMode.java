@@ -41,6 +41,11 @@ public enum LDAPGroupMapperMode {
      * Read-only LDAP mode. Role mappings are retrieved from both LDAP and DB and merged together. New role grants are not saved to LDAP but to DB.
      * Deleting role mappings, which is mapped to LDAP, will throw an error.
      */
+    UNSYNCED,
+
+    /**
+     * Read-only LDAP mode. Role mappings are retrieved from LDAP only. It's not allowed to do any changes in role mappings and add/remove any role mappings
+     */
     READ_ONLY
 
 }

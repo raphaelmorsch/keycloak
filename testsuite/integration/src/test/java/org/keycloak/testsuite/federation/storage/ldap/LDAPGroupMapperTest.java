@@ -26,6 +26,7 @@ import org.junit.rules.TestRule;
 import org.junit.runners.MethodSorters;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.models.ModelReadOnlyException;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.UserStorageProviderModel;
 import org.keycloak.storage.ldap.LDAPConfig;
@@ -162,7 +163,7 @@ public class LDAPGroupMapperTest {
         try {
             RealmModel appRealm = session.realms().getRealmByName("test");
 
-            ComponentModel mapperModel = LDAPTestUtils.getSubcomponentByName(appRealm,ldapModel, "groupsMapper");
+            ComponentModel mapperModel = LDAPTestUtils.getSubcomponentByName(appRealm, ldapModel, "groupsMapper");
             LDAPTestUtils.updateGroupMapperConfigOptions(mapperModel, GroupMapperConfig.MODE, LDAPGroupMapperMode.LDAP_ONLY.toString());
             appRealm.updateComponent(mapperModel);
 
@@ -226,14 +227,14 @@ public class LDAPGroupMapperTest {
     }
 
     @Test
-    public void test02_readOnlyGroupMappings() {
+    public void test02_unsyncedGroupMappings() {
         KeycloakSession session = keycloakRule.startSession();
         try {
-            System.out.println("starting test02_readOnlyGroupMappings");
+            System.out.println("starting test02_unsyncedGroupMappings");
             RealmModel appRealm = session.realms().getRealmByName("test");
 
             ComponentModel mapperModel = LDAPTestUtils.getSubcomponentByName(appRealm,ldapModel, "groupsMapper");
-            LDAPTestUtils.updateGroupMapperConfigOptions(mapperModel, GroupMapperConfig.MODE, LDAPGroupMapperMode.READ_ONLY.toString());
+            LDAPTestUtils.updateGroupMapperConfigOptions(mapperModel, GroupMapperConfig.MODE, LDAPGroupMapperMode.UNSYNCED.toString());
             appRealm.updateComponent(mapperModel);
 
             UserModel mary = session.users().getUserByUsername("marykeycloak", appRealm);
@@ -282,7 +283,7 @@ public class LDAPGroupMapperTest {
             mary.leaveGroup(group12);
             try {
                 mary.leaveGroup(group1);
-                Assert.fail("It wasn't expected to successfully delete LDAP group mappings in READ_ONLY mode");
+                Assert.fail("It wasn't expected to successfully delete LDAP group mappings in UNSYNCED mode");
             } catch (ModelException expected) {
             }
 
@@ -355,7 +356,7 @@ public class LDAPGroupMapperTest {
 
             RealmModel appRealm = session.realms().getRealmByName("test");
 
-            ComponentModel mapperModel = LDAPTestUtils.getSubcomponentByName(appRealm,ldapModel, "groupsMapper");
+            ComponentModel mapperModel = LDAPTestUtils.getSubcomponentByName(appRealm, ldapModel, "groupsMapper");
             LDAPTestUtils.updateGroupMapperConfigOptions(mapperModel, GroupMapperConfig.MODE, LDAPGroupMapperMode.LDAP_ONLY.toString());
             appRealm.updateComponent(mapperModel);
 
@@ -383,6 +384,54 @@ public class LDAPGroupMapperTest {
             UserModel rob = groupUsers.get(0);
             Assert.assertEquals("jameskeycloak", rob.getUsername());
 
+        } finally {
+            keycloakRule.stopSession(session, false);
+        }
+    }
+
+    @Test
+    public void test05_readOnlyGroupMappings() {
+        KeycloakSession session = keycloakRule.startSession();
+        try {
+            System.out.println("starting test05_readOnlyGroupMappings");
+            RealmModel appRealm = session.realms().getRealmByName("test");
+
+            ComponentModel mapperModel = LDAPTestUtils.getSubcomponentByName(appRealm,ldapModel, "groupsMapper");
+            LDAPTestUtils.updateGroupMapperConfigOptions(mapperModel, GroupMapperConfig.MODE, LDAPGroupMapperMode.READ_ONLY.toString());
+            appRealm.updateComponent(mapperModel);
+
+            UserModel mary = session.users().getUserByUsername("marykeycloak", appRealm);
+
+            GroupModel group1 = KeycloakModelUtils.findGroupByPath(appRealm, "/group1");
+            GroupModel group11 = KeycloakModelUtils.findGroupByPath(appRealm, "/group1/group11");
+            GroupModel group12 = KeycloakModelUtils.findGroupByPath(appRealm, "/group1/group12");
+
+            // Add some group mappings directly into LDAP
+            LDAPStorageProvider ldapProvider = LDAPTestUtils.getLdapProvider(session, ldapModel);
+            GroupLDAPStorageMapper groupMapper = LDAPTestUtils.getGroupMapper(mapperModel, ldapProvider, appRealm);
+
+            LDAPObject maryLdap = ldapProvider.loadLDAPUserByUsername(appRealm, "marykeycloak");
+            groupMapper.addGroupMappingInLDAP(appRealm, "group1", maryLdap);
+            groupMapper.addGroupMappingInLDAP(appRealm, "group11", maryLdap);
+
+            // Add some group mapping to model
+            try {
+                mary.joinGroup(group12);
+                Assert.fail("Not expected to successfully join LDAP group");
+            } catch (ModelReadOnlyException me) {
+                // Expected
+            }
+
+            // Assert that mary has just LDAP mapped groups
+            Set<GroupModel> maryGroups = mary.getGroups();
+            Assert.assertEquals(2, maryGroups.size());
+            Assert.assertTrue(maryGroups.contains(group1));
+            Assert.assertTrue(maryGroups.contains(group11));
+            Assert.assertFalse(maryGroups.contains(group12));
+
+            // Delete group mappings directly in LDAP
+            deleteGroupMappingsInLDAP(groupMapper, maryLdap, "group1");
+            deleteGroupMappingsInLDAP(groupMapper, maryLdap, "group11");
         } finally {
             keycloakRule.stopSession(session, false);
         }

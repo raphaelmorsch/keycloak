@@ -27,6 +27,7 @@ import org.junit.rules.TestRule;
 import org.junit.runners.MethodSorters;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.models.ModelReadOnlyException;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.UserStorageProviderModel;
 import org.keycloak.storage.ldap.LDAPStorageProvider;
@@ -230,12 +231,12 @@ public class LDAPRoleMappingsTest {
     }
 
     @Test
-    public void test02_readOnlyRoleMappings() {
+    public void test02_unsyncedRoleMappings() {
         KeycloakSession session = keycloakRule.startSession();
         try {
             RealmModel appRealm = session.realms().getRealmByName("test");
 
-            LDAPTestUtils.addOrUpdateRoleLDAPMappers(appRealm, ldapModel, LDAPGroupMapperMode.READ_ONLY);
+            LDAPTestUtils.addOrUpdateRoleLDAPMappers(appRealm, ldapModel, LDAPGroupMapperMode.UNSYNCED);
 
             UserModel mary = session.users().getUserByUsername("marykeycloak", appRealm);
 
@@ -274,7 +275,7 @@ public class LDAPRoleMappingsTest {
             mary.deleteRoleMapping(realmRole3);
             try {
                 mary.deleteRoleMapping(realmRole1);
-                Assert.fail("It wasn't expected to successfully delete LDAP role mappings in READ_ONLY mode");
+                Assert.fail("It wasn't expected to successfully delete LDAP role mappings in UNSYNCED mode");
             } catch (ModelException expected) {
             }
 
@@ -350,6 +351,60 @@ public class LDAPRoleMappingsTest {
             Assert.assertFalse(robRoles.contains(realmRole1));
             Assert.assertFalse(robRoles.contains(realmRole2));
             Assert.assertFalse(robRoles.contains(realmRole3));
+        } finally {
+            keycloakRule.stopSession(session, false);
+        }
+    }
+
+    @Test
+    public void test04_readOnlyRoleMappings() {
+        KeycloakSession session = keycloakRule.startSession();
+        try {
+            RealmModel appRealm = session.realms().getRealmByName("test");
+
+            LDAPTestUtils.addOrUpdateRoleLDAPMappers(appRealm, ldapModel, LDAPGroupMapperMode.READ_ONLY);
+
+            UserModel mary = session.users().getUserByUsername("marykeycloak", appRealm);
+
+            RoleModel realmRole1 = appRealm.getRole("realmRole1");
+            RoleModel realmRole2 = appRealm.getRole("realmRole2");
+            RoleModel realmRole3 = appRealm.getRole("realmRole3");
+            if (realmRole3 == null) {
+                realmRole3 = appRealm.addRole("realmRole3");
+            }
+
+            // Add some role mappings directly into LDAP
+            ComponentModel roleMapperModel = LDAPTestUtils.getSubcomponentByName(appRealm, ldapModel, "realmRolesMapper");
+            LDAPStorageProvider ldapProvider = LDAPTestUtils.getLdapProvider(session, ldapModel);
+            RoleLDAPStorageMapper roleMapper = LDAPTestUtils.getRoleMapper(roleMapperModel, ldapProvider, appRealm);
+
+            LDAPObject maryLdap = ldapProvider.loadLDAPUserByUsername(appRealm, "marykeycloak");
+            roleMapper.addRoleMappingInLDAP("realmRole1", maryLdap);
+            roleMapper.addRoleMappingInLDAP("realmRole2", maryLdap);
+
+            // Add some role to model
+            try {
+                mary.grantRole(realmRole3);
+                Assert.fail("Not expected to grant realm role");
+            } catch (ModelReadOnlyException me) {
+                // Expected
+            }
+
+            // Assert that mary has just LDAP mapped roles
+            Set<RoleModel> maryRoles = mary.getRealmRoleMappings();
+            Assert.assertTrue(maryRoles.contains(realmRole1));
+            Assert.assertTrue(maryRoles.contains(realmRole2));
+            Assert.assertFalse(maryRoles.contains(realmRole3));
+
+            // Assert revoke/grant some other role mappings is possible
+            ClientModel accountClient = appRealm.getClientByClientId(Constants.ACCOUNT_MANAGEMENT_CLIENT_ID);
+            RoleModel viewAccount = accountClient.getRole(AccountRoles.VIEW_PROFILE);
+            mary.grantRole(viewAccount);
+
+            // Delete role mappings directly in LDAP
+            deleteRoleMappingsInLDAP(roleMapper, maryLdap, "realmRole1");
+            deleteRoleMappingsInLDAP(roleMapper, maryLdap, "realmRole2");
+
         } finally {
             keycloakRule.stopSession(session, false);
         }

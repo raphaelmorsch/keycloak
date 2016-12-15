@@ -77,7 +77,15 @@ public class GroupLDAPStorageMapperFactory extends AbstractLDAPStorageMapperFact
         if (parent != null) {
             LDAPConfig config = new LDAPConfig(parent.getConfig());
             roleObjectClasses = config.isActiveDirectory() ? LDAPConstants.GROUP : LDAPConstants.GROUP_OF_NAMES;
-            mode = config.getEditMode() == UserStorageProvider.EditMode.WRITABLE ? LDAPGroupMapperMode.LDAP_ONLY.toString() : LDAPGroupMapperMode.READ_ONLY.toString();
+
+            switch (config.getEditMode()) {
+                case WRITABLE: mode = LDAPGroupMapperMode.LDAP_ONLY.toString();
+                    break;
+                case UNSYNCED: mode = LDAPGroupMapperMode.UNSYNCED.toString();
+                    break;
+                case READ_ONLY: mode = LDAPGroupMapperMode.READ_ONLY.toString();
+                    break;
+            }
         }
         return ProviderConfigurationBuilder.create()
                     .property().name(GroupMapperConfig.GROUPS_DN)
@@ -125,10 +133,11 @@ public class GroupLDAPStorageMapperFactory extends AbstractLDAPStorageMapperFact
                                .add()
                     .property().name(GroupMapperConfig.MODE)
                                .label("Mode")
-                               .helpText("LDAP_ONLY means that all group mappings of users are retrieved from LDAP and saved into LDAP. READ_ONLY is Read-only LDAP mode where group mappings are " +
+                               .helpText("LDAP_ONLY means that all group mappings of users are retrieved from LDAP and saved into LDAP. UNSYNCED is Read-only LDAP mode where group mappings are " +
                             "retrieved from both LDAP and DB and merged together. New group joins are not saved to LDAP but to DB. IMPORT is Read-only LDAP mode where group mappings are " +
                             "retrieved from LDAP just at the time when user is imported from LDAP and then " +
-                            "they are saved to local keycloak DB.")
+                            "they are saved to local keycloak DB. " +
+                               "READ_ONLY is Read-only LDAP mode where group mappings are retrieved from LDAP and it is not allowed to add/remove any group mappings for user.")
                                .type(ProviderConfigProperty.LIST_TYPE)
                                .options(MODES)
                                .defaultValue(mode)
