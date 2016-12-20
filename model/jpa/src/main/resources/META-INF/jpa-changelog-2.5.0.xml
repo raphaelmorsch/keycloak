@@ -21,8 +21,6 @@
      <changeSet author="bburke@redhat.com" id="2.5.0">
          <customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.MigrateUserFedToComponent"/>
 
-         <addUniqueConstraint columnNames="NAME,PARENT_GROUP,REALM_ID" constraintName="SIBLING_NAMES" tableName="KEYCLOAK_GROUP"/>
-
          <modifyDataType tableName="OFFLINE_USER_SESSION" columnName="USER_ID" newDataType="VARCHAR(255)"/>
      </changeSet>
 
@@ -102,6 +100,15 @@
     </changeSet>
     
     <changeSet author="slawomir@dabek.name" id="2.5.0-duplicate-email-support">
+
+        <addColumn tableName="KEYCLOAK_GROUP">
+            <column name="NAME_CONSTRAINT" type="NVARCHAR(255)" defaultValue="temp">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+        <sql>UPDATE KEYCLOAK_GROUP SET NAME_CONSTRAINT = NAME</sql>
+        <addUniqueConstraint columnNames="NAME_CONSTRAINT" constraintName="GROUP_SIBLING_NAMES" tableName="KEYCLOAK_GROUP"/>
+
         <addColumn tableName="REALM">
             <column name="LOGIN_WITH_EMAIL_ALLOWED" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
@@ -110,6 +117,7 @@
                 <constraints nullable="false"/>
             </column>
         </addColumn>
+
     </changeSet>
 
 </databaseChangeLog>

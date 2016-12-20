@@ -280,6 +280,11 @@
             <artifactId>mariadb-java-client</artifactId>
             <version>${mariadb.version}</version>
         </dependency>
+        <dependency>
+            <groupId>test.jdbc.eap7</groupId>
+            <artifactId>db2-105</artifactId>
+            <version>EAP_7.0.0</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

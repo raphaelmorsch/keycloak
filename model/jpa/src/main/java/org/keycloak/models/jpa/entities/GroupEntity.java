@@ -57,6 +57,10 @@ public class GroupEntity {
     @Column(name = "NAME")
     protected String name;
 
+    // This column exists to enforce the constraint, that we don't want to allow 2 groups of same path
+    @Column(name = "NAME_CONSTRAINT")
+    protected String nameConstraint;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PARENT_GROUP")
     private GroupEntity parent;
@@ -92,6 +96,7 @@ public class GroupEntity {
 
     public void setName(String name) {
         this.name = name;
+        updateNameConstraint();
     }
 
     public RealmEntity getRealm() {
@@ -100,6 +105,7 @@ public class GroupEntity {
 
     public void setRealm(RealmEntity realm) {
         this.realm = realm;
+        updateNameConstraint();
     }
 
     public GroupEntity getParent() {
@@ -108,6 +114,32 @@ public class GroupEntity {
 
     public void setParent(GroupEntity parent) {
         this.parent = parent;
+        updateNameConstraint();
+    }
+
+    private void updateNameConstraint() {
+        StringBuilder nameConstraint = new StringBuilder();
+
+        if (realm != null) {
+            nameConstraint.append("R_" + realm.getId() + "_");
+        }
+
+        if (parent != null) {
+            nameConstraint.append("P_" + parent.getId() + "_");
+        }
+
+        String constraint = nameConstraint.append(name)
+                .toString();
+
+        setNameConstraint(constraint);
+    }
+
+    public String getNameConstraint() {
+        return nameConstraint;
+    }
+
+    public void setNameConstraint(String nameConstraint) {
+        this.nameConstraint = nameConstraint;
     }
 
     @Override
