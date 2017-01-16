@@ -32,6 +32,7 @@ import javax.naming.NamingException;
 import javax.naming.directory.BasicAttribute;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.ModificationItem;
+import javax.naming.ldap.BasicControl;
 import javax.naming.ldap.InitialLdapContext;
 import javax.naming.ldap.LdapContext;
 
@@ -46,8 +47,15 @@ public class LDAPTest {
     private static Map<String, Object> connectionProperties;
 
     private static boolean asAdmin = true;
+    private static boolean adControl = true;
+
+    private static String[] MSAD2012 = { "ldaps://dev156-w2012-x86-64.mw.lab.eng.bos.redhat.com:636", "JBOSS3\\jbossqa", "jboss42", "/home/mposolda/tmp/dev156.truststore" };
+    private static String[] MSAD2008 = { "ldaps://dev101.mw.lab.eng.bos.redhat.com:636", "JBOSS1\\jbossqa", "jboss42", "/home/mposolda/tmp/dev101.truststore" };
+    private static String[] MSAD_SETUP = MSAD2012;
 
     public static void main(String[] args) throws Exception {
+        System.setProperty("javax.net.ssl.trustStore", MSAD_SETUP[3]);
+        System.setProperty("javax.net.ssl.trustStorePassword", "password");
         connectionProperties = Collections.unmodifiableMap(createConnectionProperties());
         //InitialLdapContext ctx = new InitialLdapContext(new Hashtable<Object, Object>(connectionProperties), null);
         try {
@@ -63,12 +71,12 @@ public class LDAPTest {
         env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
         env.put(Context.SECURITY_AUTHENTICATION, "simple");
 
-        String bindDN = asAdmin ? "JBOSS3\\jbossqa" :"CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test";
-        String bindPAssword = asAdmin ? "jboss42" : "Password123";
+        String bindDN = asAdmin ? MSAD_SETUP[1] :"CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test";
+        String bindPAssword = asAdmin ? "jboss42" : "Password124";
         env.put(Context.SECURITY_PRINCIPAL, bindDN);
         env.put(Context.SECURITY_CREDENTIALS, bindPAssword);
 
-        env.put(Context.PROVIDER_URL, "ldaps://dev156-w2012-x86-64.mw.lab.eng.bos.redhat.com:636");
+        env.put(Context.PROVIDER_URL, MSAD_SETUP[0]);
         env.put("com.sun.jndi.ldap.connect.pool", "true");
         env.put("java.naming.ldap.factory.socket", "javax.net.ssl.SSLSocketFactory");
         env.put("java.naming.ldap.attributes.binary", "objectGUID");
@@ -80,9 +88,9 @@ public class LDAPTest {
 
     private static void runOperation() {
         if (asAdmin) {
-            updateADPassword("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password123");
+            updateADPassword("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password360");
         } else {
-            updateADPasswordOnUserBehalf("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password123", "Password5789$#@");
+            updateADPasswordOnUserBehalf("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password124", "Password128");
         }
     }
 
@@ -94,7 +102,10 @@ public class LDAPTest {
             String newQuotedPassword = "\"" + password + "\"";
             byte[] newUnicodePassword = newQuotedPassword.getBytes("UTF-16LE");
 
+            final byte[][] multiBA = new byte[][] { newUnicodePassword };
+
             BasicAttribute unicodePwd = new BasicAttribute("unicodePwd", newUnicodePassword);
+
 
             List<ModificationItem> modItems = new ArrayList<ModificationItem>();
             modItems.add(new ModificationItem(DirContext.REPLACE_ATTRIBUTE, unicodePwd));
@@ -138,6 +149,17 @@ public class LDAPTest {
             execute(new LdapOperation<Void>() {
                 @Override
                 public Void execute(LdapContext context) throws NamingException {
+                    if (adControl) {
+                        final byte[] controlData = {48, (byte) 132, 0, 0, 0, 3, 2, 1, 1};
+
+                        String LDAP_SERVER_POLICY_HINTS_OID = "1.2.840.113556.1.4.2239";
+                        String LDAP_SERVER_POLICY_HINTS_DEPRECATED_OID = "1.2.840.113556.1.4.2066";
+
+                        BasicControl control = new BasicControl(LDAP_SERVER_POLICY_HINTS_DEPRECATED_OID, true, controlData);
+                        BasicControl[] controls = new BasicControl[] { control };
+                        context.setRequestControls(controls);
+                    }
+
                     context.modifyAttributes(dn, mods);
                     return null;
                 }
