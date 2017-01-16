@@ -45,6 +45,8 @@ public class LDAPTest {
 
     private static Map<String, Object> connectionProperties;
 
+    private static boolean asAdmin = true;
+
     public static void main(String[] args) throws Exception {
         connectionProperties = Collections.unmodifiableMap(createConnectionProperties());
         //InitialLdapContext ctx = new InitialLdapContext(new Hashtable<Object, Object>(connectionProperties), null);
@@ -60,8 +62,12 @@ public class LDAPTest {
 
         env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
         env.put(Context.SECURITY_AUTHENTICATION, "simple");
-        env.put(Context.SECURITY_PRINCIPAL, "JBOSS3\\jbossqa");
-        env.put(Context.SECURITY_CREDENTIALS, "jboss42");
+
+        String bindDN = asAdmin ? "JBOSS3\\jbossqa" :"CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test";
+        String bindPAssword = asAdmin ? "jboss42" : "Password123";
+        env.put(Context.SECURITY_PRINCIPAL, bindDN);
+        env.put(Context.SECURITY_CREDENTIALS, bindPAssword);
+
         env.put(Context.PROVIDER_URL, "ldaps://dev156-w2012-x86-64.mw.lab.eng.bos.redhat.com:636");
         env.put("com.sun.jndi.ldap.connect.pool", "true");
         env.put("java.naming.ldap.factory.socket", "javax.net.ssl.SSLSocketFactory");
@@ -73,7 +79,11 @@ public class LDAPTest {
 
 
     private static void runOperation() {
-        updateADPassword("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password123");
+        if (asAdmin) {
+            updateADPassword("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password123");
+        } else {
+            updateADPasswordOnUserBehalf("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password123", "Password5789$#@");
+        }
     }
 
 
@@ -88,6 +98,31 @@ public class LDAPTest {
 
             List<ModificationItem> modItems = new ArrayList<ModificationItem>();
             modItems.add(new ModificationItem(DirContext.REPLACE_ATTRIBUTE, unicodePwd));
+
+            modifyAttributes(userDN, modItems.toArray(new ModificationItem[] {}));
+        } catch (ModelException me) {
+            throw me;
+        } catch (Exception e) {
+            throw new ModelException(e);
+        }
+    }
+
+    private static void updateADPasswordOnUserBehalf(String userDN, String oldPassword, String newPassword) {
+        try {
+            // Replace the "unicdodePwd" attribute with a new value
+            // Password must be both Unicode and a quoted string
+            String oldQuotedPassword = "\"" + oldPassword + "\"";
+            byte[] oldUnicodePassword = oldQuotedPassword.getBytes("UTF-16LE");
+
+            String newQuotedPassword = "\"" + newPassword + "\"";
+            byte[] newUnicodePassword = newQuotedPassword.getBytes("UTF-16LE");
+
+            BasicAttribute oldUnicodePwd = new BasicAttribute("unicodePwd", oldUnicodePassword);
+            BasicAttribute newUnicodePwd = new BasicAttribute("unicodePwd", newUnicodePassword);
+
+            List<ModificationItem> modItems = new ArrayList<ModificationItem>();
+            modItems.add(new ModificationItem(DirContext.REMOVE_ATTRIBUTE, oldUnicodePwd));
+            modItems.add(new ModificationItem(DirContext.ADD_ATTRIBUTE, newUnicodePwd));
 
             modifyAttributes(userDN, modItems.toArray(new ModificationItem[] {}));
         } catch (ModelException me) {
@@ -116,7 +151,6 @@ public class LDAPTest {
         LdapContext context = null;
 
         try {
-            connectionProperties = Collections.unmodifiableMap(createConnectionProperties());
             context = new InitialLdapContext(new Hashtable<Object, Object>(connectionProperties), null);
             //context.listBindings("OU=People,O=keycloak,DC=JBOSS3,DC=test");
             return operation.execute(context);
