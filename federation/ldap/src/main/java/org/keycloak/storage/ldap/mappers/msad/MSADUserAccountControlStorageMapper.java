@@ -49,7 +49,7 @@ public class MSADUserAccountControlStorageMapper extends AbstractLDAPStorageMapp
     private static final Logger logger = Logger.getLogger(MSADUserAccountControlStorageMapper.class);
 
     private static final Pattern AUTH_EXCEPTION_REGEX = Pattern.compile(".*AcceptSecurityContext error, data ([0-9a-f]*), v.*");
-    private static final Pattern AUTH_INVALID_NEW_PASSWORD = Pattern.compile(".*error code ([0-9a-f]+) .*WILL_NOT_PERFORM.*");
+    private static final Pattern AUTH_INVALID_NEW_PASSWORD = Pattern.compile(".*ERROR CODE ([0-9A-F]+) - ([0-9A-F]+): .*WILL_NOT_PERFORM.*");
 
     public MSADUserAccountControlStorageMapper(ComponentModel mapperModel, LDAPStorageProvider ldapProvider) {
         super(mapperModel, ldapProvider);
@@ -148,12 +148,17 @@ public class MSADUserAccountControlStorageMapper extends AbstractLDAPStorageMapp
         }
 
         String exceptionMessage = e.getCause().getMessage().replace('\n', ' ');
+        logger.debugf("Failed to update password in Active Directory. Exception message: %s", exceptionMessage);
+        exceptionMessage = exceptionMessage.toUpperCase();
+
         Matcher m = AUTH_INVALID_NEW_PASSWORD.matcher(exceptionMessage);
         if (m.matches()) {
             String errorCode = m.group(1);
-            if (errorCode.equals("53")) {
-                ModelException me = new ModelException("invalidPasswordRegexPatternMessage", e);
-                me.setParameters(new Object[]{"passwordConstraintViolation"});
+            String errorCode2 = m.group(2);
+
+            // 52D corresponds to ERROR_PASSWORD_RESTRICTION. See https://msdn.microsoft.com/en-us/library/windows/desktop/ms681385(v=vs.85).aspx
+            if ((errorCode.equals("53")) && errorCode2.endsWith("52D")) {
+                ModelException me = new ModelException("invalidPasswordGenericMessage", e);
                 return me;
             }
         }

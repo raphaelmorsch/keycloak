@@ -88,9 +88,28 @@ public class LDAPTest {
 
     private static void runOperation() {
         if (asAdmin) {
-            updateADPassword("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password360");
+            updatePasswordHistoryPolicy(1);
+            updateADPassword("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password373");
+            updatePasswordHistoryPolicy(86400000);
         } else {
             updateADPasswordOnUserBehalf("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password124", "Password128");
+        }
+    }
+
+
+    private static void updatePasswordHistoryPolicy(long passwordMinAgeMs) {
+        try {
+
+            String passwordMinPage = String.valueOf(passwordMinAgeMs * -10000);
+            BasicAttribute unicodePwd = new BasicAttribute("minPwdAge", passwordMinPage);
+
+            List<ModificationItem> modItems = new ArrayList<ModificationItem>();
+            modItems.add(new ModificationItem(DirContext.REPLACE_ATTRIBUTE, unicodePwd));
+            modifyAttributes("DC=JBOSS3,DC=test", modItems.toArray(new ModificationItem[] {}));
+        } catch (ModelException me) {
+            throw me;
+        } catch (Exception e) {
+            throw new ModelException(e);
         }
     }
 
