@@ -28,14 +28,18 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.naming.Context;
+import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.BasicAttribute;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.ModificationItem;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
 import javax.naming.ldap.BasicControl;
 import javax.naming.ldap.InitialLdapContext;
 import javax.naming.ldap.LdapContext;
 
+import org.apache.directory.api.ldap.model.message.SearchScope;
 import org.keycloak.models.LDAPConstants;
 import org.keycloak.models.ModelException;
 
@@ -86,13 +90,41 @@ public class LDAPTest {
 
 
 
-    private static void runOperation() {
-        if (asAdmin) {
-            updatePasswordHistoryPolicy(1);
-            updateADPassword("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password373");
-            updatePasswordHistoryPolicy(86400000);
-        } else {
-            updateADPasswordOnUserBehalf("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password124", "Password128");
+    private static void runOperation() throws NamingException {
+//        if (asAdmin) {
+//            updatePasswordHistoryPolicy(1);
+//            updateADPassword("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password373");
+//            updatePasswordHistoryPolicy(86400000);
+//        } else {
+//            updateADPasswordOnUserBehalf("CN=johnkeycloak,OU=People,O=keycloak,DC=JBOSS3,DC=test", "Password124", "Password128");
+//        }
+
+//        List<SearchResult> res = search("OU=People,O=keycloak,DC=JBOSS3,DC=test", "(CN=johnkeycloak)", getReturningAttributes(new HashSet<>()), SearchControls.ONELEVEL_SCOPE);
+//        InitialLdapContext ctx = new InitialLdapContext();
+//        for (SearchResult sr : res) {
+//            System.out.println(sr.getName() + " " + sr.getNameInNamespace() + " " + sr.getAttributes());
+//        }
+
+        rename(null, "CN=johnkeycloak2,OU=People,O=keycloak,DC=JBOSS3,DC=test", "CN=johnkeycloak234-foo,OU=People,O=keycloak,DC=JBOSS3,DC=test");
+
+    }
+
+
+    public static void rename(final String baseDN, String previousRDN, String newRDN) throws NamingException {
+//        final List<SearchResult> result = new ArrayList<SearchResult>();
+//        final SearchControls cons = getSearchControls(returningAttributes, searchScope);
+
+        try {
+            execute(new LdapOperation<Boolean>() {
+                @Override
+                public Boolean execute(LdapContext context) throws NamingException {
+                    context.rename(previousRDN, newRDN);
+                    return true;
+                }
+            });
+        } catch (NamingException e) {
+            e.printStackTrace();
+            throw e;
         }
     }
 
@@ -212,12 +244,55 @@ public class LDAPTest {
         R execute(LdapContext context) throws NamingException;
     }
 
-    private Set<String> getReturningAttributes(final Collection<String> returningAttributes) {
+
+
+    public static List<SearchResult> search(final String baseDN, final String filter, Collection<String> returningAttributes, int searchScope) throws NamingException {
+        final List<SearchResult> result = new ArrayList<SearchResult>();
+        final SearchControls cons = getSearchControls(returningAttributes, searchScope);
+
+        try {
+            return execute(new LdapOperation<List<SearchResult>>() {
+                @Override
+                public List<SearchResult> execute(LdapContext context) throws NamingException {
+                    NamingEnumeration<SearchResult> search = context.search(baseDN, filter, cons);
+
+                    while (search.hasMoreElements()) {
+                        result.add(search.nextElement());
+                    }
+
+                    search.close();
+
+                    return result;
+                }
+            });
+        } catch (NamingException e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    private static SearchControls getSearchControls(Collection<String> returningAttributes, int searchScope) {
+        final SearchControls cons = new SearchControls();
+
+        cons.setSearchScope(searchScope);
+        cons.setReturningObjFlag(false);
+
+        returningAttributes = getReturningAttributes(returningAttributes);
+
+        cons.setReturningAttributes(returningAttributes.toArray(new String[returningAttributes.size()]));
+        return cons;
+    }
+
+    private static Set<String> getReturningAttributes(final Collection<String> returningAttributes) {
         Set<String> result = new HashSet<String>();
 
         result.addAll(returningAttributes);
         result.add("objectGUID");
         result.add(LDAPConstants.OBJECT_CLASS);
+        result.add(LDAPConstants.CN);
+        result.add(LDAPConstants.GIVENNAME);
+        result.add(LDAPConstants.SN);
+        result.add(LDAPConstants.SAM_ACCOUNT_NAME);
 
         return result;
     }
