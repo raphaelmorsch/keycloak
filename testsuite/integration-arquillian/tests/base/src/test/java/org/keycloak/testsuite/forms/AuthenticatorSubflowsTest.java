@@ -37,6 +37,7 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
+import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.authentication.ExpectedParamAuthenticator;
 import org.keycloak.testsuite.authentication.ExpectedParamAuthenticatorFactory;
 import org.keycloak.testsuite.authentication.PushButtonAuthenticatorFactory;
@@ -230,16 +231,6 @@ public class AuthenticatorSubflowsTest extends AbstractTestRealmKeycloakTest {
 
             realm.addAuthenticatorExecution(execution);
 
-            // Subflow3-1 - push the button
-            execution = new AuthenticationExecutionModel();
-            execution.setParentFlow(subflow31.getId());
-            execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED);
-            execution.setAuthenticator(PushButtonAuthenticatorFactory.PROVIDER_ID);
-            execution.setPriority(20);
-            execution.setAuthenticatorFlow(false);
-
-            realm.addAuthenticatorExecution(execution);
-
             // Subflow3  - foo=bar3
             execution = new AuthenticationExecutionModel();
             execution.setParentFlow(subflow3.getId());
@@ -318,33 +309,44 @@ public class AuthenticatorSubflowsTest extends AbstractTestRealmKeycloakTest {
     }
 
 
-//    @Test
-//    public void testSubflow31() {
-//        // Fill foo=bar2. I am see the pushButton
-//        String loginFormUrl = oauth.getLoginFormUrl();
-//        loginFormUrl = loginFormUrl + "&foo=bar2";
-//        log.info("loginFormUrl: " + loginFormUrl);
-//
-//        //Thread.sleep(10000000);
-//
-//        driver.navigate().to(loginFormUrl);
-//        Assert.assertEquals("PushTheButton", driver.getTitle());
-//
-//        // Confirm push button. I am authenticated as john-doh@localhost
-//        driver.findElement(By.name("submit1")).click();
-//
-//        appPage.assertCurrent();
-//
-//        events.expectLogin().detail(Details.USERNAME, "john-doh@localhost").assertEvent();
-//    }
-//
-//
-//    @Test
-//    public void testSubflow32() {
-//        // Fill foo=bar3. I am login automatically as "keycloak-user@localhost"
-//
-//
-//    }
+    @Test
+    public void testSubflow31() throws Exception {
+        // Fill foo=bar2. I am authenticated automatically as john-doh@localhost due to ExpectedParam authenticator in subflow 31
+        String loginFormUrl = oauth.getLoginFormUrl();
+        loginFormUrl = loginFormUrl + "&foo=bar2";
+        log.info("loginFormUrl: " + loginFormUrl);
+
+        //Thread.sleep(10000000);
+
+        driver.navigate().to(loginFormUrl);
+
+        appPage.assertCurrent();
+
+        events.expectLogin()
+                .user(ApiUtil.findUserByUsername(testRealm(), "john-doh@localhost").getId())
+                .detail(Details.USERNAME, "john-doh@localhost").assertEvent();
+    }
+
+
+    @Test
+    public void testSubflow32() {
+        // Fill foo=bar2. I am authenticated automatically as keycloak-user@localhost due to ExpectedParam authenticator in subflow 32
+        String loginFormUrl = oauth.getLoginFormUrl();
+        loginFormUrl = loginFormUrl + "&foo=bar3";
+        log.info("loginFormUrl: " + loginFormUrl);
+
+        //Thread.sleep(10000000);
+
+        driver.navigate().to(loginFormUrl);
+
+        appPage.assertCurrent();
+
+        events.expectLogin()
+                .user(ApiUtil.findUserByUsername(testRealm(), "keycloak-user@localhost").getId())
+                .detail(Details.USERNAME, "keycloak-user@localhost").assertEvent();
+
+
+    }
 
 
 }

@@ -23,6 +23,7 @@ import org.keycloak.models.AuthenticationFlowModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.ServicesLogger;
 import org.keycloak.sessions.AuthenticationSessionModel;
+import org.keycloak.sessions.CommonClientSessionModel;
 
 import javax.ws.rs.core.Response;
 import java.util.Iterator;
@@ -34,8 +35,11 @@ import java.util.List;
  */
 public class DefaultAuthenticationFlow implements AuthenticationFlow {
     private static final Logger logger = Logger.getLogger(DefaultAuthenticationFlow.class);
+
     Response alternativeChallenge = null;
     AuthenticationExecutionModel challengedAlternativeExecution = null;
+    String realChallengeExecutionId = null;
+
     boolean alternativeSuccessful = false;
     List<AuthenticationExecutionModel> executions;
     Iterator<AuthenticationExecutionModel> executionIterator;
@@ -74,7 +78,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             if (model.isAuthenticatorFlow()) {
                 AuthenticationFlow authenticationFlow = processor.createFlowExecution(model.getFlowId(), model);
                 Response flowChallenge = authenticationFlow.processAction(actionExecution);
-                if (flowChallenge == null) { // TODO:mposolda Need to doublecheck that at least one was successful!!!
+                if (flowChallenge == null) {
                     processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
                     if (model.isAlternative()) alternativeSuccessful = true;
                     return processFlow();
@@ -127,7 +131,12 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                     flowChallenge = authenticationFlow.processFlow();
                 } catch (AuthenticationFlowException afe) {
                     if (model.isAlternative()) {
-                        logger.debug("Thrown exception in alternative Subflow. Ignoring Subflow");
+                        logger.debugf("Thrown exception in alternative Subflow. Ignoring Subflow. Error: %s, Message: %s", afe.getError(), afe.getMessage());
+
+                        if (logger.isTraceEnabled()) {
+                            logger.trace(afe.getMessage(), afe);
+                        }
+
                         processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
                         continue;
                     } else {
@@ -135,14 +144,19 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                     }
                 }
 
-                if (flowChallenge == null) { // TODO:mposolda
+                if (flowChallenge == null && oneExecutionWasSuccessfulInSubflow(model.getFlowId())) {
                     processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
                     if (model.isAlternative()) alternativeSuccessful = true;
                     continue;
                 } else {
                     if (model.isAlternative()) {
-                        alternativeChallenge = flowChallenge;
-                        challengedAlternativeExecution = model;
+                        // We won't overwrite alternativeChallenge, so the challenge from 1st alternative flow will take precedence
+                        if (alternativeChallenge == null) {
+                            alternativeChallenge = flowChallenge;
+                            challengedAlternativeExecution = model;
+                            realChallengeExecutionId = processor.getAuthenticationSession().getAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
+                        }
+                        continue;
                     } else if (model.isRequired()) {
                         processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
                         return flowChallenge;
@@ -153,7 +167,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                         processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SKIPPED);
                         continue;
                     }
-                    return flowChallenge;
                 }
             }
 
@@ -201,6 +214,18 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             Response response = processResult(context, false);
             if (response != null) return response;
         }
+
+        // Check that at least one child execution was successful.
+        if (!oneExecutionWasSuccessfulInSubflow(flow.getId())) {
+            if (alternativeChallenge != null) {
+                processor.getAuthenticationSession().setExecutionStatus(challengedAlternativeExecution.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
+                processor.getAuthenticationSession().setAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION, realChallengeExecutionId);
+                return alternativeChallenge;
+            } else {
+                throw new AuthenticationFlowException("No child execution was successful", AuthenticationFlowError.INVALID_CREDENTIALS);
+            }
+        }
+
         return null;
     }
 
@@ -241,9 +266,12 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                     return sendChallenge(result, execution);
                 }
                 if (execution.isAlternative()) {
-                    // TODO:mposolda I think it shouldn't overwrite automatically in case there is existing challenge already
-                    alternativeChallenge = result.getChallenge();
-                    challengedAlternativeExecution = execution;
+                    // We won't overwrite alternativeChallenge, so the challenge from 1st alternative flow will take precedence
+                    if (alternativeChallenge == null) {
+                        alternativeChallenge = result.getChallenge();
+                        challengedAlternativeExecution = execution;
+                        realChallengeExecutionId = processor.getAuthenticationSession().getAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
+                    }
                 } else {
                     processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.SKIPPED);
                 }
@@ -273,6 +301,22 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     public Response sendChallenge(AuthenticationProcessor.Result result, AuthenticationExecutionModel execution) {
         processor.getAuthenticationSession().setAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION, execution.getId());
         return result.getChallenge();
+    }
+
+
+    // Check that at least one execution is successful in specified flow. If flow has all the alternativeExecutions, it may happen that it returns null even if none of execution was really successful.
+    private boolean oneExecutionWasSuccessfulInSubflow(String subflowId) {
+        List<AuthenticationExecutionModel> executions = processor.getRealm().getAuthenticationExecutions(subflowId);
+        AuthenticationSessionModel authSession = processor.getAuthenticationSession();
+
+        for (AuthenticationExecutionModel execution : executions) {
+            CommonClientSessionModel.ExecutionStatus status = authSession.getExecutionStatus().get(execution.getId());
+            if (status != null && status == CommonClientSessionModel.ExecutionStatus.SUCCESS) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 
