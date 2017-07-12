@@ -206,6 +206,10 @@ end-if
 if (outcome == failed) of /subsystem=infinispan/cache-container=keycloak/local-cache=actionTokens/:read-resource
   echo Adding local-cache=actionTokens to keycloak cache container...
   /subsystem=infinispan/cache-container=keycloak/local-cache=actionTokens/:add(indexing=NONE,start=LAZY)
+  echo
+end-if
+if (result == undefined) of /subsystem=infinispan/cache-container=keycloak/local-cache=actionTokens/component=eviction/:read-attribute(name=strategy,include-defaults=false)
+  echo Updating eviction and expiration in local-cache=actionTokens...
   /subsystem=infinispan/cache-container=keycloak/local-cache=actionTokens/component=eviction/:write-attribute(name=strategy,value=NONE)
   /subsystem=infinispan/cache-container=keycloak/local-cache=actionTokens/component=eviction/:write-attribute(name=max-entries,value=-1)
   /subsystem=infinispan/cache-container=keycloak/local-cache=actionTokens/component=expiration/:write-attribute(name=interval,value=300000)

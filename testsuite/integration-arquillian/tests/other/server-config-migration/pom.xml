@@ -283,6 +283,7 @@
                             <serverConfig>standalone-ha-${migrated.version}.xml</serverConfig>
                             <java-opts>
                                 <java-opt>-Djboss.socket.binding.port-offset=1000</java-opt>
+                                <java-opt>-Djava.net.preferIPv4Stack=true</java-opt>
                             </java-opts>
                             <execute-commands>
                                 <scripts>
@@ -303,6 +304,7 @@
                             <serverConfig>standalone-ha-${migrated.version}.xml</serverConfig>
                             <java-opts>
                                 <java-opt>-Djboss.socket.binding.port-offset=1000</java-opt>
+                                <java-opt>-Djava.net.preferIPv4Stack=true</java-opt>
                             </java-opts>
                             <execute-commands>
                                 <commands>
@@ -324,6 +326,7 @@
                             <serverConfig>standalone-ha.xml</serverConfig>
                             <java-opts>
                                 <java-opt>-Djboss.socket.binding.port-offset=1000</java-opt>
+                                <java-opt>-Djava.net.preferIPv4Stack=true</java-opt>
                             </java-opts>
                             <execute-commands>
                                 <commands>
