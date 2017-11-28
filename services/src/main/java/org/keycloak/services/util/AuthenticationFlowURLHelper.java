@@ -31,6 +31,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.protocol.AuthorizationEndpointBase;
 import org.keycloak.services.resources.LoginActionsService;
+import org.keycloak.sessions.AuthenticationSessionClientModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
 /**
@@ -51,10 +52,12 @@ public class AuthenticationFlowURLHelper {
     }
 
 
-    public Response showPageExpired(AuthenticationSessionModel authSession) {
-        URI lastStepUrl = getLastExecutionUrl(authSession);
+    public Response showPageExpired(AuthenticationSessionClientModel authClientSession) {
+        URI lastStepUrl = getLastExecutionUrl(authClientSession);
 
         logger.debugf("Redirecting to 'page expired' now. Will use last step URL: %s", lastStepUrl);
+
+        AuthenticationSessionModel authSession = authClientSession.getAuthenticationSession();
 
         return session.getProvider(LoginFormsProvider.class).setAuthenticationSession(authSession)
                 .setActionUri(lastStepUrl)
@@ -76,19 +79,20 @@ public class AuthenticationFlowURLHelper {
     }
 
 
-    public URI getLastExecutionUrl(AuthenticationSessionModel authSession) {
+    public URI getLastExecutionUrl(AuthenticationSessionClientModel authClientSession) {
+        AuthenticationSessionModel authSession = authClientSession.getAuthenticationSession();
         String executionId = getExecutionId(authSession);
         String latestFlowPath = authSession.getAuthNote(AuthenticationProcessor.CURRENT_FLOW_PATH);
 
         if (latestFlowPath == null) {
-            latestFlowPath = authSession.getClientNote(AuthorizationEndpointBase.APP_INITIATED_FLOW);
+            latestFlowPath = authClientSession.getClientNote(AuthorizationEndpointBase.APP_INITIATED_FLOW);
         }
 
         if (latestFlowPath == null) {
             latestFlowPath = LoginActionsService.AUTHENTICATE_PATH;
         }
 
-        return getLastExecutionUrl(latestFlowPath, executionId, authSession.getClient().getClientId());
+        return getLastExecutionUrl(latestFlowPath, executionId, authClientSession.getClient().getClientId());
     }
 
     private String getExecutionId(AuthenticationSessionModel authSession) {

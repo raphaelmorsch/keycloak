@@ -852,9 +852,9 @@ public class TokenEndpoint {
         String providerId = identityProviderConfig.getAlias();
 
         // do we need this?
-        //AuthenticationSessionModel authenticationSession = clientCode.getClientSession();
-        //context.setAuthenticationSession(authenticationSession);
-        //session.getContext().setClient(authenticationSession.getClient());
+        //AuthenticationSessionModel authClientSession = clientCode.getClientSession();
+        //context.setAuthenticationSession(authClientSession);
+        //session.getContext().setClient(authClientSession.getClient());
 
         context.getIdp().preprocessFederatedIdentity(session, realm, context);
         Set<IdentityProviderMapperModel> mappers = realm.getIdentityProviderMappersByAlias(context.getIdpConfig().getAlias());

@@ -54,6 +54,7 @@ import org.keycloak.services.resources.LoginActionsService;
 import org.keycloak.services.resources.RealmsResource;
 import org.keycloak.services.util.CookieHelper;
 import org.keycloak.services.util.P3PHelper;
+import org.keycloak.sessions.AuthenticationSessionClientModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.CommonClientSessionModel;
 
@@ -710,10 +711,12 @@ public class AuthenticationManager {
     }
 
 
-    public static Response redirectToRequiredActions(KeycloakSession session, RealmModel realm, AuthenticationSessionModel authSession, UriInfo uriInfo, String requiredAction) {
+    public static Response redirectToRequiredActions(KeycloakSession session, RealmModel realm, AuthenticationSessionClientModel authClientSession, UriInfo uriInfo, String requiredAction) {
         // redirect to non-action url so browser refresh button works without reposting past data
-        ClientSessionCode<AuthenticationSessionModel> accessCode = new ClientSessionCode<>(session, realm, authSession);
-        accessCode.setAction(AuthenticationSessionModel.Action.REQUIRED_ACTIONS.name());
+        ClientSessionCode<AuthenticationSessionClientModel> accessCode = new ClientSessionCode<>(session, realm, authClientSession);
+        accessCode.setAction(AuthenticationSessionClientModel.Action.REQUIRED_ACTIONS.name());
+
+        AuthenticationSessionModel authSession = authClientSession.getAuthenticationSession();
         authSession.setAuthNote(AuthenticationProcessor.CURRENT_FLOW_PATH, LoginActionsService.REQUIRED_ACTION);
         authSession.setAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION, requiredAction);
 
@@ -724,7 +727,7 @@ public class AuthenticationManager {
             uriBuilder.queryParam(Constants.EXECUTION, requiredAction);
         }
 
-        uriBuilder.queryParam(Constants.CLIENT_ID, authSession.getClient().getClientId());
+        uriBuilder.queryParam(Constants.CLIENT_ID, authClientSession.getClient().getClientId());
 
         URI redirect = uriBuilder.build(realm.getName());
         return Response.status(302).location(redirect).build();
@@ -732,8 +735,10 @@ public class AuthenticationManager {
     }
 
 
-    public static Response finishedRequiredActions(KeycloakSession session, AuthenticationSessionModel authSession, UserSessionModel userSession,
+    public static Response finishedRequiredActions(KeycloakSession session, AuthenticationSessionClientModel authClientSession, UserSessionModel userSession,
                                                    ClientConnection clientConnection, HttpRequest request, UriInfo uriInfo, EventBuilder event) {
+        AuthenticationSessionModel authSession = authClientSession.getAuthenticationSession();
+
         String actionTokenKeyToInvalidate = authSession.getAuthNote(INVALIDATE_ACTION_TOKEN);
         if (actionTokenKeyToInvalidate != null) {
             ActionTokenKeyModel actionTokenKey = DefaultActionTokenKey.from(actionTokenKeyToInvalidate);
@@ -748,8 +753,8 @@ public class AuthenticationManager {
             LoginFormsProvider infoPage = session.getProvider(LoginFormsProvider.class).setAuthenticationSession(authSession)
                     .setSuccess(Messages.ACCOUNT_UPDATED);
             if (authSession.getAuthNote(SET_REDIRECT_URI_AFTER_REQUIRED_ACTIONS) != null) {
-                if (authSession.getRedirectUri() != null) {
-                    infoPage.setAttribute("pageRedirectUri", authSession.getRedirectUri());
+                if (authClientSession.getRedirectUri() != null) {
+                    infoPage.setAttribute("pageRedirectUri", authClientSession.getRedirectUri());
                 }
 
             } else {
@@ -764,21 +769,23 @@ public class AuthenticationManager {
         }
         RealmModel realm = authSession.getRealm();
 
-        AuthenticatedClientSessionModel clientSession = AuthenticationProcessor.attachSession(authSession, userSession, session, realm, clientConnection, event);
+        AuthenticatedClientSessionModel clientSession = AuthenticationProcessor.attachSession(authClientSession, userSession, session, realm, clientConnection, event);
 
         event.event(EventType.LOGIN);
         event.session(clientSession.getUserSession());
         event.success();
-        return redirectAfterSuccessfulFlow(session, realm, clientSession.getUserSession(), clientSession, request, uriInfo, clientConnection, event, authSession.getProtocol());
+        return redirectAfterSuccessfulFlow(session, realm, clientSession.getUserSession(), clientSession, request, uriInfo, clientConnection, event, authClientSession.getProtocol());
     }
 
     // Return null if action is not required. Or the name of the requiredAction in case it is required.
-    public static String nextRequiredAction(final KeycloakSession session, final AuthenticationSessionModel authSession,
+    public static String nextRequiredAction(final KeycloakSession session, final AuthenticationSessionClientModel authClientSession,
                                             final ClientConnection clientConnection,
                                             final HttpRequest request, final UriInfo uriInfo, final EventBuilder event) {
+        AuthenticationSessionModel authSession = authClientSession.getAuthenticationSession();
+
         final RealmModel realm = authSession.getRealm();
         final UserModel user = authSession.getAuthenticatedUser();
-        final ClientModel client = authSession.getClient();
+        final ClientModel client = authClientSession.getClient();
 
         evaluateRequiredActionTriggers(session, authSession, clientConnection, request, uriInfo, event, realm, user);
 
@@ -793,7 +800,7 @@ public class AuthenticationManager {
 
             UserConsentModel grantedConsent = session.users().getConsentByClient(realm, user.getId(), client.getId());
 
-            ClientSessionCode<AuthenticationSessionModel> accessCode = new ClientSessionCode<>(session, realm, authSession);
+            ClientSessionCode<AuthenticationSessionClientModel> accessCode = new ClientSessionCode<>(session, realm, authClientSession);
             for (RoleModel r : accessCode.getRequestedRoles()) {
 
                 // Consent already granted by user
@@ -820,12 +827,15 @@ public class AuthenticationManager {
     }
 
 
-    public static Response actionRequired(final KeycloakSession session, final AuthenticationSessionModel authSession,
+    public static Response actionRequired(final KeycloakSession session, final AuthenticationSessionClientModel authClientSession,
                                                          final ClientConnection clientConnection,
                                                          final HttpRequest request, final UriInfo uriInfo, final EventBuilder event) {
+
+        AuthenticationSessionModel authSession = authClientSession.getAuthenticationSession();
+
         final RealmModel realm = authSession.getRealm();
         final UserModel user = authSession.getAuthenticatedUser();
-        final ClientModel client = authSession.getClient();
+        final ClientModel client = authClientSession.getClient();
 
         evaluateRequiredActionTriggers(session, authSession, clientConnection, request, uriInfo, event, realm, user);
 
@@ -849,7 +859,7 @@ public class AuthenticationManager {
 
             List<RoleModel> realmRoles = new LinkedList<>();
             MultivaluedMap<String, RoleModel> resourceRoles = new MultivaluedMapImpl<>();
-            ClientSessionCode<AuthenticationSessionModel> accessCode = new ClientSessionCode<>(session, realm, authSession);
+            ClientSessionCode<AuthenticationSessionClientModel> accessCode = new ClientSessionCode<>(session, realm, authClientSession);
             for (RoleModel r : accessCode.getRequestedRoles()) {
 
                 // Consent already granted by user
@@ -900,34 +910,35 @@ public class AuthenticationManager {
     }
 
 
-    public static void setRolesAndMappersInSession(AuthenticationSessionModel authSession) {
-        ClientModel client = authSession.getClient();
+    public static void setRolesAndMappersInSession(AuthenticationSessionClientModel authClientSession) {
+        AuthenticationSessionModel authSession = authClientSession.getAuthenticationSession();
+        ClientModel client = authClientSession.getClient();
         UserModel user = authSession.getAuthenticatedUser();
 
         Set<String> requestedRoles = new HashSet<String>();
         // todo scope param protocol independent
-        String scopeParam = authSession.getClientNote(OAuth2Constants.SCOPE);
+        String scopeParam = authClientSession.getClientNote(OAuth2Constants.SCOPE);
         for (RoleModel r : TokenManager.getAccess(scopeParam, true, client, user)) {
             requestedRoles.add(r.getId());
         }
-        authSession.setRoles(requestedRoles);
+        authClientSession.setRoles(requestedRoles);
 
         Set<String> requestedProtocolMappers = new HashSet<String>();
         ClientTemplateModel clientTemplate = client.getClientTemplate();
         if (clientTemplate != null && client.useTemplateMappers()) {
             for (ProtocolMapperModel protocolMapper : clientTemplate.getProtocolMappers()) {
-                if (protocolMapper.getProtocol().equals(authSession.getProtocol())) {
+                if (protocolMapper.getProtocol().equals(authClientSession.getProtocol())) {
                     requestedProtocolMappers.add(protocolMapper.getId());
                 }
             }
 
         }
         for (ProtocolMapperModel protocolMapper : client.getProtocolMappers()) {
-            if (protocolMapper.getProtocol().equals(authSession.getProtocol())) {
+            if (protocolMapper.getProtocol().equals(authClientSession.getProtocol())) {
                 requestedProtocolMappers.add(protocolMapper.getId());
             }
         }
-        authSession.setProtocolMappers(requestedProtocolMappers);
+        authClientSession.setProtocolMappers(requestedProtocolMappers);
     }
 
     protected static Response executionActions(KeycloakSession session, AuthenticationSessionModel authSession,
@@ -975,7 +986,7 @@ public class AuthenticationManager {
         return null;
     }
 
-    public static void evaluateRequiredActionTriggers(final KeycloakSession session, final AuthenticationSessionModel authSession, final ClientConnection clientConnection, final HttpRequest request, final UriInfo uriInfo, final EventBuilder event, final RealmModel realm, final UserModel user) {
+    public static void evaluateRequiredActionTriggers(final KeycloakSession session, final AuthenticationSessionClientModel authClientSession, final ClientConnection clientConnection, final HttpRequest request, final UriInfo uriInfo, final EventBuilder event, final RealmModel realm, final UserModel user) {
 
         // see if any required actions need triggering, i.e. an expired password
         for (RequiredActionProviderModel model : realm.getRequiredActionProviders()) {
@@ -985,7 +996,7 @@ public class AuthenticationManager {
                 throw new RuntimeException("Unable to find factory for Required Action: " + model.getProviderId() + " did you forget to declare it in a META-INF/services file?");
             }
             RequiredActionProvider provider = factory.create(session);
-            RequiredActionContextResult result = new RequiredActionContextResult(authSession, realm, event, session, request, user, factory) {
+            RequiredActionContextResult result = new RequiredActionContextResult(authClientSession, realm, event, session, request, user, factory) {
                 @Override
                 public void challenge(Response response) {
                     throw new RuntimeException("Not allowed to call challenge() within evaluateTriggers()");

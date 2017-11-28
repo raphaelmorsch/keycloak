@@ -27,6 +27,12 @@ import org.keycloak.sessions.CommonClientSessionModel;
  */
 public interface AuthenticatedClientSessionModel extends CommonClientSessionModel {
 
+    String getId();
+    RealmModel getRealm();
+
+    int getTimestamp();
+    void setTimestamp(int timestamp);
+
     /**
      * Detaches the client session from its user session.
      */

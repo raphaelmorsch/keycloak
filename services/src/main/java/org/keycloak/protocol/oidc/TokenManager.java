@@ -61,6 +61,7 @@ import org.keycloak.services.managers.AuthenticationSessionManager;
 import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.services.managers.UserSessionCrossDCManager;
 import org.keycloak.services.managers.UserSessionManager;
+import org.keycloak.sessions.AuthenticationSessionClientModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.util.TokenUtil;
 import org.keycloak.common.util.Time;
@@ -394,24 +395,26 @@ public class TokenManager {
     }
 
 
-    public static AuthenticatedClientSessionModel attachAuthenticationSession(KeycloakSession session, UserSessionModel userSession, AuthenticationSessionModel authSession) {
-        ClientModel client = authSession.getClient();
+    public static AuthenticatedClientSessionModel attachAuthenticationSession(KeycloakSession session, UserSessionModel userSession, AuthenticationSessionClientModel authClientSession) {
+        ClientModel client = authClientSession.getClient();
 
         AuthenticatedClientSessionModel clientSession = userSession.getAuthenticatedClientSessionByClient(client.getId());
         if (clientSession == null) {
             clientSession = session.sessions().createClientSession(userSession.getRealm(), client, userSession);
         }
 
-        clientSession.setRedirectUri(authSession.getRedirectUri());
-        clientSession.setProtocol(authSession.getProtocol());
+        clientSession.setRedirectUri(authClientSession.getRedirectUri());
+        clientSession.setProtocol(authClientSession.getProtocol());
 
-        clientSession.setRoles(authSession.getRoles());
-        clientSession.setProtocolMappers(authSession.getProtocolMappers());
+        clientSession.setRoles(authClientSession.getRoles());
+        clientSession.setProtocolMappers(authClientSession.getProtocolMappers());
 
-        Map<String, String> transferredNotes = authSession.getClientNotes();
+        Map<String, String> transferredNotes = authClientSession.getClientNotes();
         for (Map.Entry<String, String> entry : transferredNotes.entrySet()) {
             clientSession.setNote(entry.getKey(), entry.getValue());
         }
+
+        AuthenticationSessionModel authSession = authClientSession.getAuthenticationSession();
 
         Map<String, String> transferredUserSessionNotes = authSession.getUserSessionNotes();
         for (Map.Entry<String, String> entry : transferredUserSessionNotes.entrySet()) {
@@ -420,7 +423,7 @@ public class TokenManager {
 
         clientSession.setTimestamp(Time.currentTime());
 
-        // Remove authentication session now
+        // Remove whole authentication session now (session for all browser tabs). The other browser tabs will be re-authenticated from SSO anyway
         new AuthenticationSessionManager(session).removeAuthenticationSession(userSession.getRealm(), authSession, true);
 
         return clientSession;

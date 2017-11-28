@@ -31,9 +31,9 @@ public interface AuthenticationSessionProvider extends Provider {
      * Creates and registers a new authentication session with random ID. Authentication session
      * entity will be prefilled with current timestamp, the given realm and client.
      */
-    AuthenticationSessionModel createAuthenticationSession(RealmModel realm, ClientModel client);
+    AuthenticationSessionModel createAuthenticationSession(RealmModel realm);
 
-    AuthenticationSessionModel createAuthenticationSession(String id, RealmModel realm, ClientModel client);
+    AuthenticationSessionModel createAuthenticationSession(String id, RealmModel realm);
 
     AuthenticationSessionModel getAuthenticationSession(RealmModel realm, String authenticationSessionId);
 

@@ -27,6 +27,7 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.protocol.RestartLoginCookie;
 import org.keycloak.services.util.CookieHelper;
+import org.keycloak.sessions.AuthenticationSessionClientModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.StickySessionEncoderProvider;
 
@@ -46,15 +47,15 @@ public class AuthenticationSessionManager {
     }
 
     /**
-     * Creates a fresh authentication session for the given realm and client. Optionally sets the browser
+     * Creates a fresh authentication session for the given realm and then create AuthenticationSessionClientModel for given client to it. Optionally sets the browser
      * authentication session cookie {@link #AUTH_SESSION_ID} with the ID of the new session.
      * @param realm
      * @param client
      * @param browserCookie Set the cookie in the browser for the
      * @return
      */
-    public AuthenticationSessionModel createAuthenticationSession(RealmModel realm, ClientModel client, boolean browserCookie) {
-        AuthenticationSessionModel authSession = session.authenticationSessions().createAuthenticationSession(realm, client);
+    public AuthenticationSessionModel createAuthenticationSession(RealmModel realm, boolean browserCookie) {
+        AuthenticationSessionModel authSession = session.authenticationSessions().createAuthenticationSession(realm);
 
         if (browserCookie) {
             setAuthSessionCookie(authSession.getId(), realm);
@@ -136,7 +137,7 @@ public class AuthenticationSessionManager {
     }
 
 
-    // Check to see if we already have authenticationSession with same ID
+    // Check to see if we already have authClientSession with same ID
     public UserSessionModel getUserSession(AuthenticationSessionModel authSession) {
         return session.sessions().getUserSession(authSession.getRealm(), authSession.getId());
     }

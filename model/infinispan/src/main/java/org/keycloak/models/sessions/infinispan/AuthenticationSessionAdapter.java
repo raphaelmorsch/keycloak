@@ -30,6 +30,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.sessions.infinispan.entities.AuthenticationSessionEntity;
+import org.keycloak.sessions.AuthenticationSessionClientModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
 /**
@@ -69,10 +70,25 @@ public class AuthenticationSessionAdapter implements AuthenticationSessionModel 
         return realm;
     }
 
+    // TODO:mposolda
+//    @Override
+//    public ClientModel getClient() {
+//        return realm.getClientById(entity.getClientUuid());
+//    }
+
+
+    // TODO:mposolda
     @Override
-    public ClientModel getClient() {
-        return realm.getClientById(entity.getClientUuid());
+    public Map<String, AuthenticationSessionClientModel> getClientSessions() {
+        return null;
     }
+
+    @Override
+    public AuthenticationSessionClientModel getClientSession(String clientUUID) {
+        return null;
+    }
+
+
 
     @Override
     public String getRedirectUri() {
@@ -142,47 +158,48 @@ public class AuthenticationSessionAdapter implements AuthenticationSessionModel 
         update();
     }
 
-    @Override
-    public String getClientNote(String name) {
-        return (entity.getClientNotes() != null && name != null) ? entity.getClientNotes().get(name) : null;
-    }
-
-    @Override
-    public void setClientNote(String name, String value) {
-        if (entity.getClientNotes() == null) {
-            entity.setClientNotes(new ConcurrentHashMap<>());
-        }
-        if (name != null) {
-            if (value == null) {
-                entity.getClientNotes().remove(name);
-            } else {
-                entity.getClientNotes().put(name, value);
-            }
-        }
-        update();
-    }
-
-    @Override
-    public void removeClientNote(String name) {
-        if (entity.getClientNotes() != null && name != null) {
-            entity.getClientNotes().remove(name);
-        }
-        update();
-    }
-
-    @Override
-    public Map<String, String> getClientNotes() {
-        if (entity.getClientNotes() == null || entity.getClientNotes().isEmpty()) return Collections.emptyMap();
-        Map<String, String> copy = new ConcurrentHashMap<>();
-        copy.putAll(entity.getClientNotes());
-        return copy;
-    }
-
-    @Override
-    public void clearClientNotes() {
-        entity.setClientNotes(new ConcurrentHashMap<>());
-        update();
-    }
+    // TODO:mposolda
+//    @Override
+//    public String getClientNote(String name) {
+//        return (entity.getClientNotes() != null && name != null) ? entity.getClientNotes().get(name) : null;
+//    }
+//
+//    @Override
+//    public void setClientNote(String name, String value) {
+//        if (entity.getClientNotes() == null) {
+//            entity.setClientNotes(new ConcurrentHashMap<>());
+//        }
+//        if (name != null) {
+//            if (value == null) {
+//                entity.getClientNotes().remove(name);
+//            } else {
+//                entity.getClientNotes().put(name, value);
+//            }
+//        }
+//        update();
+//    }
+//
+//    @Override
+//    public void removeClientNote(String name) {
+//        if (entity.getClientNotes() != null && name != null) {
+//            entity.getClientNotes().remove(name);
+//        }
+//        update();
+//    }
+//
+//    @Override
+//    public Map<String, String> getClientNotes() {
+//        if (entity.getClientNotes() == null || entity.getClientNotes().isEmpty()) return Collections.emptyMap();
+//        Map<String, String> copy = new ConcurrentHashMap<>();
+//        copy.putAll(entity.getClientNotes());
+//        return copy;
+//    }
+//
+//    @Override
+//    public void clearClientNotes() {
+//        entity.setClientNotes(new ConcurrentHashMap<>());
+//        update();
+//    }
 
     @Override
     public String getAuthNote(String name) {
@@ -312,11 +329,12 @@ public class AuthenticationSessionAdapter implements AuthenticationSessionModel 
         update();
     }
 
-    @Override
-    public void updateClient(ClientModel client) {
-        entity.setClientUuid(client.getId());
-        update();
-    }
+    // TODO:mposolda
+//    @Override
+//    public void updateClient(ClientModel client) {
+//        entity.setClientUuid(client.getId());
+//        update();
+//    }
 
     @Override
     public void restartSession(RealmModel realm, ClientModel client) {

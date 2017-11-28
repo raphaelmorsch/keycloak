@@ -23,6 +23,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.provider.Provider;
+import org.keycloak.sessions.AuthenticationSessionClientModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
 import javax.ws.rs.core.HttpHeaders;
@@ -68,7 +69,7 @@ public interface LoginProtocol extends Provider {
 
     Response authenticated(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession);
 
-    Response sendError(AuthenticationSessionModel authSession, Error error);
+    Response sendError(AuthenticationSessionClientModel authSession, Error error);
 
     void backchannelLogout(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession);
     Response frontchannelLogout(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession);

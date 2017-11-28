@@ -25,19 +25,47 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 
 /**
- * Using class for now to avoid many updates among implementations
+ * Encapsulates data related to one authentication browser session.
+ *
+ * It's scoped to the whole browser (EG. if there are multiple browser tabs opened with the login screen, the
+ * AuthenticationSessionModel encapsulates data related to all those browser tabs).
+ *
+ * The single browser tab is represented by {@link AuthenticationSessionClientModel}
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public interface AuthenticationSessionModel extends CommonClientSessionModel {
+public interface AuthenticationSessionModel {
 
-//
-//    public UserSessionModel getUserSession();
-//    public void setUserSession(UserSessionModel userSession);
+    String getId();
+    RealmModel getRealm();
 
 
-    Map<String, ExecutionStatus> getExecutionStatus();
-    void setExecutionStatus(String authenticator, ExecutionStatus status);
+    /**
+     * Key is client UUID. Value is AuthenticationSessionClientModel related to the given client
+     *
+     * @return map with data of all the client authentication sessions in all browser tabs.
+     */
+    Map<String, AuthenticationSessionClientModel> getClientSessions();
+
+    AuthenticationSessionClientModel getClientSession(String clientUUID);
+
+    /**
+     * Create new clientSession for the particular client and attach to this authenticationSession.
+     * If there is already existing clientSession for this client, then rewrite the existing session.
+     *
+     * @param client
+     * @return
+     */
+    AuthenticationSessionClientModel createClientSession(ClientModel client);
+
+    int getTimestamp();
+    void setTimestamp(int timestamp);
+
+    String getAction();
+    void setAction(String action);
+
+    Map<String, CommonClientSessionModel.ExecutionStatus> getExecutionStatus();
+    void setExecutionStatus(String authenticator, CommonClientSessionModel.ExecutionStatus status);
     void clearExecutionStatus();
     UserModel getAuthenticatedUser();
     void setAuthenticatedUser(UserModel user);
@@ -99,34 +127,11 @@ public interface AuthenticationSessionModel extends CommonClientSessionModel {
      */
     void clearAuthNotes();
 
-    /**
-     *  Retrieves value of the given client note to the given value. Client notes are notes
-     *  specific to client protocol. They are NOT cleared when authentication session is restarted.
-     */
-    String getClientNote(String name);
-    /**
-     *  Sets the given client note to the given value. Client notes are notes
-     *  specific to client protocol. They are NOT cleared when authentication session is restarted.
-     */
-    void setClientNote(String name, String value);
-    /**
-     *  Removes the given client note. Client notes are notes
-     *  specific to client protocol. They are NOT cleared when authentication session is restarted.
-     */
-    void removeClientNote(String name);
-    /**
-     *  Retrieves the (name, value) map of client notes. Client notes are notes
-     *  specific to client protocol. They are NOT cleared when authentication session is restarted.
-     */
-    Map<String, String> getClientNotes();
-    /**
-     *  Clears all client notes. Client notes are notes
-     *  specific to client protocol. They are NOT cleared when authentication session is restarted.
-     */
-    void clearClientNotes();
+    // Will completely restart whole state of authentication session. It will just keep same ID. It will setup it with provided realm.
+    void restartSession(RealmModel realm);
 
-    void updateClient(ClientModel client);
-
-    // Will completely restart whole state of authentication session. It will just keep same ID. It will setup it with provided realm and client.
-    void restartSession(RealmModel realm, ClientModel client);
+    /**
+     * Restarts the authentication state of this authentication session (Executions, authNotes etc). It doesn't restart client sessions
+     */
+    void restartAuthentication();
 }

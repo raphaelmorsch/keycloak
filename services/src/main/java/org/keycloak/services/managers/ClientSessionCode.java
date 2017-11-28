@@ -113,7 +113,7 @@ public class ClientSessionCode<CLIENT_SESSION extends CommonClientSessionModel> 
     }
 
 
-    public static <CLIENT_SESSION extends CommonClientSessionModel> CLIENT_SESSION getClientSession(String code, KeycloakSession session, RealmModel realm, EventBuilder event, Class<CLIENT_SESSION> sessionClass) {
+    public static <CLIENT_SESSION extends CommonClientSessionModel> CLIENT_SESSION getClientSession(String code, KeycloakSession session, RealmModel realm, ClientModel client, EventBuilder event, Class<CLIENT_SESSION> sessionClass) {
         CodeGenerateUtil.ClientSessionParser<CLIENT_SESSION> clientSessionParser = CodeGenerateUtil.getParser(sessionClass);
         return getClientSession(code, session, realm, event, clientSessionParser);
     }

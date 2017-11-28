@@ -17,6 +17,7 @@
 
 package org.keycloak.testsuite.forms;
 
+import org.hamcrest.Matchers;
 import org.jboss.arquillian.graphene.page.Page;
 import org.junit.Before;
 import org.junit.Rule;
@@ -278,6 +279,77 @@ public class MultipleTabsLoginTest extends AbstractTestRealmKeycloakTest {
         updatePasswordPage.changePassword("password", "password");
         updateProfilePage.update("John", "Doe3", "john@doe3.com");
         appPage.assertCurrent();
+    }
+
+
+    // KEYCLOAK-5797
+    @Test
+    public void loginWithDifferentClients() throws Exception {
+        // Open tab1 and start login here
+        oauth.openLoginForm();
+        loginPage.assertCurrent();
+        loginPage.login("login-test", "bad-password");
+        String tab1Url = driver.getCurrentUrl();
+
+        // Go to tab2 and start login with different client "root-url-client"
+        oauth.clientId("root-url-client");
+        oauth.redirectUri("http://localhost:8180/foo/bar/baz");
+        oauth.openLoginForm();
+        loginPage.assertCurrent();
+        String tab2Url = driver.getCurrentUrl();
+
+        // Go back to tab1 and finish login here
+        driver.navigate().to(tab1Url);
+        loginPage.login("login-test", "password");
+        updatePasswordPage.changePassword("password", "password");
+        updateProfilePage.update("John", "Doe3", "john@doe3.com");
+
+        // Assert I am redirected to the appPage in tab1
+        appPage.assertCurrent();
+
+        // Go back to tab2 and finish login here. Should be on the root-url-client page
+        driver.navigate().to(tab2Url);
+        String currentUrl = driver.getCurrentUrl();
+        Assert.assertThat(currentUrl, Matchers.startsWith("http://localhost:8180/foo/bar/baz"));
+    }
+
+
+    // - Open http://localhost:8081/auth/admin in browser tab1 and login as admin
+    // - Open http://localhost:8081/auth/admin in browser tab2 and login as admin
+//     - Click to tab "Token settings" in tab2. URL here is like "http://localhost:8081/auth/admin/master/console/#/realms/master/token-settings"
+//     - Click "Sign out" in tab2
+//     - Wait until tab1 is logged-out too (due the session iframe)
+//     - Login as admin/admin in tab2
+//     - I am on http://localhost:8081/auth/admin/master/console/#/realms/master but should be on the "Token settings" tab -> KO
+//     - Go back to tab1 and click browser refresh. I have "Page not found" opened now. -> KO
+    @Test
+    public void loginWithSameClientDifferentStates() throws Exception {
+        // Open tab1 and start login here
+        oauth.stateParamHardcoded("state1");
+        oauth.redirectUri("http://localhost:8180/auth/realms/master/app/auth/suffix1");
+        oauth.openLoginForm();
+        loginPage.assertCurrent();
+        loginPage.login("login-test", "bad-password");
+        String tab1Url = driver.getCurrentUrl();
+
+        // Go to tab2 and start login with different client "root-url-client"
+        oauth.stateParamHardcoded("state2");
+        oauth.redirectUri("http://localhost:8180/auth/realms/master/app/auth/suffix2");
+        oauth.openLoginForm();
+        loginPage.assertCurrent();
+        String tab2Url = driver.getCurrentUrl();
+
+        // Go back to tab1 and finish login here
+        driver.navigate().to(tab1Url);
+        loginPage.login("login-test", "password");
+        updatePasswordPage.changePassword("password", "password");
+        updateProfilePage.update("John", "Doe3", "john@doe3.com");
+
+        // Assert I am redirected to the appPage in tab1 and have state corresponding to tab1
+        appPage.assertCurrent();
+        String currentUrl = driver.getCurrentUrl();
+        Assert.assertThat(currentUrl, Matchers.startsWith("http://localhost:8180/auth/realms/master/app/auth/suffix1"));
+        Assert.assertTrue(currentUrl.contains("state2"));
     }
 
 

@@ -28,7 +28,7 @@ import java.util.UUID;
  */
 public class DefaultActionTokenKey extends JsonWebToken implements ActionTokenKeyModel {
 
-    /** The authenticationSession note with ID of the user authenticated via the action token */
+    /** The authClientSession note with ID of the user authenticated via the action token */
     public static final String ACTION_TOKEN_USER_ID = "ACTION_TOKEN_USER";
 
     public static final String JSON_FIELD_ACTION_VERIFICATION_NONCE = "nonce";

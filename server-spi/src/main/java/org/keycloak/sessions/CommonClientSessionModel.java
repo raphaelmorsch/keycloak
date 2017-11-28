@@ -17,11 +17,10 @@
 
 package org.keycloak.sessions;
 
-import java.util.Map;
 import java.util.Set;
 
 import org.keycloak.models.ClientModel;
-import org.keycloak.models.RealmModel;
+
 
 /**
  * Predecesor of AuthenticationSessionModel, ClientLoginSessionModel and ClientSessionModel (then action tickets). Maybe we will remove it later...
@@ -33,15 +32,7 @@ public interface CommonClientSessionModel {
     public String getRedirectUri();
     public void setRedirectUri(String uri);
 
-    public String getId();
-    public RealmModel getRealm();
     public ClientModel getClient();
-
-    public int getTimestamp();
-    public void setTimestamp(int timestamp);
-
-    public String getAction();
-    public void setAction(String action);
 
     public String getProtocol();
     public void setProtocol(String method);

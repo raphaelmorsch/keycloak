@@ -85,7 +85,7 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
     protected MultivaluedMap<String, String> formData;
 
     protected KeycloakSession session;
-    /** authenticationSession can be null for some renderings, mainly error pages */
+    /** authClientSession can be null for some renderings, mainly error pages */
     protected AuthenticationSessionModel authenticationSession;
     protected RealmModel realm;
     protected ClientModel client;

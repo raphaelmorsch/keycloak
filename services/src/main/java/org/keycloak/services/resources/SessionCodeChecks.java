@@ -46,6 +46,7 @@ import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.services.util.BrowserHistoryHelper;
 import org.keycloak.services.util.AuthenticationFlowURLHelper;
+import org.keycloak.sessions.AuthenticationSessionClientModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
 
@@ -132,12 +133,6 @@ public class SessionCodeChecks {
             return null;
         }
 
-        // object retrieve
-        AuthenticationSessionModel authSession = ClientSessionCode.getClientSession(code, session, realm, event, AuthenticationSessionModel.class);
-        if (authSession != null) {
-            return authSession;
-        }
-
         // Setup client to be shown on error/info page based on "client_id" parameter
         logger.debugf("Will use client '%s' in back-to-application link", clientId);
         ClientModel client = null;
@@ -146,6 +141,12 @@ public class SessionCodeChecks {
         }
         if (client != null) {
             session.getContext().setClient(client);
+        }
+
+        // object retrieve
+        AuthenticationSessionClientModel authSession = ClientSessionCode.getClientSession(code, session, realm, client, event, AuthenticationSessionClientModel.class);
+        if (authSession != null) {
+            return authSession;
         }
 
         // See if we are already authenticated and userSession with same ID exists.
@@ -173,7 +174,7 @@ public class SessionCodeChecks {
 
 
     public boolean initialVerify() {
-        // Basic realm checks and authenticationSession retrieve
+        // Basic realm checks and authClientSession retrieve
         authSession = initialVerifyAuthSession();
         if (authSession == null) {
             return false;
