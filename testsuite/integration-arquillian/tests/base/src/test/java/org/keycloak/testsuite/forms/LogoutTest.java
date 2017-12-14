@@ -19,7 +19,10 @@ package org.keycloak.testsuite.forms;
 import org.jboss.arquillian.graphene.page.Page;
 import org.junit.Rule;
 import org.junit.Test;
+import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.events.Details;
+import org.keycloak.models.Constants;
+import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.testsuite.Assert;
@@ -233,6 +236,24 @@ public class LogoutTest extends AbstractTestRealmKeycloakTest {
             loginPage.open();
             loginPage.assertCurrent();
         }, 10, 200);
+    }
+
+
+    // KEYCLOAK-5982
+    @Test
+    public void testLogoutWhenAccountClientRenamed() {
+        // Rename client "account"
+        ClientResource accountClient = ApiUtil.findClientByClientId(adminClient.realm("test"), Constants.ACCOUNT_MANAGEMENT_CLIENT_ID);
+        ClientRepresentation rep = accountClient.toRepresentation();
+        rep.setClientId("account-changed");
+        accountClient.update(rep);
+
+        // Assert logout works
+        logoutRedirect();
+
+        // Revert
+        rep.setClientId(Constants.ACCOUNT_MANAGEMENT_CLIENT_ID);
+        accountClient.update(rep);
     }
 
 }

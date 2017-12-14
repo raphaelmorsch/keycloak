@@ -217,9 +217,6 @@ public class AuthenticationManager {
     }
 
     private static AuthenticationSessionModel createOrJoinLogoutSession(KeycloakSession session, RealmModel realm, final AuthenticationSessionManager asm, UserSessionModel userSession, boolean browserCookie) {
-        // Account management client is used as a placeholder
-        ClientModel client = realm.getClientByClientId(Constants.ACCOUNT_MANAGEMENT_CLIENT_ID);
-
         // Try to lookup current authSessionId from browser cookie. If doesn't exists, use the same as current userSession
         String authSessionId = null;
         boolean browserCookiePresent = false;
@@ -245,11 +242,11 @@ public class AuthenticationManager {
         // See if we have logoutAuthSession inside current rootSession. Create new if not
         Optional<AuthenticationSessionModel> found = rootLogoutSession.getAuthenticationSessions().values().stream().filter((AuthenticationSessionModel authSession) -> {
 
-            return client.equals(authSession.getClient()) && Objects.equals(AuthenticationSessionModel.Action.LOGGING_OUT.name(), authSession.getAction());
+            return authSession.getClient()==null && Objects.equals(AuthenticationSessionModel.Action.LOGGING_OUT.name(), authSession.getAction());
 
         }).findFirst();
 
-        AuthenticationSessionModel logoutAuthSession = found.isPresent() ? found.get() : rootLogoutSession.createAuthenticationSession(client);
+        AuthenticationSessionModel logoutAuthSession = found.isPresent() ? found.get() : rootLogoutSession.createAuthenticationSession(null);
 
         logoutAuthSession.setAction(AuthenticationSessionModel.Action.LOGGING_OUT.name());
         return logoutAuthSession;

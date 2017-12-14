@@ -45,15 +45,17 @@ public interface RootAuthenticationSessionModel {
 
 
     /**
+     * @param client Can be null if target authenticationSession is not tight to any client
+     * @param tabId must be non-null
      * @return authentication session for particular client and tab or null if it doesn't yet exists.
      */
     AuthenticationSessionModel getAuthenticationSession(ClientModel client, String tabId);
 
 
     /**
-     * Create new authentication session and returns it. Overwrites existing session for particular client if already exists.
+     * Create new authentication session and returns it.
      *
-     * @param client
+     * @param client can be null if authentication session is not coupled to any client. This can be the case in some special use-cases (EG. Helper authenticationSession used during logout)
      * @return non-null fresh authentication session
      */
     AuthenticationSessionModel createAuthenticationSession(ClientModel client);

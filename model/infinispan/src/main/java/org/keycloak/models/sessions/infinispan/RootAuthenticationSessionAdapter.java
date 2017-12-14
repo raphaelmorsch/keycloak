@@ -19,6 +19,7 @@ package org.keycloak.models.sessions.infinispan;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.infinispan.Cache;
 import org.keycloak.common.util.Base64Url;
@@ -93,12 +94,12 @@ public class RootAuthenticationSessionAdapter implements RootAuthenticationSessi
 
     @Override
     public AuthenticationSessionModel getAuthenticationSession(ClientModel client, String tabId) {
-        if (client == null || tabId == null) {
+        if (tabId == null) {
             return null;
         }
 
         AuthenticationSessionModel authSession = getAuthenticationSessions().get(tabId);
-        if (authSession != null && client.equals(authSession.getClient())) {
+        if (authSession != null && Objects.equals(client, authSession.getClient())) {
             return authSession;
         } else {
             return null;
@@ -108,7 +109,10 @@ public class RootAuthenticationSessionAdapter implements RootAuthenticationSessi
     @Override
     public AuthenticationSessionModel createAuthenticationSession(ClientModel client) {
         AuthenticationSessionEntity authSessionEntity = new AuthenticationSessionEntity();
-        authSessionEntity.setClientUUID(client.getId());
+
+        if (client != null) {
+            authSessionEntity.setClientUUID(client.getId());
+        }
 
         String tabId = provider.generateTabId();
         entity.getAuthenticationSessions().put(tabId, authSessionEntity);

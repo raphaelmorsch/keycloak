@@ -72,7 +72,7 @@ public class AuthenticationSessionAdapter implements AuthenticationSessionModel 
 
     @Override
     public ClientModel getClient() {
-        return getRealm().getClientById(entity.getClientUUID());
+        return entity.getClientUUID()==null ? null : getRealm().getClientById(entity.getClientUUID());
     }
 
     @Override
