@@ -50,12 +50,13 @@ public class RemoteCacheSessionsLoader implements SessionLoader {
                     "  var localFlag = java.lang.Enum.valueOf(flagClazz, \"CACHE_MODE_LOCAL\"); \n" +
                     "  var cacheMode = cache.getCacheConfiguration().clustering().cacheMode(); \n" +
                     "  var canUseLocalFlag = !cacheMode.isClustered() || cacheMode.isReplicated(); \n" +
+                    "  var encodingClazz = Java.type(\"org.infinispan.commons.dataconversion.IdentityEncoder\").class; \n" +
 
                     "  var cacheStream; \n" +
                     "  if (canUseLocalFlag) { \n" +
-                    "      cacheStream = cache.getAdvancedCache().withFlags([ localFlag ]).entrySet().stream();\n" +
+                    "      cacheStream = cache.getAdvancedCache().withEncoding(encodingClazz).withFlags([ localFlag ]).entrySet().stream();\n" +
                     "  } else { \n" +
-                    "      cacheStream = cache.getAdvancedCache().withFlags([ ]).entrySet().stream();\n" +
+                    "      cacheStream = cache.getAdvancedCache().withEncoding(encodingClazz).withFlags([ ]).entrySet().stream();\n" +
                     "  }; \n" +
 
                     "  var result = cacheStream.skip(first).limit(max).collect(java.util.stream.Collectors.toMap(\n" +
