@@ -128,12 +128,12 @@ public class InfinispanUserSessionProviderFactory implements UserSessionProvider
     }
 
     // Max count of worker errors. Initialization will end with exception when this number is reached
-    private int getMaxErrors() {
+    protected int getMaxErrors() {
         return config.getInt("maxErrors", 20);
     }
 
     // Count of sessions to be computed in each segment
-    private int getSessionsPerSegment() {
+    protected int getSessionsPerSegment() {
         return config.getInt("sessionsPerSegment", 100);
     }
 
@@ -249,7 +249,7 @@ public class InfinispanUserSessionProviderFactory implements UserSessionProvider
         });
     }
 
-    private <K, V extends SessionEntity> boolean checkRemoteCache(KeycloakSession session, Cache<K, SessionEntityWrapper<V>> ispnCache, RemoteCacheInvoker.MaxIdleTimeLoader maxIdleLoader) {
+    protected <K, V extends SessionEntity> boolean checkRemoteCache(KeycloakSession session, Cache<K, SessionEntityWrapper<V>> ispnCache, RemoteCacheInvoker.MaxIdleTimeLoader maxIdleLoader) {
         Set<RemoteStore> remoteStores = InfinispanUtil.getRemoteStores(ispnCache);
 
         if (remoteStores.isEmpty()) {
@@ -273,14 +273,14 @@ public class InfinispanUserSessionProviderFactory implements UserSessionProvider
     }
 
 
-    private void loadSessionsFromRemoteCaches(KeycloakSession session) {
+    protected void loadSessionsFromRemoteCaches(KeycloakSession session) {
         for (String cacheName : remoteCacheInvoker.getRemoteCacheNames()) {
             loadSessionsFromRemoteCache(session.getKeycloakSessionFactory(), cacheName, getSessionsPerSegment(), getMaxErrors());
         }
     }
 
 
-    private void loadSessionsFromRemoteCache(final KeycloakSessionFactory sessionFactory, String cacheName, final int sessionsPerSegment, final int maxErrors) {
+    protected void loadSessionsFromRemoteCache(final KeycloakSessionFactory sessionFactory, String cacheName, final int sessionsPerSegment, final int maxErrors) {
         log.debugf("Check pre-loading sessions from remote cache '%s'", cacheName);
 
         KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {

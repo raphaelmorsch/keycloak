@@ -80,8 +80,11 @@ public class RemoteCacheSessionListener<K, V extends SessionEntity>  {
         if (shouldUpdateLocalCache(event.getType(), key, event.isCommandRetried())) {
             this.executor.submit(event, () -> {
 
-                // Should load it from remoteStore
-                cache.get(key);
+                // Should load it from remoteStore - NO (With infinispan server 9.2 it doesn't work because remoteCache.getWithMetadata always return metadata with lastUsed set
+                // incorrectly to 0. This causes PersistenceUtil.loadAndCheckExpiration to always return null (due the InternalMetada.isExpired is true). Not sure if
+                // it's infinispan bug TODO Possibly more investigation or revert to cache.get after upgrading keycloak infinispan version to 9.X (hopefully this will fix it)
+                //cache.get(key);
+                createRemoteEntityInCache(key, event.getVersion());
 
             });
         }
@@ -103,12 +106,54 @@ public class RemoteCacheSessionListener<K, V extends SessionEntity>  {
     }
 
     private static final int MAXIMUM_REPLACE_RETRIES = 10;
+    private static final int SLEEP_INTERVAL_MS = 25;
 
-    private void replaceRemoteEntityInCache(K key, long eventVersion) {
+    protected void createRemoteEntityInCache(K key, long eventVersion) {
+        boolean finished = false;
+        int createRetries = 0;
+        int sleepInterval = SLEEP_INTERVAL_MS;
+
+        do {
+            createRetries++;
+
+            VersionedValue<SessionEntityWrapper<V>> remoteSessionVersioned = remoteCache.getVersioned(key);
+
+            // Maybe can happen under some circumstances that remoteCache doesn't yet contain the value sent in the event (maybe just theoretically...)
+            if (remoteSessionVersioned == null || remoteSessionVersioned.getValue() == null) {
+                try {
+                    logger.debugf("Entity '%s' not yet present in remoteCache. Postponing create",
+                            key.toString());
+                    Thread.sleep(new Random().nextInt(sleepInterval));  // using exponential backoff
+                    continue;
+                } catch (InterruptedException ex) {
+                    continue;
+                } finally {
+                    sleepInterval = sleepInterval << 1;
+                }
+            }
+
+
+            V remoteSession = remoteSessionVersioned.getValue().getEntity();
+            SessionEntityWrapper<V> newWrapper = new SessionEntityWrapper<>(remoteSession);
+
+            logger.debugf("Read session entity wrapper from the remote cache: %s . createRetries=%d", remoteSession.toString(), createRetries);
+
+            // Using putIfAbsent. Theoretic possibility that entity was already put to cache by someone else
+            cache.getAdvancedCache().withFlags(Flag.SKIP_CACHE_STORE, Flag.SKIP_CACHE_LOAD, Flag.IGNORE_RETURN_VALUES)
+                    .putIfAbsent(key, newWrapper);
+
+            finished = true;
+
+        } while (createRetries < MAXIMUM_REPLACE_RETRIES && ! finished);
+
+    }
+
+
+    protected void replaceRemoteEntityInCache(K key, long eventVersion) {
         // TODO can be optimized and remoteSession sent in the event itself?
         boolean replaced = false;
         int replaceRetries = 0;
-        int sleepInterval = 25;
+        int sleepInterval = SLEEP_INTERVAL_MS;
         do {
             replaceRetries++;
             
@@ -134,7 +179,7 @@ public class RemoteCacheSessionListener<K, V extends SessionEntity>  {
                     sleepInterval = sleepInterval << 1;
                 }
             }
-            SessionEntity remoteSession = remoteSessionVersioned.getValue().getEntity();
+            V remoteSession = remoteSessionVersioned.getValue().getEntity();
 
             logger.debugf("Read session entity from the remote cache: %s . replaceRetries=%d", remoteSession.toString(), replaceRetries);
 
