@@ -25,6 +25,7 @@ import org.jboss.arquillian.container.test.api.TargetsContainer;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Before;
 import org.junit.Test;
+import org.keycloak.models.FederatedIdentityModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
@@ -222,6 +223,40 @@ public class UserStorageCrossDCTest extends AbstractAdminCrossDCTest {
         });
 
         // TEST 4 - Add federation link on DC1 and assert federation link available on DC2. Also assert lookup by federation link works on DC2
+        testingClient1.server().run(session -> {
+            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+            UserModel user = session.users().getUserByUsername("john@email.cz", realm);
+
+            FederatedIdentityModel socialLink = new FederatedIdentityModel("google", "mposolda@gmail.com", "mposolda@gmail.com");
+            session.users().addFederatedIdentity(realm, user, socialLink);
+
+        });
+
+        testingClient1.server().run(session -> {
+            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+
+            FederatedIdentityModel socialLink = new FederatedIdentityModel("google", "mposolda@gmail.com", "mposolda@gmail.com");
+            UserModel user = session.users().getUserByFederatedIdentity(socialLink, realm);
+            Assert.assertNotNull(user);
+            Assert.assertEquals("john@email.cz", user.getUsername());
+            Assert.assertEquals("john-new@email.cz", user.getEmail());
+
+            FederatedIdentityModel socialLink2 = session.users().getFederatedIdentity(user, "google", realm);
+            Assert.assertEquals(socialLink, socialLink2);
+        });
+
+        testingClient2.server().run(session -> {
+            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+
+            FederatedIdentityModel socialLink = new FederatedIdentityModel("google", "mposolda@gmail.com", "mposolda@gmail.com");
+            UserModel user = session.users().getUserByFederatedIdentity(socialLink, realm);
+            Assert.assertNotNull(user);
+            Assert.assertEquals("john@email.cz", user.getUsername());
+            Assert.assertEquals("john-new@email.cz", user.getEmail());
+
+            FederatedIdentityModel socialLink2 = session.users().getFederatedIdentity(user, "google", realm);
+            Assert.assertEquals(socialLink, socialLink2);
+        });
 
 
         // TEST 5 - Add another federation link on DC1 and assert federation link available on DC2. Also assert lookup by second federation link works on DC2
@@ -236,7 +271,7 @@ public class UserStorageCrossDCTest extends AbstractAdminCrossDCTest {
 
         // TEST 9 - Searching, counting, pagination...
 
-
+        // TEST 10 -- roles + groups. Doublecheck if we need them...
 
     }
 }

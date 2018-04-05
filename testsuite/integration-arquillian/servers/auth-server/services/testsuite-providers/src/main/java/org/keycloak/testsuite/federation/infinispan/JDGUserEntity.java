@@ -20,10 +20,16 @@ package org.keycloak.testsuite.federation.infinispan;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
 
 import org.infinispan.commons.marshall.Externalizer;
 import org.infinispan.commons.marshall.MarshallUtil;
 import org.infinispan.commons.marshall.SerializeWith;
+import org.infinispan.util.concurrent.ConcurrentHashSet;
+import org.keycloak.models.sessions.infinispan.util.KeycloakMarshallUtil;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
@@ -39,12 +45,14 @@ public class JDGUserEntity {
     private boolean enabled;
     private String password;
     private String totp;
-    //Map<String, JDGFederationLinkEntity> federationLinks;
+    private final Set<JDGFederatedLinkEntity> federationLinks;
 
     public JDGUserEntity() {
+        this.federationLinks =  new ConcurrentHashSet<>();
     }
 
-    private JDGUserEntity(String id, String username, String email, String firstName, String lastName, boolean enabled, String password, String totp) {
+    private JDGUserEntity(String id, String username, String email, String firstName, String lastName, boolean enabled, String password,
+                          String totp, Set<JDGFederatedLinkEntity> federationLinks) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -53,7 +61,7 @@ public class JDGUserEntity {
         this.enabled = enabled;
         this.password = password;
         this.totp = totp;
-        //this.federationLinks = federationLinks;
+        this.federationLinks = federationLinks;
     }
 
     public String getId() {
@@ -120,6 +128,9 @@ public class JDGUserEntity {
         this.totp = totp;
     }
 
+    public Set<JDGFederatedLinkEntity> getFederationLinks() {
+        return federationLinks;
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -149,6 +160,8 @@ public class JDGUserEntity {
 
         private static final int VERSION_1 = 1;
 
+        private static final JDGFederatedLinkEntity.ExternalizerImpl JDG_LINK_EXTERNALIZER = new JDGFederatedLinkEntity.ExternalizerImpl();
+
         @Override
         public void writeObject(ObjectOutput output, JDGUserEntity value) throws IOException {
             output.writeByte(VERSION_1);
@@ -161,10 +174,12 @@ public class JDGUserEntity {
             output.writeBoolean(value.enabled);
             MarshallUtil.marshallString(value.password, output);
             MarshallUtil.marshallString(value.totp, output);
+            KeycloakMarshallUtil.writeCollection(value.federationLinks, JDG_LINK_EXTERNALIZER, output);
+            //MarshallUtil.marshallCollection(value.federationLinks, output);
         }
 
         @Override
-        public JDGUserEntity readObject(ObjectInput input) throws IOException {
+        public JDGUserEntity readObject(ObjectInput input) throws IOException, ClassNotFoundException {
             switch (input.readByte()) {
                 case VERSION_1:
                     return readObjectVersion1(input);
@@ -173,7 +188,7 @@ public class JDGUserEntity {
             }
         }
 
-        public JDGUserEntity readObjectVersion1(ObjectInput input) throws IOException {
+        public JDGUserEntity readObjectVersion1(ObjectInput input) throws IOException, ClassNotFoundException {
             return new JDGUserEntity(
                     MarshallUtil.unmarshallString(input), // id
                     MarshallUtil.unmarshallString(input), // username
@@ -182,7 +197,13 @@ public class JDGUserEntity {
                     MarshallUtil.unmarshallString(input), // lastName
                     input.readBoolean(),                  // enabled
                     MarshallUtil.unmarshallString(input), // password
-                    MarshallUtil.unmarshallString(input)  // totp
+                    MarshallUtil.unmarshallString(input),  // totp
+                    KeycloakMarshallUtil.readCollection(input, JDG_LINK_EXTERNALIZER, size -> new ConcurrentHashSet<>())
+//                    MarshallUtil.unmarshallCollection(input, (int size) -> {
+//
+//                        return new ArrayList<>(size);
+//
+//                    })
             );
         }
     }

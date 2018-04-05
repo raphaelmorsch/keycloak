@@ -34,6 +34,7 @@ import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialInputUpdater;
 import org.keycloak.credential.CredentialInputValidator;
 import org.keycloak.credential.CredentialModel;
+import org.keycloak.models.FederatedIdentityModel;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ModelDuplicateException;
@@ -43,9 +44,9 @@ import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.cache.CachedUserModel;
 import org.keycloak.models.cache.OnUserCache;
-import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.storage.StorageId;
 import org.keycloak.storage.UserStorageProvider;
+import org.keycloak.storage.federated.UserBrokerLinkFederatedStorage;
 import org.keycloak.storage.user.UserLookupProvider;
 import org.keycloak.storage.user.UserQueryProvider;
 import org.keycloak.storage.user.UserRegistrationProvider;
@@ -59,7 +60,8 @@ public class JDGUserStorageProvider implements UserStorageProvider,
         UserQueryProvider,
         CredentialInputUpdater,
         CredentialInputValidator,
-        OnUserCache {
+        OnUserCache,
+        UserBrokerLinkFederatedStorage {
 
     private final KeycloakSession session;
     private final ComponentModel component;
@@ -112,8 +114,7 @@ public class JDGUserStorageProvider implements UserStorageProvider,
 
     // persistenceId is something like "john@email.cz"
     protected UserModel getUserByPersistenceId(String persistenceId, RealmModel realm) {
-        String cacheId = getByIdCacheKey(persistenceId);
-        JDGUserEntity entity = (JDGUserEntity) transaction.get(cacheId);
+        JDGUserEntity entity = getUserEntity(persistenceId);
         if (entity == null) {
             logger.info("could not find user by id: " + persistenceId);
             return null;
@@ -125,12 +126,22 @@ public class JDGUserStorageProvider implements UserStorageProvider,
         return ID_CACHE_KEY + id;
     }
 
+    // persistenceId is something like "john@email.cz"
+    private JDGUserEntity getUserEntity(String persistenceId) {
+        String cacheId = getByIdCacheKey(persistenceId);
+        return (JDGUserEntity) transaction.get(cacheId);
+    }
+
 //    private String getByUsernameCacheKey(String username) {
 //        return USERNAME_CACHE_KEY + username;
 //    }
 
     protected String getByEmailCacheKey(String email) {
         return EMAIL_CACHE_KEY + email;
+    }
+
+    protected String getByFedLinkCacheKey(String identityProvider, String fedUserId) {
+        return FED_CACHE_KEY + identityProvider + "." + fedUserId;
     }
 
     @Override
@@ -386,5 +397,107 @@ public class JDGUserStorageProvider implements UserStorageProvider,
     @Override
     public List<UserModel> searchForUserByUserAttribute(String attrName, String attrValue, RealmModel realm) {
         return Collections.EMPTY_LIST;
+    }
+
+
+    // FEDERATION LINKS
+
+
+    @Override
+    public String getUserByFederatedIdentity(FederatedIdentityModel socialLink, RealmModel realm) {
+        String fedLinkCacheKey = getByFedLinkCacheKey(socialLink.getIdentityProvider(), socialLink.getUserId());
+        return (String) transaction.get(fedLinkCacheKey);
+    }
+
+    @Override
+    public void addFederatedIdentity(RealmModel realm, String userId, FederatedIdentityModel socialLink) {
+        String persistenceId = StorageId.externalId(userId);
+        JDGUserEntity entity = getUserEntity(persistenceId);
+        if (entity == null) {
+            logger.info("addFederatedIdentity: could not find user by id: " + persistenceId);
+            return;
+        }
+
+        // Update user
+        JDGFederatedLinkEntity jdgLink = fromModelLink(socialLink);
+        entity.getFederationLinks().add(jdgLink);
+        transaction.replace(persistenceId, entity);
+
+        // Add the cacheKey with the link
+        String fedLinkCacheKey = getByFedLinkCacheKey(socialLink.getIdentityProvider(), socialLink.getUserId());
+        transaction.create(fedLinkCacheKey, userId);
+    }
+
+    private FederatedIdentityModel fromJDGLink(JDGFederatedLinkEntity jdgLink) {
+        return new FederatedIdentityModel(jdgLink.getIdentityProvider(), jdgLink.getUserId(), jdgLink.getUserName());
+    }
+
+    private JDGFederatedLinkEntity fromModelLink(FederatedIdentityModel modelLink) {
+        return new JDGFederatedLinkEntity(modelLink.getUserId(), modelLink.getIdentityProvider(), modelLink.getUserName());
+    }
+
+    @Override
+    public boolean removeFederatedIdentity(RealmModel realm, String userId, String socialProvider) {
+        String persistenceId = StorageId.externalId(userId);
+        JDGUserEntity entity = getUserEntity(persistenceId);
+        if (entity == null) {
+            logger.info("removeFederatedIdentity: could not find user by id: " + persistenceId);
+            return false;
+        }
+
+        for (JDGFederatedLinkEntity jdgLink : entity.getFederationLinks()) {
+            if (jdgLink.getIdentityProvider().equals(socialProvider)) {
+                // Update user
+                entity.getFederationLinks().remove(jdgLink);
+                transaction.replace(persistenceId, entity);
+
+                // Remove fedLink item from cache
+                String fedLinkCacheKey = getByFedLinkCacheKey(jdgLink.getIdentityProvider(), jdgLink.getUserId());
+                transaction.remove(fedLinkCacheKey);
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public void updateFederatedIdentity(RealmModel realm, String userId, FederatedIdentityModel federatedIdentityModel) {
+        // Not needed for now as we don't store social tokens
+    }
+
+    @Override
+    public Set<FederatedIdentityModel> getFederatedIdentities(String userId, RealmModel realm) {
+        String persistenceId = StorageId.externalId(userId);
+        JDGUserEntity entity = getUserEntity(persistenceId);
+        if (entity == null) {
+            logger.info("getFederatedIdentities: could not find user by id: " + persistenceId);
+            return Collections.EMPTY_SET;
+        }
+
+        Set<FederatedIdentityModel> modelLinks = new HashSet<>();
+        for (JDGFederatedLinkEntity jdgLink : entity.getFederationLinks()) {
+            modelLinks.add(fromJDGLink(jdgLink));
+        }
+        return modelLinks;
+    }
+
+    @Override
+    public FederatedIdentityModel getFederatedIdentity(String userId, String socialProvider, RealmModel realm) {
+        String persistenceId = StorageId.externalId(userId);
+        JDGUserEntity entity = getUserEntity(persistenceId);
+        if (entity == null) {
+            logger.info("getFederatedIdentity: could not find user by id: " + persistenceId);
+            return null;
+        }
+
+        for (JDGFederatedLinkEntity jdgLink : entity.getFederationLinks()) {
+            if (jdgLink.getIdentityProvider().equals(socialProvider)) {
+                return fromJDGLink(jdgLink);
+            }
+        }
+
+        return null;
     }
 }

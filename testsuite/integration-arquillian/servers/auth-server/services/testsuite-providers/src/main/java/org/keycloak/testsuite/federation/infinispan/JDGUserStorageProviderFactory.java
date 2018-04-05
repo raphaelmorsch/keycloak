@@ -30,7 +30,7 @@ import org.keycloak.storage.UserStorageProviderFactory;
  */
 public class JDGUserStorageProviderFactory implements UserStorageProviderFactory<JDGUserStorageProvider> {
 
-    public static final String PROVIDER_ID = "jdg-user-storage";
+    public static final String PROVIDER_ID = "jdg";
     public static final String CACHE_NAME = "userStorage";
 
     private volatile RemoteCache remoteCache;
@@ -40,19 +40,25 @@ public class JDGUserStorageProviderFactory implements UserStorageProviderFactory
         if (remoteCache == null) {
             synchronized (this) {
                 if (remoteCache == null) {
-                    InfinispanConnectionProvider ispn = session.getProvider(InfinispanConnectionProvider.class);
-                    Cache cache = ispn.getCache(CACHE_NAME);
-                    if (cache == null) {
-                        throw new IllegalStateException("Cache '" + CACHE_NAME + "' not available");
-                    }
-                    remoteCache = InfinispanUtil.getRemoteCache(cache);
-                    if (remoteCache == null) {
-                        throw new IllegalStateException("Cache '" + CACHE_NAME + "' must be configured with remoteStore");
-                    }
+                    remoteCache = getRemoteCache(session);
                 }
             }
         }
         return new JDGUserStorageProvider(session, model, remoteCache);
+    }
+
+    static RemoteCache getRemoteCache(KeycloakSession session) {
+        InfinispanConnectionProvider ispn = session.getProvider(InfinispanConnectionProvider.class);
+        Cache cache = ispn.getCache(CACHE_NAME);
+        if (cache == null) {
+            throw new IllegalStateException("Cache '" + CACHE_NAME + "' not available");
+        }
+        RemoteCache remoteCache = InfinispanUtil.getRemoteCache(cache);
+        if (remoteCache == null) {
+            throw new IllegalStateException("Cache '" + CACHE_NAME + "' must be configured with remoteStore");
+        }
+
+        return remoteCache;
     }
 
     @Override
