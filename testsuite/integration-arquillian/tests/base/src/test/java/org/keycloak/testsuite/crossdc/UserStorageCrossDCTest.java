@@ -120,8 +120,19 @@ public class UserStorageCrossDCTest extends AbstractAdminCrossDCTest {
         //log.infof("Sleeping");
         //Thread.sleep(30000000);
 
-        // Add user with email in DC1
+        // TEST 1 - Remove user if exists, then add user on DC1, then lookup him by username, email, ID on DC2
+
+        // Check if user exists and remove him afterwards
         KeycloakTestingClient testingClient1 = getTestingClientForStartedNodeInDc(0);
+        testingClient1.server().run(session -> {
+            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+            UserModel user = session.users().getUserByUsername("john@email.cz", realm);
+            if (user != null) {
+                session.users().removeUser(realm, user);
+            }
+        });
+
+        // Add user with email in DC1
         testingClient1.server().run(session -> {
             RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
             UserModel user = session.users().addUser(realm, "john@email.cz");
@@ -133,12 +144,99 @@ public class UserStorageCrossDCTest extends AbstractAdminCrossDCTest {
         KeycloakTestingClient testingClient2 = getTestingClientForStartedNodeInDc(1);
         testingClient2.server().run(session -> {
             RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+
+            // Assert lookup by email
             UserModel user = session.users().getUserByEmail("john@email.cz", realm);
             Assert.assertNotNull(user);
             Assert.assertEquals("john@email.cz", user.getUsername());
             Assert.assertEquals("john@email.cz", user.getEmail());
             Assert.assertTrue(user.isEnabled());
+
+            // Assert lookup by username
+            user = session.users().getUserByUsername("john@email.cz", realm);
+            Assert.assertNotNull(user);
+            Assert.assertEquals("john@email.cz", user.getUsername());
+            Assert.assertEquals("john@email.cz", user.getEmail());
+            Assert.assertTrue(user.isEnabled());
+
+            // Assert lookup by id - bypass cache
+            user = session.userStorageManager().getUserById(user.getId(), realm);
+            Assert.assertNotNull(user);
+            Assert.assertEquals("john@email.cz", user.getUsername());
+            Assert.assertEquals("john@email.cz", user.getEmail());
+            Assert.assertTrue(user.isEnabled());
         });
+
+
+        // TEST 2 - Disable user on DC1 and check it's disabled on DC2. Re-enable user on DC1
+        testingClient1.server().run(session -> {
+            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+            UserModel user = session.users().getUserByUsername("john@email.cz", realm);
+            user.setEnabled(false);
+        });
+
+        testingClient2.server().run(session -> {
+            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+
+            // Assert lookup by email
+            UserModel user = session.users().getUserByEmail("john@email.cz", realm);
+            Assert.assertFalse(user.isEnabled());
+
+            user.setEnabled(true);
+        });
+
+        // TEST 3 - Update user (firstName, lastName, email) on DC2 and check it's updated on DC1 too. Check lookup by username + email works correctly
+        testingClient2.server().run(session -> {
+            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+
+            // Assert lookup by email
+            UserModel user = session.users().getUserByEmail("john@email.cz", realm);
+
+            user.setFirstName("John");
+            user.setLastName("Wood");
+            user.setEmail("john-new@email.cz");
+        });
+
+        testingClient1.server().run(session -> {
+            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+
+            UserModel user = session.users().getUserByUsername("john@email.cz", realm);
+            Assert.assertNotNull(user);
+            Assert.assertEquals("john@email.cz", user.getUsername());
+            Assert.assertEquals("john-new@email.cz", user.getEmail());
+            Assert.assertEquals("John", user.getFirstName());
+            Assert.assertEquals("Wood", user.getLastName());
+            Assert.assertTrue(user.isEnabled());
+
+            // Lookup by old email should fail
+            //Assert.assertNull(session.users().getUserByEmail("john@email.cz", realm));
+
+            // Lookup by new email should pass
+            user = session.users().getUserByEmail("john-new@email.cz", realm);
+            Assert.assertNotNull(user);
+            Assert.assertEquals("john@email.cz", user.getUsername());
+            Assert.assertEquals("john-new@email.cz", user.getEmail());
+            Assert.assertEquals("John", user.getFirstName());
+            Assert.assertEquals("Wood", user.getLastName());
+            Assert.assertTrue(user.isEnabled());
+        });
+
+        // TEST 4 - Add federation link on DC1 and assert federation link available on DC2. Also assert lookup by federation link works on DC2
+
+
+        // TEST 5 - Add another federation link on DC1 and assert federation link available on DC2. Also assert lookup by second federation link works on DC2
+
+        // TEST 6 - Unlink federation link 1 on DC2 and assert it's not available on DC1. Just the federationLink1 will be available.
+
+        // ADVANCED TESTS
+
+        // TEST 7 - CRUD passwords
+
+        // TEST 8 - TOTP
+
+        // TEST 9 - Searching, counting, pagination...
+
+
 
     }
 }

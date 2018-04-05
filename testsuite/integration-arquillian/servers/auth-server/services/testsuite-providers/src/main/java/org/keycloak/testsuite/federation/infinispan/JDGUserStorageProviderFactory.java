@@ -17,8 +17,12 @@
 
 package org.keycloak.testsuite.federation.infinispan;
 
+import org.infinispan.Cache;
+import org.infinispan.client.hotrod.RemoteCache;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.connections.infinispan.InfinispanConnectionProvider;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.sessions.infinispan.util.InfinispanUtil;
 import org.keycloak.storage.UserStorageProviderFactory;
 
 /**
@@ -27,10 +31,28 @@ import org.keycloak.storage.UserStorageProviderFactory;
 public class JDGUserStorageProviderFactory implements UserStorageProviderFactory<JDGUserStorageProvider> {
 
     public static final String PROVIDER_ID = "jdg-user-storage";
+    public static final String CACHE_NAME = "userStorage";
+
+    private volatile RemoteCache remoteCache;
 
     @Override
     public JDGUserStorageProvider create(KeycloakSession session, ComponentModel model) {
-        return new JDGUserStorageProvider(session, model);
+        if (remoteCache == null) {
+            synchronized (this) {
+                if (remoteCache == null) {
+                    InfinispanConnectionProvider ispn = session.getProvider(InfinispanConnectionProvider.class);
+                    Cache cache = ispn.getCache(CACHE_NAME);
+                    if (cache == null) {
+                        throw new IllegalStateException("Cache '" + CACHE_NAME + "' not available");
+                    }
+                    remoteCache = InfinispanUtil.getRemoteCache(cache);
+                    if (remoteCache == null) {
+                        throw new IllegalStateException("Cache '" + CACHE_NAME + "' must be configured with remoteStore");
+                    }
+                }
+            }
+        }
+        return new JDGUserStorageProvider(session, model, remoteCache);
     }
 
     @Override
