@@ -421,7 +421,7 @@ public class JDGUserStorageProvider implements UserStorageProvider,
         // Update user
         JDGFederatedLinkEntity jdgLink = fromModelLink(socialLink);
         entity.getFederationLinks().add(jdgLink);
-        transaction.replace(persistenceId, entity);
+        transaction.replace(getByIdCacheKey(persistenceId), entity);
 
         // Add the cacheKey with the link
         String fedLinkCacheKey = getByFedLinkCacheKey(socialLink.getIdentityProvider(), socialLink.getUserId());
@@ -449,7 +449,7 @@ public class JDGUserStorageProvider implements UserStorageProvider,
             if (jdgLink.getIdentityProvider().equals(socialProvider)) {
                 // Update user
                 entity.getFederationLinks().remove(jdgLink);
-                transaction.replace(persistenceId, entity);
+                transaction.replace(getByIdCacheKey(persistenceId), entity);
 
                 // Remove fedLink item from cache
                 String fedLinkCacheKey = getByFedLinkCacheKey(jdgLink.getIdentityProvider(), jdgLink.getUserId());

@@ -29,6 +29,7 @@ import org.infinispan.commons.marshall.Externalizer;
 import org.infinispan.commons.marshall.MarshallUtil;
 import org.infinispan.commons.marshall.SerializeWith;
 import org.infinispan.util.concurrent.ConcurrentHashSet;
+import org.jboss.logging.Logger;
 import org.keycloak.models.sessions.infinispan.util.KeycloakMarshallUtil;
 
 /**
@@ -36,6 +37,8 @@ import org.keycloak.models.sessions.infinispan.util.KeycloakMarshallUtil;
  */
 @SerializeWith(JDGUserEntity.ExternalizerImpl.class)
 public class JDGUserEntity {
+
+    private static final Logger logger = Logger.getLogger(JDGUserAdapter.class);
 
     private String id;
     private String username;
@@ -62,6 +65,7 @@ public class JDGUserEntity {
         this.password = password;
         this.totp = totp;
         this.federationLinks = federationLinks;
+        //logger.infof("READ FEDERATION LINKS. size=" + federationLinks.size() + ", federationLinks=" + federationLinks);
     }
 
     public String getId() {
@@ -152,7 +156,7 @@ public class JDGUserEntity {
 
     @Override
     public String toString() {
-        return String.format("JDGUserEntity [ id=%s, username=%s, email=%s ]", id, username, email);
+        return String.format("JDGUserEntity [ id=%s, username=%s, email=%s, federationLinks=%s ]", id, username, email, federationLinks);
     }
 
 
@@ -174,6 +178,7 @@ public class JDGUserEntity {
             output.writeBoolean(value.enabled);
             MarshallUtil.marshallString(value.password, output);
             MarshallUtil.marshallString(value.totp, output);
+            //logger.infof("EXTERNALIZE COLLECTION: size=" + value.federationLinks.size() + ", federationLinks=" + value.federationLinks);
             KeycloakMarshallUtil.writeCollection(value.federationLinks, JDG_LINK_EXTERNALIZER, output);
             //MarshallUtil.marshallCollection(value.federationLinks, output);
         }
