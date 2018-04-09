@@ -319,6 +319,7 @@ public class JDGUserStorageProvider implements UserStorageProvider,
     private List<UserModel> loadAllUsers(RealmModel realm) {
         if (users == null) {
             // TODO: Performance killer...
+            logger.infof("Calling loadAllUsers!");
             this.users = (List<UserModel>) transaction.remoteCache.getBulk().values().stream().filter((Object value) -> {
 
                 return value instanceof JDGUserEntity;

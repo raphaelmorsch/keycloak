@@ -19,6 +19,8 @@ package org.keycloak.testsuite.crossdc;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -340,6 +342,81 @@ public class UserStorageCrossDCTest extends AbstractAdminCrossDCTest {
         // Not needed... In demo, passwords will be disabled in account mgmt.
 
         // TEST 9 - Searching, counting, pagination...
+        testingClient1.server().run(session -> {
+            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+
+            // Add 15 new users
+            for (int i=0 ; i<15 ; i++) {
+                String username = "user-" + i + "@email.cz";
+                String firstName = "Peter";
+                String lastName = "Brown-" + i;
+
+                UserModel existing = session.users().getUserByUsername(username, realm);
+                if (existing != null) {
+                    session.users().removeUser(realm, existing);
+                }
+
+                UserModel user = session.users().addUser(realm, username);
+                user.setEnabled(true);
+                user.setEmail(username);
+                user.setFirstName(firstName);
+                user.setLastName(lastName);
+            }
+
+        });
+
+        testingClient2.server().run(session -> {
+            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+
+            Set<String> allUsernames = new HashSet<>();
+
+            // Get users
+            List<UserModel> users = session.users().getUsers(realm, 0, 10, false);
+            Assert.assertEquals(10, users.size());
+            addUsernames(users, allUsernames);
+
+            users = session.users().getUsers(realm, 10, 10, false);
+            Assert.assertEquals(7, users.size());
+            addUsernames(users, allUsernames);
+
+            Assert.assertTrue(allUsernames.contains("mposolda"));
+            Assert.assertTrue(allUsernames.contains("john@email.cz"));
+            for (int i=0 ; i<15 ; i++) {
+                Assert.assertTrue(allUsernames.contains("user-" + i + "@email.cz"));
+            }
+
+            // Search for users
+            allUsernames = new HashSet<>();
+
+            users = session.users().searchForUser("user-", realm, 0, 10);
+            Assert.assertEquals(10, users.size());
+            addUsernames(users, allUsernames);
+
+            users = session.users().searchForUser("user-", realm, 10, 10);
+            Assert.assertEquals(5, users.size());
+            addUsernames(users, allUsernames);
+
+            Assert.assertFalse(allUsernames.contains("mposolda"));
+            Assert.assertFalse(allUsernames.contains("john@email.cz"));
+            for (int i=0 ; i<15 ; i++) {
+                Assert.assertTrue(allUsernames.contains("user-" + i + "@email.cz"));
+            }
+
+            // Search for users by fullName
+            users = session.users().searchForUser("Peter Brown", realm, 0, 20);
+            Assert.assertEquals(15, users.size());
+            addUsernames(users, allUsernames);
+
+            Assert.assertFalse(allUsernames.contains("mposolda"));
+            Assert.assertFalse(allUsernames.contains("john@email.cz"));
+            for (int i=0 ; i<15 ; i++) {
+                Assert.assertTrue(allUsernames.contains("user-" + i + "@email.cz"));
+            }
+
+
+        });
+
+
 
         // TEST 10 -- roles + groups. Doublecheck if we need them...
         testingClient1.server().run(session -> {
@@ -381,5 +458,13 @@ public class UserStorageCrossDCTest extends AbstractAdminCrossDCTest {
         Assert.assertTrue(user.hasRole(viewProfile));
         Assert.assertTrue(user.hasRole(manageAccount));
         Assert.assertFalse(user.hasRole(viewUsers));
+    }
+
+    private static void addUsernames(List<UserModel> users, Set<String> usernames) {
+        users.stream().forEach((UserModel user) -> {
+
+            usernames.add(user.getUsername());
+
+        });
     }
 }
