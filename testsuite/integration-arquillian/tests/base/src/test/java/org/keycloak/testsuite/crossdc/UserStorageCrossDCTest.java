@@ -27,9 +27,14 @@ import org.jboss.arquillian.container.test.api.TargetsContainer;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Before;
 import org.junit.Test;
+import org.keycloak.models.AccountRoles;
+import org.keycloak.models.AdminRoles;
+import org.keycloak.models.ClientModel;
+import org.keycloak.models.Constants;
 import org.keycloak.models.FederatedIdentityModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.services.managers.RealmManager;
@@ -329,12 +334,52 @@ public class UserStorageCrossDCTest extends AbstractAdminCrossDCTest {
         // ADVANCED TESTS
 
         // TEST 7 - CRUD passwords
+        // Not needed... In demo, passwords will be disabled in account mgmt.
 
         // TEST 8 - TOTP
+        // Not needed... In demo, passwords will be disabled in account mgmt.
 
         // TEST 9 - Searching, counting, pagination...
 
         // TEST 10 -- roles + groups. Doublecheck if we need them...
+        testingClient1.server().run(session -> {
+            testRoles(session);
+        });
 
+        testingClient2.server().run(session -> {
+            testRoles(session);
+        });
+
+    }
+
+
+    private static void testRoles(KeycloakSession session) {
+        RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+
+        // Assert lookup by email
+        UserModel user = session.users().getUserByEmail("john@email.cz", realm);
+
+        // User should be member of default roles
+        RoleModel offlineAccess = realm.getRole("offline_access");
+        ClientModel account = realm.getClientByClientId("account");
+        RoleModel viewProfile = account.getRole(AccountRoles.VIEW_PROFILE);
+        RoleModel manageAccount = account.getRole(AccountRoles.MANAGE_ACCOUNT);
+        ClientModel rm = realm.getClientByClientId("realm-management");
+        RoleModel viewUsers = rm.getRole(AdminRoles.VIEW_USERS);
+        Assert.assertNotNull(offlineAccess);
+        Assert.assertNotNull(viewProfile);
+        Assert.assertNotNull(manageAccount);
+        Assert.assertNotNull(viewUsers);
+
+        Set<RoleModel> userRoles = user.getRoleMappings();
+        Assert.assertTrue(userRoles.contains(offlineAccess));
+        Assert.assertTrue(userRoles.contains(viewProfile));
+        Assert.assertTrue(userRoles.contains(manageAccount));
+        Assert.assertFalse(userRoles.contains(viewUsers));
+
+        Assert.assertTrue(user.hasRole(offlineAccess));
+        Assert.assertTrue(user.hasRole(viewProfile));
+        Assert.assertTrue(user.hasRole(manageAccount));
+        Assert.assertFalse(user.hasRole(viewUsers));
     }
 }
