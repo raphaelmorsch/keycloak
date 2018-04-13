@@ -76,6 +76,12 @@ public class JDGUserStorageProvider implements UserStorageProvider,
 
     public static final String PASSWORD_CACHE_KEY = "JDGUser.password";
 
+    public JDGUserStorageProvider() {
+        this.session = null;
+        this.component = null;
+        this.transaction = null;
+    }
+
     public JDGUserStorageProvider(KeycloakSession session, ComponentModel component, RemoteCache remoteCache) {
         this.session = session;
         this.component = component;

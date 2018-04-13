@@ -127,8 +127,8 @@ public class UserStorageCrossDCTest extends AbstractAdminCrossDCTest {
     public void loginTest() throws Exception {
         enableDcOnLoadBalancer(DC.SECOND);
 
-        //log.infof("Sleeping");
-        //Thread.sleep(30000000);
+        log.infof("Sleeping");
+        Thread.sleep(30000000);
 
         // TEST 1 - Remove user if exists, then add user on DC1, then lookup him by username, email, ID on DC2
 

@@ -19,6 +19,7 @@ package org.keycloak.testsuite.federation.infinispan;
 
 import org.infinispan.Cache;
 import org.infinispan.client.hotrod.RemoteCache;
+import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.connections.infinispan.InfinispanConnectionProvider;
 import org.keycloak.models.KeycloakSession;
@@ -30,34 +31,47 @@ import org.keycloak.storage.UserStorageProviderFactory;
  */
 public class JDGUserStorageProviderFactory implements UserStorageProviderFactory<JDGUserStorageProvider> {
 
+    private static final Logger logger = Logger.getLogger(JDGUserStorageProviderFactory.class);
+
     public static final String PROVIDER_ID = "jdg";
     public static final String CACHE_NAME = "userStorage";
 
-    private volatile RemoteCache remoteCache;
+    private volatile boolean initialized = false;
+    private RemoteCache remoteCache;
 
     @Override
     public JDGUserStorageProvider create(KeycloakSession session, ComponentModel model) {
-        if (remoteCache == null) {
+        if (initialized == false) {
             synchronized (this) {
-                if (remoteCache == null) {
+                if (initialized == false) {
                     remoteCache = getRemoteCache(session);
+                    initialized = true;
                 }
             }
         }
-        return new JDGUserStorageProvider(session, model, remoteCache);
+
+        // Dynamically detect if remoteCache is available or not
+        if (remoteCache != null) {
+            return new JDGUserStorageProvider(session, model, remoteCache);
+        } else {
+            return new EmptyUserStorageProvider();
+        }
     }
 
     static RemoteCache getRemoteCache(KeycloakSession session) {
         InfinispanConnectionProvider ispn = session.getProvider(InfinispanConnectionProvider.class);
         Cache cache = ispn.getCache(CACHE_NAME);
         if (cache == null) {
-            throw new IllegalStateException("Cache '" + CACHE_NAME + "' not available");
+            logger.warnf("Cache '%s' not available", CACHE_NAME);
+            return null;
         }
         RemoteCache remoteCache = InfinispanUtil.getRemoteCache(cache);
         if (remoteCache == null) {
-            throw new IllegalStateException("Cache '" + CACHE_NAME + "' must be configured with remoteStore");
+            logger.warnf("Cache '%s' must be configured with remoteStore", CACHE_NAME);
+            return null;
         }
 
+        logger.infof("Remote cache '%s' available.", CACHE_NAME);
         return remoteCache;
     }
 
