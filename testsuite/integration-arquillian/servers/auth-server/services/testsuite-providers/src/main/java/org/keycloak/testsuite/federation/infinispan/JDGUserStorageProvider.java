@@ -302,18 +302,23 @@ public class JDGUserStorageProvider implements UserStorageProvider,
 
     @Override
     public int getUsersCount(RealmModel realm) {
-        return loadAllUsers(realm).size();
+        //return loadAllUsers(realm).size();
+        return 0;
     }
 
     @Override
     public List<UserModel> getUsers(RealmModel realm) {
-        return loadAllUsers(realm);
+        //return loadAllUsers(realm);
+        return Collections.emptyList();
     }
 
     @Override
     public List<UserModel> getUsers(RealmModel realm, int firstResult, int maxResults) {
-        List<UserModel> users = loadAllUsers(realm);
-        return paginateUsers(users.stream(), firstResult, maxResults);
+//        List<UserModel> users = loadAllUsers(realm);
+//        return paginateUsers(users.stream(), firstResult, maxResults);
+
+        // Right now, we will support just searching by ID or email
+        return Collections.emptyList();
     }
 
     private List<UserModel> paginateUsers(Stream<UserModel> stream, int firstResult, int maxResults) {
@@ -355,19 +360,25 @@ public class JDGUserStorageProvider implements UserStorageProvider,
 
     @Override
     public List<UserModel> searchForUser(String search, RealmModel realm, int firstResult, int maxResults) {
-        List<UserModel> users = loadAllUsers(realm);
+        UserModel user = getUserById(search, realm);
+        if (user == null) {
+            user = getUserByEmail(search, realm);
+        }
 
-        Stream<UserModel> stream = users.stream().filter((UserModel user) -> {
-
-            boolean contains = user.getUsername().contains(search);
-            contains = contains || (user.getEmail() != null && user.getEmail().contains(search));
-            contains = contains || (getFullName(user).contains(search));
-
-            return contains;
-
-        });
-
-        return paginateUsers(stream, firstResult, maxResults);
+        return Collections.singletonList(user);
+//        List<UserModel> users = loadAllUsers(realm);
+//
+//        Stream<UserModel> stream = users.stream().filter((UserModel user) -> {
+//
+//            boolean contains = user.getUsername().contains(search);
+//            contains = contains || (user.getEmail() != null && user.getEmail().contains(search));
+//            contains = contains || (getFullName(user).contains(search));
+//
+//            return contains;
+//
+//        });
+//
+//        return paginateUsers(stream, firstResult, maxResults);
     }
 
     private String getFullName(UserModel user) {

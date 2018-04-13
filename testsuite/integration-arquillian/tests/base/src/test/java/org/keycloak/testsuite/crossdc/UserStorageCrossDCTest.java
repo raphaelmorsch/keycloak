@@ -370,55 +370,79 @@ public class UserStorageCrossDCTest extends AbstractAdminCrossDCTest {
 
         });
 
+        // COMMENTED - until there is more proper support for searchig users through RemoteCache
+//        testingClient2.server().run(session -> {
+//            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+//
+//            Set<String> allUsernames = new HashSet<>();
+//
+//            // Get users
+//            List<UserModel> users = session.users().getUsers(realm, 0, 10, false);
+//            Assert.assertEquals(10, users.size());
+//            addUsernames(users, allUsernames);
+//
+//            users = session.users().getUsers(realm, 10, 10, false);
+//            Assert.assertEquals(7, users.size());
+//            addUsernames(users, allUsernames);
+//
+//            Assert.assertTrue(allUsernames.contains("mposolda"));
+//            Assert.assertTrue(allUsernames.contains("john@email.cz"));
+//            for (int i=0 ; i<15 ; i++) {
+//                Assert.assertTrue(allUsernames.contains("user-" + i + "@email.cz"));
+//            }
+//
+//            // Search for users
+//            allUsernames = new HashSet<>();
+//
+//            users = session.users().searchForUser("user-", realm, 0, 10);
+//            Assert.assertEquals(10, users.size());
+//            addUsernames(users, allUsernames);
+//
+//            users = session.users().searchForUser("user-", realm, 10, 10);
+//            Assert.assertEquals(5, users.size());
+//            addUsernames(users, allUsernames);
+//
+//            Assert.assertFalse(allUsernames.contains("mposolda"));
+//            Assert.assertFalse(allUsernames.contains("john@email.cz"));
+//            for (int i=0 ; i<15 ; i++) {
+//                Assert.assertTrue(allUsernames.contains("user-" + i + "@email.cz"));
+//            }
+//
+//            // Search for users by fullName
+//            users = session.users().searchForUser("Peter Brown", realm, 0, 20);
+//            Assert.assertEquals(15, users.size());
+//            addUsernames(users, allUsernames);
+//
+//            Assert.assertFalse(allUsernames.contains("mposolda"));
+//            Assert.assertFalse(allUsernames.contains("john@email.cz"));
+//            for (int i=0 ; i<15 ; i++) {
+//                Assert.assertTrue(allUsernames.contains("user-" + i + "@email.cz"));
+//            }
+//
+//
+//        });
+
         testingClient2.server().run(session -> {
             RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
 
-            Set<String> allUsernames = new HashSet<>();
+            // Search by ID
+            List<UserModel> users = session.users().searchForUser("john@email.cz", realm, 0, 20);
+            Assert.assertEquals(1, users.size());
+            Assert.assertEquals("john@email.cz", users.get(0).getUsername());
 
-            // Get users
-            List<UserModel> users = session.users().getUsers(realm, 0, 10, false);
-            Assert.assertEquals(10, users.size());
-            addUsernames(users, allUsernames);
+            // Search by email
+            users = session.users().searchForUser("john-new@email.cz", realm, 0, 20);
+            Assert.assertEquals(1, users.size());
+            Assert.assertEquals("john@email.cz", users.get(0).getUsername());
 
-            users = session.users().getUsers(realm, 10, 10, false);
-            Assert.assertEquals(7, users.size());
-            addUsernames(users, allUsernames);
+            // Other than exact search won't work
+            users = session.users().searchForUser("john", realm, 0, 20);
+            Assert.assertEquals(0, users.size());
 
-            Assert.assertTrue(allUsernames.contains("mposolda"));
-            Assert.assertTrue(allUsernames.contains("john@email.cz"));
-            for (int i=0 ; i<15 ; i++) {
-                Assert.assertTrue(allUsernames.contains("user-" + i + "@email.cz"));
-            }
-
-            // Search for users
-            allUsernames = new HashSet<>();
-
-            users = session.users().searchForUser("user-", realm, 0, 10);
-            Assert.assertEquals(10, users.size());
-            addUsernames(users, allUsernames);
-
-            users = session.users().searchForUser("user-", realm, 10, 10);
-            Assert.assertEquals(5, users.size());
-            addUsernames(users, allUsernames);
-
-            Assert.assertFalse(allUsernames.contains("mposolda"));
-            Assert.assertFalse(allUsernames.contains("john@email.cz"));
-            for (int i=0 ; i<15 ; i++) {
-                Assert.assertTrue(allUsernames.contains("user-" + i + "@email.cz"));
-            }
-
-            // Search for users by fullName
-            users = session.users().searchForUser("Peter Brown", realm, 0, 20);
-            Assert.assertEquals(15, users.size());
-            addUsernames(users, allUsernames);
-
-            Assert.assertFalse(allUsernames.contains("mposolda"));
-            Assert.assertFalse(allUsernames.contains("john@email.cz"));
-            for (int i=0 ; i<15 ; i++) {
-                Assert.assertTrue(allUsernames.contains("user-" + i + "@email.cz"));
-            }
-
-
+            // Just DB user will be there
+            users = session.users().getUsers(realm, 0, 20);
+            Assert.assertEquals(1, users.size());
+            Assert.assertEquals("mposolda", users.get(0).getUsername());
         });
 
 
