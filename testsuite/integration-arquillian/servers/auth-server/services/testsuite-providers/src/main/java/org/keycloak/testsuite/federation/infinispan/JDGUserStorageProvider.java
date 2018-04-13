@@ -196,11 +196,18 @@ public class JDGUserStorageProvider implements UserStorageProvider,
         String persistenceId = StorageId.externalId(user.getId());
 
         String idCacheKey = getByIdCacheKey(persistenceId);
+        JDGUserEntity jdgUser = (JDGUserEntity) transaction.get(idCacheKey);
+
         transaction.remove(idCacheKey);
 
         if (user.getEmail() != null) {
             String emailCacheKey = getByEmailCacheKey(user.getEmail());
             transaction.remove(emailCacheKey);
+        }
+
+        for (JDGFederatedLinkEntity jdgLink : jdgUser.getFederationLinks()) {
+            String fedLinkCacheKey = getByFedLinkCacheKey(jdgLink.getIdentityProvider(), jdgLink.getUserId());
+            transaction.remove(fedLinkCacheKey);
         }
 
         return true;

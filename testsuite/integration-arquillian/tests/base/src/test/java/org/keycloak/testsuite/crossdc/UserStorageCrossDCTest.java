@@ -24,11 +24,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.infinispan.Cache;
+import org.infinispan.client.hotrod.RemoteCache;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.container.test.api.TargetsContainer;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Before;
 import org.junit.Test;
+import org.keycloak.connections.infinispan.InfinispanConnectionProvider;
 import org.keycloak.models.AccountRoles;
 import org.keycloak.models.AdminRoles;
 import org.keycloak.models.ClientModel;
@@ -38,11 +41,13 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.models.sessions.infinispan.util.InfinispanUtil;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.services.managers.RealmManager;
 import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
 import org.keycloak.testsuite.Assert;
 import org.keycloak.testsuite.client.KeycloakTestingClient;
+import org.keycloak.testsuite.federation.infinispan.JDGUserStorageProviderFactory;
 import org.keycloak.testsuite.runonserver.RunOnServerDeployment;
 
 import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
@@ -127,8 +132,8 @@ public class UserStorageCrossDCTest extends AbstractAdminCrossDCTest {
     public void loginTest() throws Exception {
         enableDcOnLoadBalancer(DC.SECOND);
 
-        log.infof("Sleeping");
-        Thread.sleep(30000000);
+//        log.infof("Sleeping");
+//        Thread.sleep(30000000);
 
         // TEST 1 - Remove user if exists, then add user on DC1, then lookup him by username, email, ID on DC2
 
@@ -427,6 +432,31 @@ public class UserStorageCrossDCTest extends AbstractAdminCrossDCTest {
             testRoles(session);
         });
 
+        // TEST 11 -- Remove user and ensure federation links are removed too and nothing remaining will remain in the cache
+        testingClient1.server().run(session -> {
+            RealmModel realm = session.realms().getRealmByName(SUMMIT_REALM);
+
+            for (int i=0 ; i<15 ; i++) {
+                String username = "user-" + i + "@email.cz";
+
+                UserModel existing = session.users().getUserByUsername(username, realm);
+                Assert.assertNotNull(existing);
+                session.users().removeUser(realm, existing);
+
+            }
+
+            UserModel john = session.users().getUserByUsername("john@email.cz", realm);
+            session.users().removeUser(realm, john);
+
+        });
+
+        testingClient2.server().run(session -> {
+
+            Cache userStorageCache = session.getProvider(InfinispanConnectionProvider.class).getCache(JDGUserStorageProviderFactory.CACHE_NAME);
+            RemoteCache remoteCache = InfinispanUtil.getRemoteCache(userStorageCache);
+            Assert.assertEquals(0, remoteCache.size());
+
+        });
     }
 
 
