@@ -20,9 +20,11 @@ package org.keycloak.connections.jpa.updater.liquibase.custom;
 import liquibase.exception.CustomChangeException;
 import liquibase.statement.core.InsertStatement;
 import liquibase.structure.core.Table;
+import org.keycloak.common.util.Base64Url;
 import org.keycloak.keys.KeyProvider;
 import org.keycloak.models.utils.KeycloakModelUtils;
 
+import java.security.MessageDigest;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
@@ -34,7 +36,7 @@ public class ExtractRealmKeysFromRealmTable extends CustomKeycloakTask {
     @Override
     protected void generateStatementsImpl() throws CustomChangeException {
         try {
-            PreparedStatement statement = jdbcConnection.prepareStatement("select ID, PRIVATE_KEY, CERTIFICATE from " + getTableName("REALM"));
+            PreparedStatement statement = jdbcConnection.prepareStatement("select ID, PRIVATE_KEY, CERTIFICATE, CODE_SECRET from " + getTableName("REALM"));
 
             try {
                 ResultSet resultSet = statement.executeQuery();
@@ -43,7 +45,9 @@ public class ExtractRealmKeysFromRealmTable extends CustomKeycloakTask {
                         String realmId = resultSet.getString(1);
                         String privateKeyPem = resultSet.getString(2);
                         String certificatePem = resultSet.getString(3);
+                        String codeSecret = resultSet.getString(4);
 
+                        // RSA key
                         String componentId = KeycloakModelUtils.generateId();
 
                         InsertStatement insertComponent = new InsertStatement(null, null, database.correctObjectName("COMPONENT", Table.class))
@@ -59,6 +63,28 @@ public class ExtractRealmKeysFromRealmTable extends CustomKeycloakTask {
                         statements.add(componentConfigStatement(componentId, "priority", "100"));
                         statements.add(componentConfigStatement(componentId, "privateKey", privateKeyPem));
                         statements.add(componentConfigStatement(componentId, "certificate", certificatePem));
+
+                        // HMAC key
+
+                        // Old codeSecret was UUID String. New format expects Base64 encoded key
+                        byte[] bytes = codeSecret.getBytes();
+                        String newKeyFormat = Base64Url.encode(bytes);
+
+                        componentId = KeycloakModelUtils.generateId();
+
+                        insertComponent = new InsertStatement(null, null, database.correctObjectName("COMPONENT", Table.class))
+                                .addColumnValue("ID", componentId)
+                                .addColumnValue("REALM_ID", realmId)
+                                .addColumnValue("PARENT_ID", realmId)
+                                .addColumnValue("NAME", "hmac-generated")
+                                .addColumnValue("PROVIDER_ID", "hmac-generated")
+                                .addColumnValue("PROVIDER_TYPE", KeyProvider.class.getName());
+
+                        statements.add(insertComponent);
+
+                        statements.add(componentConfigStatement(componentId, "priority", "100"));
+                        statements.add(componentConfigStatement(componentId, "kid", KeycloakModelUtils.generateId()));
+                        statements.add(componentConfigStatement(componentId, "secret", newKeyFormat));
                     }
                 } finally {
                     resultSet.close();
