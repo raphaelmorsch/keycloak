@@ -129,9 +129,18 @@ public class OIDCScopeTest extends AbstractTestRealmKeycloakTest {
         RoleRepresentation role1 = new RoleRepresentation();
         role1.setName("role-1");
         testRealm.getRoles().getRealm().add(role1);
+
         RoleRepresentation role2 = new RoleRepresentation();
         role2.setName("role-2");
         testRealm.getRoles().getRealm().add(role2);
+
+        RoleRepresentation role3 = new RoleRepresentation();
+        role3.setName("role-3");
+        testRealm.getRoles().getRealm().add(role3);
+
+        RoleRepresentation role4 = new RoleRepresentation();
+        role4.setName("role-4");
+        testRealm.getRoles().getRealm().add(role4);
     }
 
     @Before
@@ -459,27 +468,8 @@ public class OIDCScopeTest extends AbstractTestRealmKeycloakTest {
     @Test
     public void testTwoRefreshTokensWithDifferentScopes() {
         // Add 2 client scopes. Each with scope to 1 realm role
-        ClientScopeRepresentation clientScope1 = new ClientScopeRepresentation();
-        clientScope1.setName("scope-role-1");
-        clientScope1.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
-        Response response = testRealm().clientScopes().create(clientScope1);
-        String scope1Id = ApiUtil.getCreatedId(response);
-        getCleanup().addClientScopeId(scope1Id);
-        response.close();
-
-        ClientScopeRepresentation clientScope2 = new ClientScopeRepresentation();
-        clientScope2.setName("scope-role-2");
-        clientScope2.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
-        response = testRealm().clientScopes().create(clientScope2);
-        String scope2Id = ApiUtil.getCreatedId(response);
-        getCleanup().addClientScopeId(scope2Id);
-        response.close();
-
-        RoleRepresentation role1 = testRealm().roles().get("role-1").toRepresentation();
-        testRealm().clientScopes().get(scope1Id).getScopeMappings().realmLevel().add(Arrays.asList(role1));
-
-        RoleRepresentation role2 = testRealm().roles().get("role-2").toRepresentation();
-        testRealm().clientScopes().get(scope2Id).getScopeMappings().realmLevel().add(Arrays.asList(role2));
+        String scope1Id = addClientScopeWithRequiredRole("scope-role-1", "role-1");
+        String scope2Id = addClientScopeWithRequiredRole("scope-role-2", "role-2");
 
         // Add client scopes to our client. Disable fullScopeAllowed
         ClientResource testApp = ApiUtil.findClientByClientId(testRealm(), "test-app");
@@ -530,6 +520,53 @@ public class OIDCScopeTest extends AbstractTestRealmKeycloakTest {
     }
 
 
+
+    @Test
+    public void testScopeWithRequiredRole() {
+        String scope1Id = addClientScopeWithRequiredRole("scope-role-1", "role-1");
+        String scope2Id = addClientScopeWithRequiredRole("scope-role-2", "role-2");
+        String scope3Id = addClientScopeWithRequiredRole("scope-role-3", "role-3");
+        String scope4Id = addClientScopeWithRequiredRole("scope-role-4", "role-4");
+
+        // Change client scopes to require role
+        // TODO:mposolda
+
+        // Add client scopes to our client. Disable fullScopeAllowed
+        ClientResource testApp = ApiUtil.findClientByClientId(testRealm(), "test-app");
+        ClientRepresentation testAppRep = testApp.toRepresentation();
+        testAppRep.setFullScopeAllowed(false);
+        testApp.update(testAppRep);
+        testApp.addOptionalClientScope(scope1Id);
+        testApp.addDefaultClientScope(scope2Id);
+        testApp.addOptionalClientScope(scope3Id);
+        testApp.addDefaultClientScope(scope4Id);
+
+
+        // Request scope for "scope-role-1" and "scope-role-3" ("scope-role-2" and "scope-role-4" are default scopes)
+        oauth.clientId("third-party");
+        oauth.scope("scope-role-1 scope-role-3");
+
+        // Login. Check that just "scope-role-1" and "scope-role-2" are included in the accessToken scope as user is member of "role-1" and "role-2"
+        oauth.doLoginGrant("john", "password");
+
+        grantPage.assertCurrent();
+        grantPage.assertGrants(OAuthGrantPage.PROFILE_CONSENT_TEXT, OAuthGrantPage.EMAIL_CONSENT_TEXT, "scope-role-1", "scope-role-2");
+        grantPage.accept();
+
+        EventRepresentation loginEvent = events.expectLogin()
+                .user(userId)
+                .client("third-party")
+                .detail(Details.CONSENT, Details.CONSENT_VALUE_CONSENT_GRANTED)
+                .assertEvent();
+
+        Tokens tokens = sendTokenRequest(loginEvent, "openid email profile scope-role-1 scope-role-2", "third-party");
+
+        // Revert
+        // TODO:mposolda
+
+    }
+
+
     protected Tokens sendTokenRequest(EventRepresentation loginEvent, String expectedScope, String clientId) {
         String sessionId = loginEvent.getSessionId();
         String codeId = loginEvent.getDetails().get(Details.CODE_ID);
@@ -565,6 +602,23 @@ public class OIDCScopeTest extends AbstractTestRealmKeycloakTest {
         Collection<String> receivedScopes = Arrays.asList(receivedScope.split(" "));
         Assert.assertTrue("Not matched. expectedScope: " + expectedScope + ", receivedScope: " + receivedScope,
                 expectedScopes.containsAll(receivedScopes) && receivedScopes.containsAll(expectedScopes));
+    }
+
+
+    // Return clientScope ID
+    private String addClientScopeWithRequiredRole(String clientScopeName, String realmRoleName) {
+        ClientScopeRepresentation clientScope1 = new ClientScopeRepresentation();
+        clientScope1.setName(clientScopeName);
+        clientScope1.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
+        Response response = testRealm().clientScopes().create(clientScope1);
+        String scope1Id = ApiUtil.getCreatedId(response);
+        getCleanup().addClientScopeId(scope1Id);
+        response.close();
+
+        RoleRepresentation role1 = testRealm().roles().get(realmRoleName).toRepresentation();
+        testRealm().clientScopes().get(scope1Id).getScopeMappings().realmLevel().add(Arrays.asList(role1));
+
+        return scope1Id;
     }
 
 
