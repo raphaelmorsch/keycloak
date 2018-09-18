@@ -381,6 +381,56 @@ public class OIDCProtocolMappersTest extends AbstractKeycloakTest {
         deleteMappers(protocolMappers);
     }
 
+
+    /**
+     * KEYCLOAK-5259
+     * @throws Exception
+     */
+    @Test
+    public void testUserRoleToAttributeMappersWithFullScopeDisabled() throws Exception {
+        // Add mapper for realm roles
+        ProtocolMapperRepresentation realmMapper = ProtocolMapperUtil.createUserRealmRoleMappingMapper("pref.", "Realm roles mapper", "roles-custom.realm", true, true, true);
+        ProtocolMapperRepresentation clientMapper = ProtocolMapperUtil.createUserClientRoleMappingMapper("test-app", null, "Client roles mapper", "roles-custom.test-app", true, true, true);
+
+        ClientResource client = ApiUtil.findClientResourceByClientId(adminClient.realm("test"), "test-app");
+
+        // Disable full-scope-allowed
+        ClientRepresentation rep = client.toRepresentation();
+        rep.setFullScopeAllowed(false);
+        client.update(rep);
+
+        ProtocolMappersResource protocolMappers = ApiUtil.findClientResourceByClientId(adminClient.realm("test"), "test-app").getProtocolMappers();
+        protocolMappers.createMapper(Arrays.asList(realmMapper, clientMapper));
+
+        // Login user
+        OAuthClient.AccessTokenResponse response = browserLogin("password", "test-user@localhost", "password");
+        IDToken idToken = oauth.verifyIDToken(response.getIdToken());
+
+        // Verify attribute is filled
+        Map<String, Object> roleMappings = (Map<String, Object>)idToken.getOtherClaims().get("roles-custom");
+        Assert.assertThat(roleMappings.keySet(), containsInAnyOrder("realm", "test-app"));
+        Assert.assertThat(roleMappings.get("realm"), CoreMatchers.instanceOf(List.class));
+        Assert.assertThat(roleMappings.get("test-app"), CoreMatchers.instanceOf(List.class));
+
+        List<String> realmRoleMappings = (List<String>) roleMappings.get("realm");
+        List<String> testAppMappings = (List<String>) roleMappings.get("test-app");
+        assertRoles(realmRoleMappings,
+                "pref.user",                      // from direct assignment in user definition
+                "pref.offline_access"             // from direct assignment in user definition
+        );
+        assertRoles(testAppMappings,
+                "customer-user"                   // from direct assignment in user definition
+        );
+
+        // Revert
+        deleteMappers(protocolMappers);
+
+        rep = client.toRepresentation();
+        rep.setFullScopeAllowed(true);
+        client.update(rep);
+    }
+
+
     @Test
     public void testUserGroupRoleToAttributeMappers() throws Exception {
         // Add mapper for realm roles
