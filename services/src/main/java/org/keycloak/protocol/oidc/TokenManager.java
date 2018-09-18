@@ -603,7 +603,7 @@ public class TokenManager {
 
             ProtocolMapper mapper = (ProtocolMapper)sessionFactory.getProviderFactory(ProtocolMapper.class, mapping.getProtocolMapper());
             if (mapper instanceof OIDCAccessTokenMapper) {
-                token = ((OIDCAccessTokenMapper) mapper).transformAccessToken(token, mapping, session, userSession, clientSessionCtx.getClientSession());
+                token = ((OIDCAccessTokenMapper) mapper).transformAccessToken(token, mapping, session, userSession, clientSessionCtx);
             }
         }
 
@@ -618,7 +618,7 @@ public class TokenManager {
 
             ProtocolMapper mapper = (ProtocolMapper)sessionFactory.getProviderFactory(ProtocolMapper.class, mapping.getProtocolMapper());
             if (mapper instanceof UserInfoTokenMapper) {
-                token = ((UserInfoTokenMapper) mapper).transformUserInfoToken(token, mapping, session, userSession, clientSessionCtx.getClientSession());
+                token = ((UserInfoTokenMapper) mapper).transformUserInfoToken(token, mapping, session, userSession, clientSessionCtx);
             }
         }
 
@@ -633,7 +633,7 @@ public class TokenManager {
 
             ProtocolMapper mapper = (ProtocolMapper)sessionFactory.getProviderFactory(ProtocolMapper.class, mapping.getProtocolMapper());
             if (mapper instanceof OIDCIDTokenMapper) {
-                token = ((OIDCIDTokenMapper) mapper).transformIDToken(token, mapping, session, userSession, clientSessionCtx.getClientSession());
+                token = ((OIDCIDTokenMapper) mapper).transformIDToken(token, mapping, session, userSession, clientSessionCtx);
             }
         }
     }
