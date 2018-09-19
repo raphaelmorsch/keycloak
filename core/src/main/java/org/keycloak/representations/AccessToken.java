@@ -35,7 +35,7 @@ import java.util.Set;
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
  */
-@JsonFilter(JsonSerialization.ACCESS_TOKEN_FILTER)
+// TODO:mposolda doublecheck this and probably remove @JsonFilter(JsonSerialization.ACCESS_TOKEN_FILTER)
 public class AccessToken extends IDToken {
     public static class Access implements Serializable {
         @JsonProperty("roles")

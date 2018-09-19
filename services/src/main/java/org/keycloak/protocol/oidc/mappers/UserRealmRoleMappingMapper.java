@@ -91,6 +91,10 @@ public class UserRealmRoleMappingMapper extends AbstractUserRoleMappingMapper {
         String rolePrefix = mappingModel.getConfig().get(ProtocolMapperUtils.USER_MODEL_REALM_ROLE_MAPPING_ROLE_PREFIX);
 
         AccessToken.Access access = RoleResolveUtil.getResolvedRealmRoles(session, clientSessionCtx);
+        if (access == null) {
+            return;
+        }
+
         AbstractUserRoleMappingMapper.setClaim(token, mappingModel, access.getRoles(),null, rolePrefix);
     }
 
@@ -106,7 +110,7 @@ public class UserRealmRoleMappingMapper extends AbstractUserRoleMappingMapper {
                                              String tokenClaimName, boolean accessToken, boolean idToken, boolean multiValued) {
         ProtocolMapperModel mapper = OIDCAttributeMapperHelper.createClaimMapper(name, "foo",
           tokenClaimName, "String",
-          accessToken, idToken,
+          accessToken, idToken, false,
           PROVIDER_ID);
 
         mapper.getConfig().put(ProtocolMapperUtils.MULTIVALUED, String.valueOf(multiValued));

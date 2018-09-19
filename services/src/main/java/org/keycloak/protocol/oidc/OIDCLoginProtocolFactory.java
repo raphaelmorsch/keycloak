@@ -36,7 +36,9 @@ import org.keycloak.protocol.oidc.mappers.AddressMapper;
 import org.keycloak.protocol.oidc.mappers.FullNameMapper;
 import org.keycloak.protocol.oidc.mappers.OIDCAttributeMapperHelper;
 import org.keycloak.protocol.oidc.mappers.UserAttributeMapper;
+import org.keycloak.protocol.oidc.mappers.UserClientRoleMappingMapper;
 import org.keycloak.protocol.oidc.mappers.UserPropertyMapper;
+import org.keycloak.protocol.oidc.mappers.UserRealmRoleMappingMapper;
 import org.keycloak.protocol.oidc.mappers.UserSessionNoteMapper;
 import org.keycloak.representations.IDToken;
 import org.keycloak.representations.idm.ClientRepresentation;
@@ -78,12 +80,17 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
     public static final String ADDRESS = "address";
     public static final String PHONE_NUMBER = "phone number";
     public static final String PHONE_NUMBER_VERIFIED = "phone number verified";
+    public static final String REALM_ROLES = "realm roles";
+    public static final String CLIENT_ROLES = "client roles";
+
+    public static final String ROLES_SCOPE = "roles";
 
     public static final String PROFILE_SCOPE_CONSENT_TEXT = "${profileScopeConsentText}";
     public static final String EMAIL_SCOPE_CONSENT_TEXT = "${emailScopeConsentText}";
     public static final String ADDRESS_SCOPE_CONSENT_TEXT = "${addressScopeConsentText}";
     public static final String PHONE_SCOPE_CONSENT_TEXT = "${phoneScopeConsentText}";
     public static final String OFFLINE_ACCESS_SCOPE_CONSENT_TEXT = Constants.OFFLINE_ACCESS_SCOPE_CONSENT_TEXT;
+    public static final String ROLES_SCOPE_CONSENT_TEXT = "${rolesScopeConsentText}";
 
 
     @Override
@@ -155,6 +162,12 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
                 KerberosConstants.GSS_DELEGATION_CREDENTIAL, "String",
                 true, false);
         builtins.put(KerberosConstants.GSS_DELEGATION_CREDENTIAL, model);
+
+        model = UserRealmRoleMappingMapper.create(null, REALM_ROLES, "realm_access.roles", true, false, true);
+        builtins.put(REALM_ROLES, model);
+
+        model = UserClientRoleMappingMapper.create(null, null, CLIENT_ROLES, "resource_access.${client_id}.roles", true, false, true);
+        builtins.put(CLIENT_ROLES, model);
     }
 
     private static void createUserAttributeMapper(String name, String attrName, String claimName, String type) {
@@ -211,9 +224,18 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         phoneScope.addProtocolMapper(builtins.get(PHONE_NUMBER));
         phoneScope.addProtocolMapper(builtins.get(PHONE_NUMBER_VERIFIED));
 
-        // 'profile' and 'email' will be default scopes for now. 'address' and 'phone' will be optional scopes
+        ClientScopeModel rolesScope = newRealm.addClientScope(ROLES_SCOPE);
+        rolesScope.setDescription("OpenID Connect scope for add user roles to the access token");
+        rolesScope.setDisplayOnConsentScreen(true);
+        rolesScope.setConsentScreenText(ROLES_SCOPE_CONSENT_TEXT);
+        rolesScope.setProtocol(getId());
+        rolesScope.addProtocolMapper(builtins.get(REALM_ROLES));
+        rolesScope.addProtocolMapper(builtins.get(CLIENT_ROLES));
+
+        // 'profile' and 'email' and 'roles' will be default scopes for now. 'address' and 'phone' will be optional scopes
         newRealm.addDefaultClientScope(profileScope, true);
         newRealm.addDefaultClientScope(emailScope, true);
+        newRealm.addDefaultClientScope(rolesScope, true);
         newRealm.addDefaultClientScope(addressScope, false);
         newRealm.addDefaultClientScope(phoneScope, false);
 
