@@ -414,11 +414,7 @@ public class TokenManager {
 
     public AccessToken createClientAccessToken(KeycloakSession session, RealmModel realm, ClientModel client, UserModel user, UserSessionModel userSession,
                                                ClientSessionContext clientSessionCtx) {
-        Set<RoleModel> requestedRoles = clientSessionCtx.getRoles();
         AccessToken token = initToken(realm, client, user, userSession, clientSessionCtx, session.getContext().getUri());
-        for (RoleModel role : requestedRoles) {
-            addComposites(token, role);
-        }
         token = transformAccessToken(session, token, userSession, clientSessionCtx);
         return token;
     }
@@ -709,33 +705,6 @@ public class TokenManager {
         return expiration;
     }
 
-    protected void addComposites(AccessToken token, RoleModel role) {
-        AccessToken.Access access = null;
-        if (role.getContainer() instanceof RealmModel) {
-            access = token.getRealmAccess();
-            if (token.getRealmAccess() == null) {
-                access = new AccessToken.Access();
-                token.setRealmAccess(access);
-            } else if (token.getRealmAccess().getRoles() != null && token.getRealmAccess().isUserInRole(role.getName()))
-                return;
-
-        } else {
-            ClientModel app = (ClientModel) role.getContainer();
-            access = token.getResourceAccess(app.getClientId());
-            if (access == null) {
-                access = token.addAccess(app.getClientId());
-                if (app.isSurrogateAuthRequired()) access.verifyCaller(true);
-            } else if (access.isUserInRole(role.getName())) return;
-
-        }
-        access.addRole(role.getName());
-        if (!role.isComposite()) return;
-
-        for (RoleModel composite : role.getComposites()) {
-            addComposites(token, composite);
-        }
-
-    }
 
     public AccessTokenResponseBuilder responseBuilder(RealmModel realm, ClientModel client, EventBuilder event, KeycloakSession session,
                                                       UserSessionModel userSession, ClientSessionContext clientSessionCtx) {

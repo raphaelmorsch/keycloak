@@ -28,10 +28,16 @@ import org.keycloak.util.JsonSerialization;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
@@ -125,6 +131,43 @@ public class SkeletonKeyTokenTest {
         token.addAccess("foo").addRole("admin");
         token.addAccess("bar").addRole("user");
         return token;
+    }
+
+    @Test
+    public void createSimpleToken2() throws IOException {
+        AccessToken token = new AccessToken();
+
+        Map<String, List<String>> roles = new HashMap<>();
+        roles.put("roles", Arrays.asList("bar", "baz"));
+
+        Map<String, Object> clients = new HashMap<>();
+        clients.put("foo", roles);
+
+        token.getOtherClaims().put("resource_access", clients);
+        token.getOtherClaims().put("realm_access", roles);
+
+        // Need to get rid of default resourceAccess
+//        if (token.getResourceAccess() != null && token.getResourceAccess().isEmpty()) {
+//            token.setResourceAccess(null);
+//        }
+
+        // Ensure that "resouce_access" and "realm_access" are always once
+        String str = JsonSerialization.writeValueAsString(token);
+        String[] splits = str.split("resource_access");
+        Assert.assertEquals(2, splits.length);
+
+        splits = str.split("realm_access");
+        Assert.assertEquals(2, splits.length);
+
+        AccessToken parsed = JsonSerialization.readValue(str, AccessToken.class);
+
+        Assert.assertEquals(2, parsed.getRealmAccess().getRoles().size());
+        Assert.assertTrue(parsed.getRealmAccess().getRoles().containsAll(Arrays.asList("bar", "baz")));
+
+        Assert.assertEquals(2, parsed.getResourceAccess("foo").getRoles().size());
+        Assert.assertTrue(parsed.getResourceAccess("foo").getRoles().containsAll(Arrays.asList("bar", "baz")));
+
+        System.out.println(parsed);
     }
 
     @Test

@@ -24,6 +24,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
+import org.keycloak.json.AccessTokenJsonFilter;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,14 +38,23 @@ import java.io.OutputStream;
  * @version $Revision: 1 $
  */
 public class JsonSerialization {
+
+    public static final String ACCESS_TOKEN_FILTER = "accessTokenFilter";
+
     public static final ObjectMapper mapper = new ObjectMapper();
     public static final ObjectMapper prettyMapper = new ObjectMapper();
     public static final ObjectMapper sysPropertiesAwareMapper = new ObjectMapper(new SystemPropertiesJsonParserFactory());
 
     static {
+        SimpleFilterProvider filterProvider = new SimpleFilterProvider();
+        filterProvider.addFilter(ACCESS_TOKEN_FILTER, new AccessTokenJsonFilter());
+
         mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        mapper.setFilterProvider(filterProvider);
+
         prettyMapper.enable(SerializationFeature.INDENT_OUTPUT);
         prettyMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        prettyMapper.setFilterProvider(filterProvider);
     }
 
     public static void writeValueToStream(OutputStream os, Object obj) throws IOException {

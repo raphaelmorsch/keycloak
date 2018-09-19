@@ -26,9 +26,11 @@ import org.keycloak.models.utils.RoleUtils;
 import org.keycloak.protocol.ProtocolMapperUtils;
 import org.keycloak.representations.IDToken;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -85,26 +87,17 @@ abstract class AbstractUserRoleMappingMapper extends AbstractOIDCProtocolMapper 
      * @param restriction
      * @param prefix
      */
-    protected static void setClaim(IDToken token, ProtocolMapperModel mappingModel, UserSessionModel userSession,
-      Predicate<RoleModel> restriction, String prefix) {
-        String rolePrefix = prefix == null ? "" : prefix;
-        UserModel user = userSession.getUser();
+    protected static void setClaim(IDToken token, ProtocolMapperModel mappingModel, Set<String> rolesToAdd,
+                                   String clientId, String prefix) {
 
-        // get a set of all realm roles assigned to the user or its group
-        Stream<RoleModel> clientUserRoles = getAllUserRolesStream(user).filter(restriction);
-
-        boolean dontLimitScope = userSession.getAuthenticatedClientSessions().values().stream().anyMatch(cs -> cs.getClient().isFullScopeAllowed());
-        if (! dontLimitScope) {
-            Set<RoleModel> clientRoles = userSession.getAuthenticatedClientSessions().values().stream()
-              .flatMap(cs -> cs.getClient().getScopeMappings().stream())
-              .collect(Collectors.toSet());
-
-            clientUserRoles = clientUserRoles.filter(clientRoles::contains);
+        Set<String> realmRoleNames;
+        if (prefix != null && !prefix.isEmpty()) {
+            realmRoleNames = rolesToAdd.stream()
+                    .map(roleName -> prefix + roleName)
+                    .collect(Collectors.toSet());
+        } else {
+            realmRoleNames = rolesToAdd;
         }
-
-        List<String> realmRoleNames = clientUserRoles
-          .map(m -> rolePrefix + m.getName())
-          .collect(Collectors.toList());
 
         Object claimValue = realmRoleNames;
 
@@ -113,6 +106,52 @@ abstract class AbstractUserRoleMappingMapper extends AbstractOIDCProtocolMapper 
             claimValue = realmRoleNames.toString();
         }
 
-        OIDCAttributeMapperHelper.mapClaim(token, mappingModel, claimValue);
+        //OIDCAttributeMapperHelper.mapClaim(token, mappingModel, claimValue);
+        mapClaim(token, mappingModel, claimValue, clientId);
+    }
+
+
+    private static void mapClaim(IDToken token, ProtocolMapperModel mappingModel, Object attributeValue, String clientId) {
+        attributeValue = OIDCAttributeMapperHelper.mapAttributeValue(mappingModel, attributeValue);
+        if (attributeValue == null) return;
+
+        String protocolClaim = mappingModel.getConfig().get(OIDCAttributeMapperHelper.TOKEN_CLAIM_NAME);
+        if (protocolClaim == null) {
+            return;
+        }
+
+
+
+        List<String> split = OIDCAttributeMapperHelper.splitClaimPath(protocolClaim);
+        final int length = split.size();
+        int i = 0;
+        Map<String, Object> jsonObject = token.getOtherClaims();
+        for (String component : split) {
+
+            if ("${client_id}".equals(component) && clientId != null) {
+                component = clientId;
+            }
+
+            i++;
+            if (i == length) {
+                // Case when we want to add to existing set of roles
+                Object last = jsonObject.get(component);
+                if (last != null && last instanceof Collection && attributeValue instanceof Collection) {
+                    ((Collection) last).addAll((Collection) attributeValue);
+                } else {
+                    jsonObject.put(component, attributeValue);
+                }
+
+            } else {
+                Map<String, Object> nested = (Map<String, Object>)jsonObject.get(component);
+
+                if (nested == null) {
+                    nested = new HashMap<>();
+                    jsonObject.put(component, nested);
+                }
+
+                jsonObject = nested;
+            }
+        }
     }
 }

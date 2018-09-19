@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.keycloak.models.ClientModel;
+import org.keycloak.models.ClientSessionContext;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
@@ -28,7 +29,8 @@ import org.keycloak.representations.AccessToken;
 import org.keycloak.services.util.DefaultClientSessionContext;
 
 /**
- * Helper class to ensure that composite roles are loaded just once per request. Then all underlying protocolMappers can consume them.
+ * Helper class to ensure that all the user's permitted roles (including composite roles) are loaded just once per request.
+ * Then all underlying protocolMappers can consume them.
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
@@ -37,17 +39,17 @@ public class RoleResolveUtil {
     private static final String RESOLVED_ROLES_ATTR = "RESOLVED_ROLES";
 
 
-    public static AccessToken.Access getResolvedRealmRoles(KeycloakSession session, DefaultClientSessionContext clientSessionCtx) {
+    public static AccessToken.Access getResolvedRealmRoles(KeycloakSession session, ClientSessionContext clientSessionCtx) {
         return getAllCompositeRoles(session, clientSessionCtx).getRealmAccess();
     }
 
 
-    public static Map<String, AccessToken.Access> getResolvedClientRoles(KeycloakSession session, DefaultClientSessionContext clientSessionCtx) {
+    public static Map<String, AccessToken.Access> getResolvedClientRoles(KeycloakSession session, ClientSessionContext clientSessionCtx) {
         return getAllCompositeRoles(session, clientSessionCtx).getResourceAccess();
     }
 
 
-    private static AccessToken getAllCompositeRoles(KeycloakSession session, DefaultClientSessionContext clientSessionCtx) {
+    private static AccessToken getAllCompositeRoles(KeycloakSession session, ClientSessionContext clientSessionCtx) {
         AccessToken resolvedRoles = session.getAttribute(RESOLVED_ROLES_ATTR, AccessToken.class);
         if (resolvedRoles == null) {
             resolvedRoles = loadCompositeRoles(session, clientSessionCtx);
@@ -58,7 +60,7 @@ public class RoleResolveUtil {
     }
 
 
-    private static AccessToken loadCompositeRoles(KeycloakSession session, DefaultClientSessionContext clientSessionCtx) {
+    private static AccessToken loadCompositeRoles(KeycloakSession session, ClientSessionContext clientSessionCtx) {
         Set<RoleModel> requestedRoles = clientSessionCtx.getRoles();
         AccessToken token = new AccessToken();
         for (RoleModel role : requestedRoles) {

@@ -17,10 +17,12 @@
 
 package org.keycloak.representations;
 
+import com.fasterxml.jackson.annotation.JsonFilter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.keycloak.TokenCategory;
 import org.keycloak.representations.idm.authorization.Permission;
+import org.keycloak.util.JsonSerialization;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -33,6 +35,7 @@ import java.util.Set;
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
  */
+@JsonFilter(JsonSerialization.ACCESS_TOKEN_FILTER)
 public class AccessToken extends IDToken {
     public static class Access implements Serializable {
         @JsonProperty("roles")
