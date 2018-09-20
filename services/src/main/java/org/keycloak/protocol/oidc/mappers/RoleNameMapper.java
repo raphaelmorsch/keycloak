@@ -26,6 +26,7 @@ import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.AccessToken;
+import org.keycloak.utils.RoleResolveUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -99,12 +100,12 @@ public class RoleNameMapper extends AbstractOIDCProtocolMapper implements OIDCAc
         String appName = scopedRole[0];
         String roleName = scopedRole[1];
         if (appName != null) {
-            AccessToken.Access access = token.getResourceAccess(appName);
+            AccessToken.Access access = RoleResolveUtil.getResolvedClientRoles(session, clientSessionCtx).get(appName);
             if (access == null) return token;
             if (!access.getRoles().contains(roleName)) return token;
             access.getRoles().remove(roleName);
         } else {
-            AccessToken.Access access = token.getRealmAccess();
+            AccessToken.Access access = RoleResolveUtil.getResolvedRealmRoles(session, clientSessionCtx, false);
             if (access == null || !access.getRoles().contains(roleName)) return token;
             access.getRoles().remove(roleName);
         }
@@ -112,14 +113,17 @@ public class RoleNameMapper extends AbstractOIDCProtocolMapper implements OIDCAc
         String newAppName = newScopedRole[0];
         String newRoleName = newScopedRole[1];
         AccessToken.Access access = null;
+
+        // Update the roles in the underlying keycloakSession attribute. Not yet directly in the token
         if (newAppName == null) {
-            access = token.getRealmAccess();
+            access = RoleResolveUtil.getResolvedRealmRoles(session, clientSessionCtx, true);
+        } else {
+            Map<String, AccessToken.Access> clientRoles = RoleResolveUtil.getResolvedClientRoles(session, clientSessionCtx);
+            access = clientRoles.get(newAppName);
             if (access == null) {
                 access = new AccessToken.Access();
-                token.setRealmAccess(access);
+                clientRoles.put(newAppName, access);
             }
-        } else {
-            access = token.addAccess(newAppName);
         }
 
         access.addRole(newRoleName);

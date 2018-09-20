@@ -90,7 +90,7 @@ public class UserRealmRoleMappingMapper extends AbstractUserRoleMappingMapper {
     protected void setClaim(IDToken token, ProtocolMapperModel mappingModel, UserSessionModel userSession, KeycloakSession session, ClientSessionContext clientSessionCtx) {
         String rolePrefix = mappingModel.getConfig().get(ProtocolMapperUtils.USER_MODEL_REALM_ROLE_MAPPING_ROLE_PREFIX);
 
-        AccessToken.Access access = RoleResolveUtil.getResolvedRealmRoles(session, clientSessionCtx);
+        AccessToken.Access access = RoleResolveUtil.getResolvedRealmRoles(session, clientSessionCtx, false);
         if (access == null) {
             return;
         }
