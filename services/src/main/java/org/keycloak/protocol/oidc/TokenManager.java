@@ -47,6 +47,7 @@ import org.keycloak.models.UserSessionModel;
 import org.keycloak.models.UserSessionProvider;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.protocol.ProtocolMapper;
+import org.keycloak.protocol.ProtocolMapperUtils;
 import org.keycloak.protocol.oidc.mappers.OIDCAccessTokenMapper;
 import org.keycloak.protocol.oidc.mappers.OIDCIDTokenMapper;
 import org.keycloak.protocol.oidc.mappers.UserInfoTokenMapper;
@@ -593,11 +594,10 @@ public class TokenManager {
 
     public AccessToken transformAccessToken(KeycloakSession session, AccessToken token,
                                             UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
-        Set<ProtocolMapperModel> mappings = clientSessionCtx.getProtocolMappers();
-        KeycloakSessionFactory sessionFactory = session.getKeycloakSessionFactory();
-        for (ProtocolMapperModel mapping : mappings) {
 
-            ProtocolMapper mapper = (ProtocolMapper)sessionFactory.getProviderFactory(ProtocolMapper.class, mapping.getProtocolMapper());
+        for (Map.Entry<ProtocolMapperModel, ProtocolMapper> entry : ProtocolMapperUtils.getSortedProtocolMappers(session, clientSessionCtx)) {
+            ProtocolMapperModel mapping = entry.getKey();
+            ProtocolMapper mapper = entry.getValue();
             if (mapper instanceof OIDCAccessTokenMapper) {
                 token = ((OIDCAccessTokenMapper) mapper).transformAccessToken(token, mapping, session, userSession, clientSessionCtx);
             }
@@ -608,11 +608,11 @@ public class TokenManager {
 
     public AccessToken transformUserInfoAccessToken(KeycloakSession session, AccessToken token,
                                             UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
-        Set<ProtocolMapperModel> mappings = clientSessionCtx.getProtocolMappers();
-        KeycloakSessionFactory sessionFactory = session.getKeycloakSessionFactory();
-        for (ProtocolMapperModel mapping : mappings) {
 
-            ProtocolMapper mapper = (ProtocolMapper)sessionFactory.getProviderFactory(ProtocolMapper.class, mapping.getProtocolMapper());
+        for (Map.Entry<ProtocolMapperModel, ProtocolMapper> entry : ProtocolMapperUtils.getSortedProtocolMappers(session, clientSessionCtx)) {
+            ProtocolMapperModel mapping = entry.getKey();
+            ProtocolMapper mapper = entry.getValue();
+
             if (mapper instanceof UserInfoTokenMapper) {
                 token = ((UserInfoTokenMapper) mapper).transformUserInfoToken(token, mapping, session, userSession, clientSessionCtx);
             }
@@ -623,11 +623,11 @@ public class TokenManager {
 
     public void transformIDToken(KeycloakSession session, IDToken token,
                                       UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
-        Set<ProtocolMapperModel> mappings = clientSessionCtx.getProtocolMappers();
-        KeycloakSessionFactory sessionFactory = session.getKeycloakSessionFactory();
-        for (ProtocolMapperModel mapping : mappings) {
 
-            ProtocolMapper mapper = (ProtocolMapper)sessionFactory.getProviderFactory(ProtocolMapper.class, mapping.getProtocolMapper());
+        for (Map.Entry<ProtocolMapperModel, ProtocolMapper> entry : ProtocolMapperUtils.getSortedProtocolMappers(session, clientSessionCtx)) {
+            ProtocolMapperModel mapping = entry.getKey();
+            ProtocolMapper mapper = entry.getValue();
+
             if (mapper instanceof OIDCIDTokenMapper) {
                 token = ((OIDCIDTokenMapper) mapper).transformIDToken(token, mapping, session, userSession, clientSessionCtx);
             }

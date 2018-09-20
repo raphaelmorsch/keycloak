@@ -17,13 +17,9 @@
 
 package org.keycloak.protocol.oidc.mappers;
 
-import org.keycloak.models.GroupModel;
 import org.keycloak.models.ProtocolMapperModel;
-import org.keycloak.models.RoleModel;
-import org.keycloak.models.UserModel;
-import org.keycloak.models.UserSessionModel;
-import org.keycloak.models.utils.RoleUtils;
 import org.keycloak.protocol.ProtocolMapperUtils;
+import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.IDToken;
 
 import java.util.Collection;
@@ -31,8 +27,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Base class for mapping of user role mappings to an ID and Access Token claim.
@@ -40,39 +36,6 @@ import java.util.stream.Stream;
  * @author <a href="mailto:thomas.darimont@gmail.com">Thomas Darimont</a>
  */
 abstract class AbstractUserRoleMappingMapper extends AbstractOIDCProtocolMapper implements OIDCAccessTokenMapper, OIDCIDTokenMapper, UserInfoTokenMapper {
-
-    /**
-     * Returns a stream with roles that come from:
-     * <ul>
-     * <li>Direct assignment of the role to the user</li>
-     * <li>Direct assignment of the role to any group of the user or any of its parent group</li>
-     * <li>Composite roles are expanded recursively, the composite role itself is also contained in the returned stream</li>
-     * </ul>
-     * @param user User to enumerate the roles for
-     * @return
-     */
-    public static Stream<RoleModel> getAllUserRolesStream(UserModel user) {
-        return Stream.concat(
-          user.getRoleMappings().stream(),
-          user.getGroups().stream()
-            .flatMap(g -> groupAndItsParentsStream(g))
-            .flatMap(g -> g.getRoleMappings().stream()))
-          .flatMap(RoleUtils::expandCompositeRolesStream);
-    }
-
-    /**
-     * Returns stream of the given group and its parents (recursively).
-     * @param group
-     * @return
-     */
-    private static Stream<GroupModel> groupAndItsParentsStream(GroupModel group) {
-        Stream.Builder<GroupModel> sb = Stream.builder();
-        while (group != null) {
-            sb.add(group);
-            group = group.getParent();
-        }
-        return sb.build();
-    }
 
     /**
      * Retrieves all roles of the current user based on direct roles set to the user, its groups and their parent groups.
@@ -83,8 +46,8 @@ abstract class AbstractUserRoleMappingMapper extends AbstractOIDCProtocolMapper 
      *
      * @param token
      * @param mappingModel
-     * @param userSession
-     * @param restriction
+     * @param rolesToAdd
+     * @param clientId
      * @param prefix
      */
     protected static void setClaim(IDToken token, ProtocolMapperModel mappingModel, Set<String> rolesToAdd,
@@ -111,6 +74,8 @@ abstract class AbstractUserRoleMappingMapper extends AbstractOIDCProtocolMapper 
     }
 
 
+    private static final Pattern CLIENT_ID_PATTERN = Pattern.compile("\\$\\{client_id\\}");
+
     private static void mapClaim(IDToken token, ProtocolMapperModel mappingModel, Object attributeValue, String clientId) {
         attributeValue = OIDCAttributeMapperHelper.mapAttributeValue(mappingModel, attributeValue);
         if (attributeValue == null) return;
@@ -120,18 +85,21 @@ abstract class AbstractUserRoleMappingMapper extends AbstractOIDCProtocolMapper 
             return;
         }
 
-
+        if (clientId != null) {
+            protocolClaim = CLIENT_ID_PATTERN.matcher(protocolClaim).replaceAll(clientId);
+        }
 
         List<String> split = OIDCAttributeMapperHelper.splitClaimPath(protocolClaim);
+
+        // Special case
+        if (checkAccessToken(token, split, attributeValue)) {
+            return;
+        }
+
         final int length = split.size();
         int i = 0;
         Map<String, Object> jsonObject = token.getOtherClaims();
         for (String component : split) {
-
-            if ("${client_id}".equals(component) && clientId != null) {
-                component = clientId;
-            }
-
             i++;
             if (i == length) {
                 // Case when we want to add to existing set of roles
@@ -153,5 +121,39 @@ abstract class AbstractUserRoleMappingMapper extends AbstractOIDCProtocolMapper 
                 jsonObject = nested;
             }
         }
+    }
+
+
+    // Special case when roles are put to the access token via "realmAcces, resourceAccess" properties
+    private static boolean checkAccessToken(IDToken idToken, List<String> path, Object attributeValue) {
+        if (!(idToken instanceof AccessToken)) {
+            return false;
+        }
+
+        if (!(attributeValue instanceof Collection)) {
+            return false;
+        }
+
+        Collection<String> roles = (Collection<String>) attributeValue;
+
+        AccessToken token = (AccessToken) idToken;
+        AccessToken.Access access = null;
+        if (path.size() == 2 && "realm_access".equals(path.get(0)) && "roles".equals(path.get(1))) {
+            access = token.getRealmAccess();
+            if (access == null) {
+                access = new AccessToken.Access();
+                token.setRealmAccess(access);
+            }
+        } else if (path.size() == 3 && "resource_access".equals(path.get(0)) && "roles".equals(path.get(2))) {
+            String clientId = path.get(1);
+            access = token.addAccess(clientId);
+        } else {
+            return false;
+        }
+
+        for (String role : roles) {
+            access.addRole(role);
+        }
+        return true;
     }
 }

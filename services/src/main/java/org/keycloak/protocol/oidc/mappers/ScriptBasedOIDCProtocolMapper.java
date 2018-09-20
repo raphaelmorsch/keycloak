@@ -122,6 +122,11 @@ public class ScriptBasedOIDCProtocolMapper extends AbstractOIDCProtocolMapper im
   }
 
   @Override
+  public int getPriority() {
+    return ProtocolMapperUtils.PRIORITY_SCRIPT_MAPPER;
+  }
+
+  @Override
   protected void setClaim(IDToken token, ProtocolMapperModel mappingModel, UserSessionModel userSession, KeycloakSession keycloakSession, ClientSessionContext clientSessionCtx) {
 
     UserModel user = userSession.getUser();

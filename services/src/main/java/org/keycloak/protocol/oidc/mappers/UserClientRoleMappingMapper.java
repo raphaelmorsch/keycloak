@@ -123,8 +123,6 @@ public class UserClientRoleMappingMapper extends AbstractUserRoleMappingMapper {
                 AbstractUserRoleMappingMapper.setClaim(token, mappingModel, access.getRoles(), currClientId, rolePrefix);
             }
         }
-
-        checkResourceAccess(token, mappingModel);
     }
 
 
@@ -151,22 +149,4 @@ public class UserClientRoleMappingMapper extends AbstractUserRoleMappingMapper {
         return mapper;
     }
 
-
-    private void checkResourceAccess(IDToken idToken, ProtocolMapperModel mappingModel) {
-        // Workaround to avoid having "resource_access" 2 times in the JSON
-        if (idToken instanceof AccessToken) {
-            AccessToken token = (AccessToken) idToken;
-
-            if (token.getResourceAccess() != null && token.getResourceAccess().isEmpty()) {
-                String claimName = mappingModel.getConfig().get(OIDCAttributeMapperHelper.TOKEN_CLAIM_NAME);
-                if (claimName == null) {
-                    return;
-                }
-
-                if (claimName.startsWith("resource_access")) {
-                    token.setResourceAccess(null);
-                }
-            }
-        }
-    }
 }

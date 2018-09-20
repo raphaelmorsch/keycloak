@@ -23,6 +23,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.models.utils.KeycloakModelUtils;
+import org.keycloak.protocol.ProtocolMapperUtils;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.AccessToken;
@@ -79,6 +80,11 @@ public class HardcodedRole extends AbstractOIDCProtocolMapper implements OIDCAcc
     @Override
     public String getHelpText() {
         return "Hardcode a role into the access token.";
+    }
+
+    @Override
+    public int getPriority() {
+        return ProtocolMapperUtils.PRIORITY_HARDCODED_ROLE_MAPPER;
     }
 
     @Override
