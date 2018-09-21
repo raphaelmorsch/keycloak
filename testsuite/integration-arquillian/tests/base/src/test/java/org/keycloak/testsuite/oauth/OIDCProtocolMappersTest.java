@@ -18,6 +18,7 @@
 package org.keycloak.testsuite.oauth;
 
 import org.hamcrest.CoreMatchers;
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -212,6 +213,10 @@ public class OIDCProtocolMappersTest extends AbstractKeycloakTest {
 
             assertEquals("hello_test-user@localhost", accessToken.getOtherClaims().get("computed-via-script"));
             assertEquals(Arrays.asList("A","B"), accessToken.getOtherClaims().get("multiValued-via-script"));
+
+            // Assert audiences added through AudienceResolve mapper
+            Assert.assertThat(accessToken.getAudience(), arrayContainingInAnyOrder("test-app", "app", "account"));
+
             oauth.openLogout();
         }
 

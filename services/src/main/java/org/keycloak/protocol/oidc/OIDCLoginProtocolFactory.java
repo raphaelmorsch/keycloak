@@ -33,6 +33,7 @@ import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.protocol.AbstractLoginProtocolFactory;
 import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.mappers.AddressMapper;
+import org.keycloak.protocol.oidc.mappers.AudienceResolveProtocolMapper;
 import org.keycloak.protocol.oidc.mappers.FullNameMapper;
 import org.keycloak.protocol.oidc.mappers.OIDCAttributeMapperHelper;
 import org.keycloak.protocol.oidc.mappers.UserAttributeMapper;
@@ -82,6 +83,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
     public static final String PHONE_NUMBER_VERIFIED = "phone number verified";
     public static final String REALM_ROLES = "realm roles";
     public static final String CLIENT_ROLES = "client roles";
+    public static final String AUDIENCE_RESOLVE = "audience resolve";
 
     public static final String ROLES_SCOPE = "roles";
 
@@ -168,6 +170,9 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
 
         model = UserClientRoleMappingMapper.create(null, null, CLIENT_ROLES, "resource_access.${client_id}.roles", true, false, true);
         builtins.put(CLIENT_ROLES, model);
+
+        model = AudienceResolveProtocolMapper.createClaimMapper(AUDIENCE_RESOLVE);
+        builtins.put(AUDIENCE_RESOLVE, model);
     }
 
     private static void createUserAttributeMapper(String name, String attrName, String claimName, String type) {
@@ -231,6 +236,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         rolesScope.setProtocol(getId());
         rolesScope.addProtocolMapper(builtins.get(REALM_ROLES));
         rolesScope.addProtocolMapper(builtins.get(CLIENT_ROLES));
+        rolesScope.addProtocolMapper(builtins.get(AUDIENCE_RESOLVE));
 
         // 'profile' and 'email' and 'roles' will be default scopes for now. 'address' and 'phone' will be optional scopes
         newRealm.addDefaultClientScope(profileScope, true);
