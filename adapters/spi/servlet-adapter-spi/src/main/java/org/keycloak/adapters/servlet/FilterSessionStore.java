@@ -23,6 +23,7 @@ import org.keycloak.adapters.spi.KeycloakAccount;
 import org.keycloak.common.util.Encode;
 import org.keycloak.common.util.MultivaluedHashMap;
 
+import javax.servlet.ReadListener;
 import javax.servlet.ServletException;
 import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
@@ -177,6 +178,21 @@ public class FilterSessionStore implements AdapterSessionStore {
                             @Override
                             public int read() throws IOException {
                                 return is.read();
+                            }
+
+                            @Override
+                            public boolean isFinished() {
+                                return is.available() == 0;
+                            }
+
+                            @Override
+                            public boolean isReady() {
+                                return true;
+                            }
+
+                            @Override
+                            public void setReadListener(ReadListener readListener) {
+                                throw new UnsupportedOperationException("Not implemented.");
                             }
                         };
                     }
