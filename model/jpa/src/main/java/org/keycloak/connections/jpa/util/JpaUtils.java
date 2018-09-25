@@ -17,7 +17,6 @@
 
 package org.keycloak.connections.jpa.util;
 
-import org.hibernate.boot.registry.classloading.internal.ClassLoaderServiceImpl;
 import org.hibernate.jpa.boot.internal.ParsedPersistenceXmlDescriptor;
 import org.hibernate.jpa.boot.internal.PersistenceXmlParser;
 import org.hibernate.jpa.boot.spi.Bootstrap;
@@ -47,8 +46,7 @@ public class JpaUtils {
 
     public static EntityManagerFactory createEntityManagerFactory(KeycloakSession session, String unitName, Map<String, Object> properties, ClassLoader classLoader, boolean jta) {
         PersistenceUnitTransactionType txType = jta ? PersistenceUnitTransactionType.JTA : PersistenceUnitTransactionType.RESOURCE_LOCAL;
-        PersistenceXmlParser parser = new PersistenceXmlParser(new ClassLoaderServiceImpl(classLoader), txType);
-        List<ParsedPersistenceXmlDescriptor> persistenceUnits = parser.doResolve(properties);
+        List<ParsedPersistenceXmlDescriptor> persistenceUnits = PersistenceXmlParser.locatePersistenceUnits(properties);
         for (ParsedPersistenceXmlDescriptor persistenceUnit : persistenceUnits) {
             if (persistenceUnit.getName().equals(unitName)) {
                 List<Class<?>> providedEntities = getProvidedEntities(session);

@@ -17,7 +17,7 @@
 
 package org.keycloak.connections.jpa;
 
-import org.hibernate.ejb.AvailableSettings;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.transaction.jta.platform.internal.AbstractJtaPlatform;
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
@@ -77,7 +77,7 @@ public class DefaultJpaConnectionProviderFactory implements JpaConnectionProvide
         logger.trace("Create JpaConnectionProvider");
         lazyInit(session);
 
-        EntityManager em = null;
+        EntityManager em;
         if (!jtaEnabled) {
             logger.trace("enlisting EntityManager in JpaKeycloakTransaction");
             em = emf.createEntityManager();
@@ -130,28 +130,28 @@ public class DefaultJpaConnectionProviderFactory implements JpaConnectionProvide
                     KeycloakModelUtils.suspendJtaTransaction(session.getKeycloakSessionFactory(), () -> {
                         logger.debug("Initializing JPA connections");
 
-                        Map<String, Object> properties = new HashMap<String, Object>();
+                        Map<String, Object> properties = new HashMap<>();
 
                         String unitName = "keycloak-default";
 
                         String dataSource = config.get("dataSource");
                         if (dataSource != null) {
                             if (config.getBoolean("jta", jtaEnabled)) {
-                                properties.put(AvailableSettings.JTA_DATASOURCE, dataSource);
+                                properties.put(AvailableSettings.JPA_JTA_DATASOURCE, dataSource);
                             } else {
-                                properties.put(AvailableSettings.NON_JTA_DATASOURCE, dataSource);
+                                properties.put(AvailableSettings.JPA_NON_JTA_DATASOURCE, dataSource);
                             }
                         } else {
-                            properties.put(AvailableSettings.JDBC_URL, config.get("url"));
-                            properties.put(AvailableSettings.JDBC_DRIVER, config.get("driver"));
+                            properties.put(AvailableSettings.JPA_JDBC_URL, config.get("url"));
+                            properties.put(AvailableSettings.JPA_JDBC_DRIVER, config.get("driver"));
 
                             String user = config.get("user");
                             if (user != null) {
-                                properties.put(AvailableSettings.JDBC_USER, user);
+                                properties.put(AvailableSettings.JPA_JDBC_USER, user);
                             }
                             String password = config.get("password");
                             if (password != null) {
-                                properties.put(AvailableSettings.JDBC_PASSWORD, password);
+                                properties.put(AvailableSettings.JPA_JDBC_PASSWORD, password);
                             }
                         }
 
