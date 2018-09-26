@@ -46,6 +46,8 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -186,7 +188,7 @@ public class DefaultJpaConnectionProviderFactory implements JpaConnectionProvide
                             logger.trace("Creating EntityManagerFactory");
                             logger.tracev("***** create EMF jtaEnabled {0} ", jtaEnabled);
                             if (jtaEnabled) {
-                                properties.put(org.hibernate.cfg.AvailableSettings.JTA_PLATFORM, new AbstractJtaPlatform() {
+                                properties.put(AvailableSettings.JTA_PLATFORM, new AbstractJtaPlatform() {
                                     @Override
                                     protected TransactionManager locateTransactionManager() {
                                         return jtaLookup.getTransactionManager();
@@ -198,7 +200,13 @@ public class DefaultJpaConnectionProviderFactory implements JpaConnectionProvide
                                     }
                                 });
                             }
-                            emf = JpaUtils.createEntityManagerFactory(session, unitName, properties, getClass().getClassLoader(), jtaEnabled);
+                            Collection<ClassLoader> classLoaders = new ArrayList<>();
+                            if (properties.containsKey(AvailableSettings.CLASSLOADERS)) {
+                                classLoaders.addAll((Collection<ClassLoader>) properties.get(AvailableSettings.CLASSLOADERS));
+                            }
+                            classLoaders.add(getClass().getClassLoader());
+                            properties.put(AvailableSettings.CLASSLOADERS, classLoaders);
+                            emf = JpaUtils.createEntityManagerFactory(session, unitName, properties, jtaEnabled);
                             logger.trace("EntityManagerFactory created");
 
                             if (globalStatsInterval != -1) {
@@ -281,7 +289,7 @@ public class DefaultJpaConnectionProviderFactory implements JpaConnectionProvide
         timer.scheduleTask(new HibernateStatsReporter(emf), globalStatsIntervalSecs * 1000, "ReportHibernateGlobalStats");
     }
 
-    public void migration(MigrationStrategy strategy, boolean initializeEmpty, String schema, File databaseUpdateFile, Connection connection, KeycloakSession session) {
+    void migration(MigrationStrategy strategy, boolean initializeEmpty, String schema, File databaseUpdateFile, Connection connection, KeycloakSession session) {
         JpaUpdaterProvider updater = session.getProvider(JpaUpdaterProvider.class);
 
         JpaUpdaterProvider.Status status = updater.validate(connection, schema);

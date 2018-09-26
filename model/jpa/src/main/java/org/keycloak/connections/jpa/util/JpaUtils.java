@@ -21,7 +21,6 @@ import org.hibernate.jpa.boot.internal.ParsedPersistenceXmlDescriptor;
 import org.hibernate.jpa.boot.internal.PersistenceXmlParser;
 import org.hibernate.jpa.boot.spi.Bootstrap;
 import org.keycloak.connections.jpa.entityprovider.JpaEntityProvider;
-import org.keycloak.connections.jpa.entityprovider.ProxyClassLoader;
 import org.keycloak.models.KeycloakSession;
 
 import javax.persistence.EntityManager;
@@ -44,7 +43,7 @@ public class JpaUtils {
         return (schema==null) ? tableName : schema + "." + tableName;
     }
 
-    public static EntityManagerFactory createEntityManagerFactory(KeycloakSession session, String unitName, Map<String, Object> properties, ClassLoader classLoader, boolean jta) {
+    public static EntityManagerFactory createEntityManagerFactory(KeycloakSession session, String unitName, Map<String, Object> properties, boolean jta) {
         PersistenceUnitTransactionType txType = jta ? PersistenceUnitTransactionType.JTA : PersistenceUnitTransactionType.RESOURCE_LOCAL;
         List<ParsedPersistenceXmlDescriptor> persistenceUnits = PersistenceXmlParser.locatePersistenceUnits(properties);
         for (ParsedPersistenceXmlDescriptor persistenceUnit : persistenceUnits) {
@@ -57,8 +56,7 @@ public class JpaUtils {
                 // Now build the entity manager factory, supplying a proxy classloader, so Hibernate will be able
                 // to find and load the extra provided entities. Set the provided classloader as parent classloader.
                 persistenceUnit.setTransactionType(txType);
-                return Bootstrap.getEntityManagerFactoryBuilder(persistenceUnit, properties,
-                        new ProxyClassLoader(providedEntities, classLoader)).build();
+                return Bootstrap.getEntityManagerFactoryBuilder(persistenceUnit, properties).build();
             }
         }
         throw new RuntimeException("Persistence unit '" + unitName + "' not found");
