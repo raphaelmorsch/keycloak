@@ -23,11 +23,16 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.keycloak.admin.client.resource.ClientResource;
+import org.keycloak.admin.client.resource.ClientScopeResource;
 import org.keycloak.admin.client.resource.ProtocolMappersResource;
+import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.common.util.UriUtils;
+import org.keycloak.models.AccountRoles;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
+import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
 import org.keycloak.protocol.oidc.mappers.AddressMapper;
+import org.keycloak.protocol.oidc.mappers.OIDCAttributeMapperHelper;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AddressClaimSet;
 import org.keycloak.representations.IDToken;
@@ -42,6 +47,7 @@ import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.util.ClientManager;
 import org.keycloak.testsuite.util.OAuthClient;
 import org.keycloak.testsuite.util.ProtocolMapperUtil;
+import org.keycloak.testsuite.util.WaitUtils;
 
 import javax.ws.rs.core.Response;
 import java.util.Arrays;
@@ -348,6 +354,64 @@ public class OIDCProtocolMappersTest extends AbstractKeycloakTest {
         // Revert
         deleteMappers(protocolMappers);
     }
+
+
+    // Test to update protocolMappers to not have roles on the default position (realm_access and resource_access properties)
+    @Test
+    public void testUserRolesMovedFromAccessTokenProperties() throws Exception {
+        RealmResource realm = adminClient.realm("test");
+        ClientScopeResource rolesScope = ApiUtil.findClientScopeByName(realm, OIDCLoginProtocolFactory.ROLES_SCOPE);
+
+        // Update builtin protocolMappers to put roles to different position (claim "custom.roles") for both realm and client roles
+        ProtocolMapperRepresentation realmRolesMapper = null;
+        ProtocolMapperRepresentation clientRolesMapper = null;
+        for (ProtocolMapperRepresentation rep : rolesScope.getProtocolMappers().getMappers()) {
+            if (OIDCLoginProtocolFactory.REALM_ROLES.equals(rep.getName())) {
+                realmRolesMapper = rep;
+            } else if (OIDCLoginProtocolFactory.CLIENT_ROLES.equals(rep.getName())) {
+                clientRolesMapper = rep;
+            }
+        }
+
+        String realmRolesTokenClaimOrig = realmRolesMapper.getConfig().get(OIDCAttributeMapperHelper.TOKEN_CLAIM_NAME);
+        String clientRolesTokenClaimOrig = clientRolesMapper.getConfig().get(OIDCAttributeMapperHelper.TOKEN_CLAIM_NAME);
+
+        realmRolesMapper.getConfig().put(OIDCAttributeMapperHelper.TOKEN_CLAIM_NAME, "custom.roles");
+        rolesScope.getProtocolMappers().update(realmRolesMapper.getId(), realmRolesMapper);
+        clientRolesMapper.getConfig().put(OIDCAttributeMapperHelper.TOKEN_CLAIM_NAME, "custom.roles");
+        rolesScope.getProtocolMappers().update(clientRolesMapper.getId(), clientRolesMapper);
+
+        // Create some hardcoded role mapper
+        Response resp = rolesScope.getProtocolMappers().createMapper(createHardcodedRole("hard-realm", "hardcoded"));
+        String hardcodedMapperId = ApiUtil.getCreatedId(resp);
+        resp.close();
+
+        try {
+            OAuthClient.AccessTokenResponse response = browserLogin("password", "test-user@localhost", "password");
+            AccessToken accessToken = oauth.verifyToken(response.getAccessToken());
+
+            // Assert roles are not on their original positions
+            Assert.assertNull(accessToken.getRealmAccess());
+            Assert.assertTrue(accessToken.getResourceAccess().isEmpty());
+
+            // Assert both realm and client roles on the new position. Hardcoded role should be here as well
+            Map<String, Object> cst1 = (Map<String, Object>) accessToken.getOtherClaims().get("custom");
+            List<String> roles = (List<String>) cst1.get("roles");
+            Assert.assertNames(roles, "offline_access", "user", "customer-user", "hardcoded", AccountRoles.VIEW_PROFILE, AccountRoles.MANAGE_ACCOUNT, AccountRoles.MANAGE_ACCOUNT_LINKS);
+
+            // Assert audience
+            Assert.assertNames(Arrays.asList(accessToken.getAudience()), "account", "test-app");
+        } finally {
+            // Revert
+            rolesScope.getProtocolMappers().delete(hardcodedMapperId);
+
+            realmRolesMapper.getConfig().put(OIDCAttributeMapperHelper.TOKEN_CLAIM_NAME, realmRolesTokenClaimOrig);
+            rolesScope.getProtocolMappers().update(realmRolesMapper.getId(), realmRolesMapper);
+            clientRolesMapper.getConfig().put(OIDCAttributeMapperHelper.TOKEN_CLAIM_NAME, clientRolesTokenClaimOrig);
+            rolesScope.getProtocolMappers().update(clientRolesMapper.getId(), clientRolesMapper);
+        }
+    }
+
 
     /**
      * KEYCLOAK-4205
