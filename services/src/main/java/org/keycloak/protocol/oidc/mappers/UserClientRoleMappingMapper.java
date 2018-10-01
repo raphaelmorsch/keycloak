@@ -40,6 +40,8 @@ public class UserClientRoleMappingMapper extends AbstractUserRoleMappingMapper {
 
     public static final String PROVIDER_ID = "oidc-usermodel-client-role-mapper";
 
+    private static final String TOKEN_CLAIM_NAME_TOOLTIP = "usermodel.clientRoleMapping.tokenClaimName.tooltip";
+
     private static final List<ProviderConfigProperty> CONFIG_PROPERTIES = new ArrayList<>();
 
     static {
@@ -63,10 +65,17 @@ public class UserClientRoleMappingMapper extends AbstractUserRoleMappingMapper {
         multiValued.setLabel(ProtocolMapperUtils.MULTIVALUED_LABEL);
         multiValued.setHelpText(ProtocolMapperUtils.MULTIVALUED_HELP_TEXT);
         multiValued.setType(ProviderConfigProperty.BOOLEAN_TYPE);
-        multiValued.setDefaultValue(false);
+        multiValued.setDefaultValue("true");
         CONFIG_PROPERTIES.add(multiValued);
 
         OIDCAttributeMapperHelper.addAttributeConfig(CONFIG_PROPERTIES, UserClientRoleMappingMapper.class);
+
+        // Alternative tooltip for the 'Token Claim Name'
+        for (ProviderConfigProperty prop : CONFIG_PROPERTIES) {
+            if (OIDCAttributeMapperHelper.TOKEN_CLAIM_NAME.equals(prop.getName())) {
+                prop.setHelpText(TOKEN_CLAIM_NAME_TOOLTIP);
+            }
+        }
     }
 
     @Override

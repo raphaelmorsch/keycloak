@@ -55,7 +55,7 @@ public class UserRealmRoleMappingMapper extends AbstractUserRoleMappingMapper {
         multiValued.setLabel(ProtocolMapperUtils.MULTIVALUED_LABEL);
         multiValued.setHelpText(ProtocolMapperUtils.MULTIVALUED_HELP_TEXT);
         multiValued.setType(ProviderConfigProperty.BOOLEAN_TYPE);
-        multiValued.setDefaultValue(false);
+        multiValued.setDefaultValue("true");
         CONFIG_PROPERTIES.add(multiValued);
 
         OIDCAttributeMapperHelper.addAttributeConfig(CONFIG_PROPERTIES, UserRealmRoleMappingMapper.class);
