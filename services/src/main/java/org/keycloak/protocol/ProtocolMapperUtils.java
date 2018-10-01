@@ -73,14 +73,17 @@ public class ProtocolMapperUtils {
     // Role name mapper can move some roles to different positions
     public static final int PRIORITY_ROLE_NAMES_MAPPER = 10;
 
-    // Role name mapper can move some roles to different positions
+    // Hardcoded role mapper can be used to add some roles
     public static final int PRIORITY_HARDCODED_ROLE_MAPPER = 20;
 
     // Audiences can be resolved once all the roles are on their positions
     public static final int PRIORITY_AUDIENCE_RESOLVE_MAPPER = 30;
 
     // Audiences can be resolved once all the roles are on their positions
-    public static final int PRIORITY_SCRIPT_MAPPER = 40;
+    public static final int PRIORITY_ROLE_MAPPER = 40;
+
+    // Audiences can be resolved once all the roles are on their positions
+    public static final int PRIORITY_SCRIPT_MAPPER = 50;
 
     public static String getUserModelValue(UserModel user, String propertyName) {
 

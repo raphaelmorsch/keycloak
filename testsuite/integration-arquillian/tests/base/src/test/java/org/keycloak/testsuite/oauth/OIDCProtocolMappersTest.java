@@ -208,7 +208,7 @@ public class OIDCProtocolMappersTest extends AbstractKeycloakTest {
             assertTrue(departments.contains("finance") && departments.contains("development"));
             assertTrue(accessToken.getRealmAccess().getRoles().contains("hardcoded"));
             assertTrue(accessToken.getRealmAccess().getRoles().contains("realm-user"));
-            Assert.assertFalse(accessToken.getResourceAccess("test-app").getRoles().contains("customer-user"));
+            Assert.assertNull(accessToken.getResourceAccess("test-app"));
             assertTrue(accessToken.getResourceAccess("app").getRoles().contains("hardcoded"));
 
             assertEquals("hello_test-user@localhost", accessToken.getOtherClaims().get("computed-via-script"));

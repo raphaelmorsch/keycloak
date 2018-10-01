@@ -17,7 +17,6 @@
 
 package org.keycloak.protocol.oidc.mappers;
 
-import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ClientSessionContext;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
@@ -106,12 +105,12 @@ public class RoleNameMapper extends AbstractOIDCProtocolMapper implements OIDCAc
         String appName = scopedRole[0];
         String roleName = scopedRole[1];
         if (appName != null) {
-            AccessToken.Access access = token.getResourceAccess(appName);
+            AccessToken.Access access = RoleResolveUtil.getResolvedClientRoles(session, clientSessionCtx, appName, false);
             if (access == null) return token;
             if (!access.getRoles().contains(roleName)) return token;
             access.getRoles().remove(roleName);
         } else {
-            AccessToken.Access access = token.getRealmAccess();
+            AccessToken.Access access = RoleResolveUtil.getResolvedRealmRoles(session, clientSessionCtx, false);
             if (access == null || !access.getRoles().contains(roleName)) return token;
             access.getRoles().remove(roleName);
         }
@@ -120,13 +119,9 @@ public class RoleNameMapper extends AbstractOIDCProtocolMapper implements OIDCAc
         String newRoleName = newScopedRole[1];
         AccessToken.Access access = null;
         if (newAppName == null) {
-            access = token.getRealmAccess();
-            if (access == null) {
-                access = new AccessToken.Access();
-                token.setRealmAccess(access);
-            }
+            access = RoleResolveUtil.getResolvedRealmRoles(session, clientSessionCtx, true);
         } else {
-            access = token.addAccess(newAppName);
+            access = RoleResolveUtil.getResolvedClientRoles(session, clientSessionCtx, newAppName, true);
         }
 
         access.addRole(newRoleName);

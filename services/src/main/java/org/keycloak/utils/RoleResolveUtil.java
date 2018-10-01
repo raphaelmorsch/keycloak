@@ -42,10 +42,12 @@ public class RoleResolveUtil {
     /**
      * Object (possibly null) containing all the user's realm roles. Including user's groups roles. Composite roles are expanded.
      * Just the roles, which current client has role-scope-mapping for (or it's clientScopes) are included.
+     * Current client means the client corresponding to specified clientSessionCtx.
      *
      * @param session
      * @param clientSessionCtx
-     * @return can return null
+     * @param createIfMissing
+     * @return can return null (just in case that createIfMissing is false)
      */
     public static AccessToken.Access getResolvedRealmRoles(KeycloakSession session, ClientSessionContext clientSessionCtx, boolean createIfMissing) {
         AccessToken rolesToken = getAllCompositeRoles(session, clientSessionCtx);
@@ -60,14 +62,38 @@ public class RoleResolveUtil {
 
 
     /**
+     * Object (possibly null) containing all the user's client roles of client specified by clientId. Including user's groups roles.
+     * Composite roles are expanded. Just the roles, which current client has role-scope-mapping for (or it's clientScopes) are included.
+     * Current client means the client corresponding to specified clientSessionCtx.
+     *
+     * @param session
+     * @param clientSessionCtx
+     * @param clientId
+     * @param createIfMissing
+     * @return can return null (just in case that createIfMissing is false)
+     */
+    public static AccessToken.Access getResolvedClientRoles(KeycloakSession session, ClientSessionContext clientSessionCtx, String clientId, boolean createIfMissing) {
+        AccessToken rolesToken = getAllCompositeRoles(session, clientSessionCtx);
+        AccessToken.Access access = rolesToken.getResourceAccess(clientId);
+
+        if (access == null && createIfMissing) {
+            access = rolesToken.addAccess(clientId);
+        }
+
+        return access;
+    }
+
+
+    /**
      * Object (but can be empty map) containing all the user's client roles of all clients. Including user's groups roles. Composite roles are expanded.
      * Just the roles, which current client has role-scope-mapping for (or it's clientScopes) are included.
+     * Current client means the client corresponding to specified clientSessionCtx.
      *
      * @param session
      * @param clientSessionCtx
      * @return not-null object (can return empty map)
      */
-    public static Map<String, AccessToken.Access> getResolvedClientRoles(KeycloakSession session, ClientSessionContext clientSessionCtx) {
+    public static Map<String, AccessToken.Access> getAllResolvedClientRoles(KeycloakSession session, ClientSessionContext clientSessionCtx) {
         return getAllCompositeRoles(session, clientSessionCtx).getResourceAccess();
     }
 

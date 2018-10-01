@@ -37,6 +37,12 @@ import java.util.stream.Collectors;
  */
 abstract class AbstractUserRoleMappingMapper extends AbstractOIDCProtocolMapper implements OIDCAccessTokenMapper, OIDCIDTokenMapper, UserInfoTokenMapper {
 
+    @Override
+    public int getPriority() {
+        return ProtocolMapperUtils.PRIORITY_ROLE_MAPPER;
+    }
+
+
     /**
      * Retrieves all roles of the current user based on direct roles set to the user, its groups and their parent groups.
      * Then it recursively expands all composite roles, and restricts according to the given predicate {@code restriction}.

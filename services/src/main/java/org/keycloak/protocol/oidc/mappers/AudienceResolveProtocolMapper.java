@@ -30,6 +30,7 @@ import org.keycloak.protocol.ProtocolMapperUtils;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.AccessToken;
+import org.keycloak.utils.RoleResolveUtil;
 
 /**
  * Protocol mapper, which adds all client_ids of "allowed" clients to the audience field of the token. Allowed client means the client
@@ -78,7 +79,7 @@ public class AudienceResolveProtocolMapper extends AbstractOIDCProtocolMapper im
     @Override
     public AccessToken transformAccessToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
                                             UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
-        for (Map.Entry<String, AccessToken.Access> entry : token.getResourceAccess().entrySet()) {
+        for (Map.Entry<String, AccessToken.Access> entry : RoleResolveUtil.getAllResolvedClientRoles(session, clientSessionCtx).entrySet()) {
             AccessToken.Access access = entry.getValue();
             if (access != null && access.getRoles() != null && !access.getRoles().isEmpty()) {
                 token.addAudience(entry.getKey());

@@ -99,13 +99,8 @@ public class UserClientRoleMappingMapper extends AbstractUserRoleMappingMapper {
         String clientId = mappingModel.getConfig().get(ProtocolMapperUtils.USER_MODEL_CLIENT_ROLE_MAPPING_CLIENT_ID);
         String rolePrefix = mappingModel.getConfig().get(ProtocolMapperUtils.USER_MODEL_CLIENT_ROLE_MAPPING_ROLE_PREFIX);
 
-        Map<String, AccessToken.Access> allAccess = RoleResolveUtil.getResolvedClientRoles(session, clientSessionCtx);
-        if (allAccess == null) {
-            return;
-        }
-
         if (clientId != null && !clientId.isEmpty()) {
-            AccessToken.Access access = RoleResolveUtil.getResolvedClientRoles(session, clientSessionCtx).get(clientId);
+            AccessToken.Access access = RoleResolveUtil.getResolvedClientRoles(session, clientSessionCtx, clientId, false);
             if (access == null) {
                 return;
             }
@@ -113,6 +108,8 @@ public class UserClientRoleMappingMapper extends AbstractUserRoleMappingMapper {
             AbstractUserRoleMappingMapper.setClaim(token, mappingModel, access.getRoles(), clientId, rolePrefix);
         } else {
             // If clientId is not specified, we consider all clients
+            Map<String, AccessToken.Access> allAccess = RoleResolveUtil.getAllResolvedClientRoles(session, clientSessionCtx);
+
             for (Map.Entry<String, AccessToken.Access> entry : allAccess.entrySet()) {
                 String currClientId = entry.getKey();
                 AccessToken.Access access = entry.getValue();

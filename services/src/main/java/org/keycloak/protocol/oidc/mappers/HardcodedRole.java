@@ -17,7 +17,6 @@
 
 package org.keycloak.protocol.oidc.mappers;
 
-import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ClientSessionContext;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
@@ -27,6 +26,7 @@ import org.keycloak.protocol.ProtocolMapperUtils;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.AccessToken;
+import org.keycloak.utils.RoleResolveUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -96,13 +96,10 @@ public class HardcodedRole extends AbstractOIDCProtocolMapper implements OIDCAcc
         String appName = scopedRole[0];
         String roleName = scopedRole[1];
         if (appName != null) {
-            token.addAccess(appName).addRole(roleName);
+            AccessToken.Access access = RoleResolveUtil.getResolvedClientRoles(session, clientSessionCtx, appName, true);
+            access.addRole(roleName);
         } else {
-            AccessToken.Access access = token.getRealmAccess();
-            if (access == null) {
-                access = new AccessToken.Access();
-                token.setRealmAccess(access);
-            }
+            AccessToken.Access access = RoleResolveUtil.getResolvedRealmRoles(session, clientSessionCtx, true);
             access.addRole(role);
         }
 
