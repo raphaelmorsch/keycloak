@@ -135,7 +135,7 @@ public class AudienceTest extends AbstractOIDCScopeTest {
         EventRepresentation loginEvent = events.expectLogin()
                 .user(userId)
                 .assertEvent();
-        Tokens tokens = sendTokenRequest(loginEvent, userId,"openid profile email roles audience-scope", "test-app");
+        Tokens tokens = sendTokenRequest(loginEvent, userId,"openid profile email audience-scope", "test-app");
         // TODO: Frontend client itself should not be in the audiences of access token. Will be fixed in the future
         assertAudiences(tokens.accessToken, "test-app", "service-client");
         assertAudiences(tokens.idToken, "test-app");
@@ -167,7 +167,7 @@ public class AudienceTest extends AbstractOIDCScopeTest {
         EventRepresentation loginEvent = events.expectLogin()
                 .user(userId)
                 .assertEvent();
-        Tokens tokens = sendTokenRequest(loginEvent, userId,"openid profile email roles audience-scope", "test-app");
+        Tokens tokens = sendTokenRequest(loginEvent, userId,"openid profile email audience-scope", "test-app");
         // TODO: Frontend client itself should not be in the audiences of access token. Will be fixed in the future
         assertAudiences(tokens.accessToken, "test-app", "http://host/service/ctx1", "http://host/service/ctx2");
         assertAudiences(tokens.idToken, "test-app", "http://host/service/ctx2");
@@ -191,7 +191,7 @@ public class AudienceTest extends AbstractOIDCScopeTest {
         EventRepresentation loginEvent = events.expectLogin()
                 .user(userId)
                 .assertEvent();
-        Tokens tokens = sendTokenRequest(loginEvent, userId,"openid profile email roles", "test-app");
+        Tokens tokens = sendTokenRequest(loginEvent, userId,"openid profile email", "test-app");
         assertAudiences(tokens.accessToken, "test-app");
         assertAudiences(tokens.idToken, "test-app");
         Assert.assertFalse(tokens.accessToken.getResourceAccess().containsKey("service-client"));
@@ -214,7 +214,7 @@ public class AudienceTest extends AbstractOIDCScopeTest {
         loginEvent = events.expectLogin()
                 .user(userId)
                 .assertEvent();
-        tokens = sendTokenRequest(loginEvent, userId,"openid profile email roles service-client", "test-app");
+        tokens = sendTokenRequest(loginEvent, userId,"openid profile email service-client", "test-app");
         assertAudiences(tokens.accessToken, "test-app", "service-client");
         assertAudiences(tokens.idToken, "test-app");
         Assert.assertTrue(tokens.accessToken.getResourceAccess().containsKey("service-client"));

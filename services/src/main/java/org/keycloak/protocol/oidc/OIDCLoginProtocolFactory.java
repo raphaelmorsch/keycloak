@@ -190,6 +190,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         profileScope.setDescription("OpenID Connect built-in scope: profile");
         profileScope.setDisplayOnConsentScreen(true);
         profileScope.setConsentScreenText(PROFILE_SCOPE_CONSENT_TEXT);
+        profileScope.setIncludeInTokenScope(true);
         profileScope.setProtocol(getId());
         profileScope.addProtocolMapper(builtins.get(FULL_NAME));
         profileScope.addProtocolMapper(builtins.get(FAMILY_NAME));
@@ -210,6 +211,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         emailScope.setDescription("OpenID Connect built-in scope: email");
         emailScope.setDisplayOnConsentScreen(true);
         emailScope.setConsentScreenText(EMAIL_SCOPE_CONSENT_TEXT);
+        emailScope.setIncludeInTokenScope(true);
         emailScope.setProtocol(getId());
         emailScope.addProtocolMapper(builtins.get(EMAIL));
         emailScope.addProtocolMapper(builtins.get(EMAIL_VERIFIED));
@@ -218,6 +220,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         addressScope.setDescription("OpenID Connect built-in scope: address");
         addressScope.setDisplayOnConsentScreen(true);
         addressScope.setConsentScreenText(ADDRESS_SCOPE_CONSENT_TEXT);
+        addressScope.setIncludeInTokenScope(true);
         addressScope.setProtocol(getId());
         addressScope.addProtocolMapper(builtins.get(ADDRESS));
 
@@ -225,6 +228,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         phoneScope.setDescription("OpenID Connect built-in scope: phone");
         phoneScope.setDisplayOnConsentScreen(true);
         phoneScope.setConsentScreenText(PHONE_SCOPE_CONSENT_TEXT);
+        phoneScope.setIncludeInTokenScope(true);
         phoneScope.setProtocol(getId());
         phoneScope.addProtocolMapper(builtins.get(PHONE_NUMBER));
         phoneScope.addProtocolMapper(builtins.get(PHONE_NUMBER_VERIFIED));
@@ -233,6 +237,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         rolesScope.setDescription("OpenID Connect scope for add user roles to the access token");
         rolesScope.setDisplayOnConsentScreen(true);
         rolesScope.setConsentScreenText(ROLES_SCOPE_CONSENT_TEXT);
+        rolesScope.setIncludeInTokenScope(false);
         rolesScope.setProtocol(getId());
         rolesScope.addProtocolMapper(builtins.get(REALM_ROLES));
         rolesScope.addProtocolMapper(builtins.get(CLIENT_ROLES));

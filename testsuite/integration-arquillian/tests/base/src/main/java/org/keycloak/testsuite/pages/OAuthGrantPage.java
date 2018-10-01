@@ -35,6 +35,7 @@ public class OAuthGrantPage extends LanguageComboboxAwarePage {
     public static final String ADDRESS_CONSENT_TEXT = "Address";
     public static final String PHONE_CONSENT_TEXT = "Phone number";
     public static final String OFFLINE_ACCESS_CONSENT_TEXT = "Offline Access";
+    public static final String ROLES_CONSENT_TEXT = "Roles";
 
     @FindBy(css = "input[name=\"accept\"]")
     private WebElement acceptButton;

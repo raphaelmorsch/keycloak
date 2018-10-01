@@ -2693,6 +2693,16 @@ module.controller('ClientScopeDetailCtrl', function($scope, realm, clientScope, 
         } else {
             $scope.displayOnConsentScreen = true;
         }
+
+        if ($scope.clientScope.attributes["include.in.token.scope"]) {
+            if ($scope.clientScope.attributes["include.in.token.scope"] == "true") {
+                $scope.includeInTokenScope = true;
+            } else {
+                $scope.includeInTokenScope = false;
+            }
+        } else {
+            $scope.includeInTokenScope = true;
+        }
     }
 
     if (!$scope.create) {
@@ -2740,6 +2750,12 @@ module.controller('ClientScopeDetailCtrl', function($scope, realm, clientScope, 
             $scope.clientScope.attributes["display.on.consent.screen"] = "true";
         } else {
             $scope.clientScope.attributes["display.on.consent.screen"] = "false";
+        }
+
+        if ($scope.includeInTokenScope == true) {
+            $scope.clientScope.attributes["include.in.token.scope"] = "true";
+        } else {
+            $scope.clientScope.attributes["include.in.token.scope"] = "false";
         }
 
         if ($scope.create) {
