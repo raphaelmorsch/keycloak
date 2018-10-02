@@ -26,10 +26,13 @@ import org.keycloak.component.PrioritizedComponentModel;
 import org.keycloak.keys.KeyProvider;
 import org.keycloak.models.AdminRoles;
 import org.keycloak.models.AuthenticationExecutionModel;
+import org.keycloak.models.ClientScopeModel;
 import org.keycloak.models.Constants;
 import org.keycloak.models.LDAPConstants;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.DefaultAuthenticationFlows;
+import org.keycloak.protocol.oidc.OIDCLoginProtocol;
+import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.idm.AuthenticationExecutionExportRepresentation;
 import org.keycloak.representations.idm.AuthenticationFlowRepresentation;
@@ -58,6 +61,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.codehaus.groovy.runtime.DefaultGroovyMethods.collect;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 
@@ -221,6 +226,11 @@ public abstract class AbstractMigrationTest extends AbstractKeycloakTest {
         if (supportsAuthzService) {
             testResourceWithMultipleUris();
         }
+    }
+
+    protected void testMigrationTo4_6_0() {
+        // NOTE: Fact that 'roles' and 'web-origins' scope were added was tested in testMigrationTo4_0_0 already
+        testRolesAndWebOriginsScopesAddedToClient();
     }
 
     private void testCliConsoleScopeSize(RealmResource realm) {
@@ -496,6 +506,24 @@ public abstract class AbstractMigrationTest extends AbstractKeycloakTest {
 
     }
 
+    private void testRolesAndWebOriginsScopesAddedToClient() {
+        log.infof("Testing roles and web-origins default scopes present in realm %s for client migration-test-client", migrationRealm.toRepresentation().getRealm());
+
+        List<ClientScopeRepresentation> defaultClientScopes = ApiUtil.findClientByClientId(this.migrationRealm, "migration-test-client").getDefaultClientScopes();
+
+        Set<String> defaultClientScopeNames = defaultClientScopes.stream()
+                .map(ClientScopeRepresentation::getName)
+                .collect(Collectors.toSet());
+
+        if (!defaultClientScopeNames.contains(OIDCLoginProtocolFactory.ROLES_SCOPE)) {
+            Assert.fail("Client scope 'roles' not found as default scope of client migration-test-client");
+        }
+        if (!defaultClientScopeNames.contains(OIDCLoginProtocolFactory.WEB_ORIGINS_SCOPE)) {
+            Assert.fail("Client scope 'web-origins' not found as default scope of client migration-test-client");
+        }
+
+    }
+
     private void testRequiredActionsPriority(RealmResource... realms) {
         log.info("testing required action's priority");
         for (RealmResource realm : realms) {
@@ -548,6 +576,7 @@ public abstract class AbstractMigrationTest extends AbstractKeycloakTest {
     protected void testMigrationTo4_x(boolean supportsAuthzServices) {
         testMigrationTo4_0_0();
         testMigrationTo4_2_0(supportsAuthzServices);
+        testMigrationTo4_6_0();
     }
 
     protected void testMigrationTo4_x() {
