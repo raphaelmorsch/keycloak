@@ -663,10 +663,6 @@ public class TokenManager {
         token.setSessionState(session.getId());
         token.expiration(getTokenExpiration(realm, client, session, clientSession));
 
-        Set<String> allowedOrigins = client.getWebOrigins();
-        if (allowedOrigins != null) {
-            token.setAllowedOrigins(WebOriginsUtils.resolveValidWebOrigins(uriInfo, client));
-        }
         return token;
     }
 

@@ -36,6 +36,7 @@ import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AddressClaimSet;
 import org.keycloak.representations.IDToken;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.representations.idm.ClientScopeRepresentation;
 import org.keycloak.representations.idm.ProtocolMapperRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -220,6 +221,10 @@ public class OIDCProtocolMappersTest extends AbstractKeycloakTest {
 
             // Assert audiences added through AudienceResolve mapper
             Assert.assertThat(accessToken.getAudience(), arrayContainingInAnyOrder("test-app", "app", "account"));
+
+            // Assert allowed origins
+            String expectedOrigin = UriUtils.getOrigin(oauth.getRedirectUri());
+            Assert.assertNames(accessToken.getAllowedOrigins(), expectedOrigin);
 
             oauth.openLogout();
         }
@@ -407,6 +412,29 @@ public class OIDCProtocolMappersTest extends AbstractKeycloakTest {
             rolesScope.getProtocolMappers().update(realmRolesMapper.getId(), realmRolesMapper);
             clientRolesMapper.getConfig().put(OIDCAttributeMapperHelper.TOKEN_CLAIM_NAME, clientRolesTokenClaimOrig);
             rolesScope.getProtocolMappers().update(clientRolesMapper.getId(), clientRolesMapper);
+        }
+    }
+
+
+    @Test
+    public void testAllowedOriginsRemovedFromAccessToken() throws Exception {
+        RealmResource realm = adminClient.realm("test");
+        ClientScopeRepresentation allowedOriginsScope = ApiUtil.findClientScopeByName(realm, OIDCLoginProtocolFactory.WEB_ORIGINS_SCOPE).toRepresentation();
+
+        // Remove 'web-origins' scope from the client
+        ClientResource testApp = ApiUtil.findClientByClientId(realm, "test-app");
+        testApp.removeDefaultClientScope(allowedOriginsScope.getId());
+
+        try {
+            OAuthClient.AccessTokenResponse response = browserLogin("password", "test-user@localhost", "password");
+            AccessToken accessToken = oauth.verifyToken(response.getAccessToken());
+
+            // Assert web origins are not in the token
+            Assert.assertNull(accessToken.getAllowedOrigins());
+
+        } finally {
+            // Revert
+            testApp.addDefaultClientScope(allowedOriginsScope.getId());
         }
     }
 

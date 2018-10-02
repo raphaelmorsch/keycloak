@@ -56,15 +56,17 @@ public class MigrateTo4_6_0 implements Migration {
     protected void migrateRealm(KeycloakSession session, RealmModel realm, boolean json) {
         MigrationProvider migrationProvider = session.getProvider(MigrationProvider.class);
 
-        // Create "roles" clientScope
+        // Create "roles" and "web-origins" clientScopes
         ClientScopeModel rolesScope = migrationProvider.addOIDCRolesClientScope(realm);
+        ClientScopeModel webOriginsScope = migrationProvider.addOIDCWebOriginsClientScope(realm);
 
-        LOG.debugf("Added '%s' client scope", rolesScope.getName());
+        LOG.debugf("Added '%s' and '%s' default client scopes", rolesScope.getName(), webOriginsScope.getName());
 
-        // Assign "roles" clientScope to all the OIDC clients
+        // Assign "roles" and "web-origins" clientScopes to all the OIDC clients
         for (ClientModel client : realm.getClients()) {
             if ((client.getProtocol()==null || "openid-connect".equals(client.getProtocol())) && (!client.isBearerOnly())) {
                 client.addClientScope(rolesScope, true);
+                client.addClientScope(webOriginsScope, true);
             }
         }
 

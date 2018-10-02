@@ -52,4 +52,13 @@ public interface MigrationProvider extends Provider {
      */
     ClientScopeModel addOIDCRolesClientScope(RealmModel realm);
 
+
+    /**
+     * Add 'web-origins' client scope or return it if already exists
+     *
+     * @param realm
+     * @return created or already existing client scope 'web-origins'
+     */
+    ClientScopeModel addOIDCWebOriginsClientScope(RealmModel realm);
+
 }

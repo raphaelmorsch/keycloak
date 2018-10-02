@@ -84,10 +84,18 @@ public class DefaultMigrationProvider implements MigrationProvider {
         new RealmManager(session).setupAdminCli(realm);
     }
 
+
     @Override
     public ClientScopeModel addOIDCRolesClientScope(RealmModel realm) {
         return OIDCLoginProtocolFactory.addRolesClientScope(realm);
     }
+
+
+    @Override
+    public ClientScopeModel addOIDCWebOriginsClientScope(RealmModel realm) {
+        return OIDCLoginProtocolFactory.addWebOriginsClientScope(realm);
+    }
+
 
     @Override
     public void close() {

@@ -33,6 +33,7 @@ import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.protocol.AbstractLoginProtocolFactory;
 import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.mappers.AddressMapper;
+import org.keycloak.protocol.oidc.mappers.AllowedWebOriginsProtocolMapper;
 import org.keycloak.protocol.oidc.mappers.AudienceResolveProtocolMapper;
 import org.keycloak.protocol.oidc.mappers.FullNameMapper;
 import org.keycloak.protocol.oidc.mappers.UserAttributeMapper;
@@ -78,8 +79,10 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
     public static final String REALM_ROLES = "realm roles";
     public static final String CLIENT_ROLES = "client roles";
     public static final String AUDIENCE_RESOLVE = "audience resolve";
+    public static final String ALLOWED_WEB_ORIGINS = "allowed web origins";
 
     public static final String ROLES_SCOPE = "roles";
+    public static final String WEB_ORIGINS_SCOPE = "web-origins";
 
     public static final String PROFILE_SCOPE_CONSENT_TEXT = "${profileScopeConsentText}";
     public static final String EMAIL_SCOPE_CONSENT_TEXT = "${emailScopeConsentText}";
@@ -167,6 +170,9 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
 
         model = AudienceResolveProtocolMapper.createClaimMapper(AUDIENCE_RESOLVE);
         builtins.put(AUDIENCE_RESOLVE, model);
+
+        model = AllowedWebOriginsProtocolMapper.createClaimMapper(ALLOWED_WEB_ORIGINS);
+        builtins.put(ALLOWED_WEB_ORIGINS, model);
     }
 
     private static void createUserAttributeMapper(String name, String attrName, String claimName, String type) {
@@ -242,6 +248,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         }
 
         addRolesClientScope(newRealm);
+        addWebOriginsClientScope(newRealm);
     }
 
 
@@ -265,6 +272,27 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         }
 
         return rolesScope;
+    }
+
+
+    public static ClientScopeModel addWebOriginsClientScope(RealmModel newRealm) {
+        ClientScopeModel originsScope = KeycloakModelUtils.getClientScopeByName(newRealm, WEB_ORIGINS_SCOPE);
+        if (originsScope == null) {
+            originsScope = newRealm.addClientScope(WEB_ORIGINS_SCOPE);
+            originsScope.setDescription("OpenID Connect scope for add allowed web origins to the access token");
+            originsScope.setDisplayOnConsentScreen(false); // No requesting consent from user for this. It is rather the permission of client
+            originsScope.setConsentScreenText("");
+            originsScope.setIncludeInTokenScope(false);
+            originsScope.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
+            originsScope.addProtocolMapper(builtins.get(ALLOWED_WEB_ORIGINS));
+
+            // 'web-origins' will be default client scope
+            newRealm.addDefaultClientScope(originsScope, true);
+        } else {
+            logger.debugf("Client scope '%s' already exists in realm '%s'. Skip creating it.", WEB_ORIGINS_SCOPE, newRealm.getName());
+        }
+
+        return originsScope;
     }
 
 
