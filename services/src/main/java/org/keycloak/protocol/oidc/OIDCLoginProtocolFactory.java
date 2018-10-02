@@ -35,7 +35,6 @@ import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.mappers.AddressMapper;
 import org.keycloak.protocol.oidc.mappers.AudienceResolveProtocolMapper;
 import org.keycloak.protocol.oidc.mappers.FullNameMapper;
-import org.keycloak.protocol.oidc.mappers.OIDCAttributeMapperHelper;
 import org.keycloak.protocol.oidc.mappers.UserAttributeMapper;
 import org.keycloak.protocol.oidc.mappers.UserClientRoleMappingMapper;
 import org.keycloak.protocol.oidc.mappers.UserPropertyMapper;
@@ -43,15 +42,10 @@ import org.keycloak.protocol.oidc.mappers.UserRealmRoleMappingMapper;
 import org.keycloak.protocol.oidc.mappers.UserSessionNoteMapper;
 import org.keycloak.representations.IDToken;
 import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.representations.idm.ClientScopeRepresentation;
 import org.keycloak.services.ServicesLogger;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -233,20 +227,9 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         phoneScope.addProtocolMapper(builtins.get(PHONE_NUMBER));
         phoneScope.addProtocolMapper(builtins.get(PHONE_NUMBER_VERIFIED));
 
-        ClientScopeModel rolesScope = newRealm.addClientScope(ROLES_SCOPE);
-        rolesScope.setDescription("OpenID Connect scope for add user roles to the access token");
-        rolesScope.setDisplayOnConsentScreen(true);
-        rolesScope.setConsentScreenText(ROLES_SCOPE_CONSENT_TEXT);
-        rolesScope.setIncludeInTokenScope(false);
-        rolesScope.setProtocol(getId());
-        rolesScope.addProtocolMapper(builtins.get(REALM_ROLES));
-        rolesScope.addProtocolMapper(builtins.get(CLIENT_ROLES));
-        rolesScope.addProtocolMapper(builtins.get(AUDIENCE_RESOLVE));
-
-        // 'profile' and 'email' and 'roles' will be default scopes for now. 'address' and 'phone' will be optional scopes
+        // 'profile' and 'email' will be default scopes for now. 'address' and 'phone' will be optional scopes
         newRealm.addDefaultClientScope(profileScope, true);
         newRealm.addDefaultClientScope(emailScope, true);
-        newRealm.addDefaultClientScope(rolesScope, true);
         newRealm.addDefaultClientScope(addressScope, false);
         newRealm.addDefaultClientScope(phoneScope, false);
 
@@ -257,7 +240,33 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
                 DefaultClientScopes.createOfflineAccessClientScope(newRealm, offlineRole);
             }
         }
+
+        addRolesClientScope(newRealm);
     }
+
+
+    public static ClientScopeModel addRolesClientScope(RealmModel newRealm) {
+        ClientScopeModel rolesScope = KeycloakModelUtils.getClientScopeByName(newRealm, ROLES_SCOPE);
+        if (rolesScope == null) {
+            rolesScope = newRealm.addClientScope(ROLES_SCOPE);
+            rolesScope.setDescription("OpenID Connect scope for add user roles to the access token");
+            rolesScope.setDisplayOnConsentScreen(true);
+            rolesScope.setConsentScreenText(ROLES_SCOPE_CONSENT_TEXT);
+            rolesScope.setIncludeInTokenScope(false);
+            rolesScope.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
+            rolesScope.addProtocolMapper(builtins.get(REALM_ROLES));
+            rolesScope.addProtocolMapper(builtins.get(CLIENT_ROLES));
+            rolesScope.addProtocolMapper(builtins.get(AUDIENCE_RESOLVE));
+
+            // 'roles' will be default client scope
+            newRealm.addDefaultClientScope(rolesScope, true);
+        } else {
+            logger.debugf("Client scope '%s' already exists in realm '%s'. Skip creating it.", ROLES_SCOPE, newRealm.getName());
+        }
+
+        return rolesScope;
+    }
+
 
     @Override
     protected void addDefaults(ClientModel client) {
