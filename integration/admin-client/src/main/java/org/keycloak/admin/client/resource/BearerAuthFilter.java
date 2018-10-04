@@ -50,6 +50,7 @@ public class BearerAuthFilter implements ClientRequestFilter, ClientResponseFilt
     @Override
     public void filter(ClientRequestContext requestContext) throws IOException {
         String authHeader = (tokenManager != null ? tokenManager.getAccessTokenString() : tokenString);
+        if (authHeader == null) return;
         if (!authHeader.startsWith(AUTH_HEADER_PREFIX)) {
             authHeader = AUTH_HEADER_PREFIX + authHeader;
         }
