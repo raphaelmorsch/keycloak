@@ -21,6 +21,7 @@ import org.hibernate.jpa.boot.internal.ParsedPersistenceXmlDescriptor;
 import org.hibernate.jpa.boot.internal.PersistenceXmlParser;
 import org.hibernate.jpa.boot.spi.Bootstrap;
 import org.keycloak.connections.jpa.entityprovider.JpaEntityProvider;
+import org.keycloak.connections.jpa.entityprovider.ProxyClassLoader;
 import org.keycloak.models.KeycloakSession;
 
 import javax.persistence.EntityManager;
@@ -54,9 +55,10 @@ public class JpaUtils {
                     persistenceUnit.addClasses(entityClass.getName());
                 }
                 // Now build the entity manager factory, supplying a proxy classloader, so Hibernate will be able
-                // to find and load the extra provided entities. Set the provided classloader as parent classloader.
+                // to find and load the extra provided entities.
                 persistenceUnit.setTransactionType(txType);
-                return Bootstrap.getEntityManagerFactoryBuilder(persistenceUnit, properties).build();
+                return Bootstrap.getEntityManagerFactoryBuilder(persistenceUnit, properties,
+                        new ProxyClassLoader(providedEntities)).build();
             }
         }
         throw new RuntimeException("Persistence unit '" + unitName + "' not found");
