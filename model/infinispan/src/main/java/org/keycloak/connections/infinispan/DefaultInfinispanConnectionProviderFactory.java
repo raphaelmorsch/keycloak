@@ -354,7 +354,7 @@ public class DefaultInfinispanConnectionProviderFactory implements InfinispanCon
                     .rawValues(true)
                     .forceReturnValues(false)
                     .marshaller(KeycloakHotRodMarshallerFactory.class.getName())
-                    //.protocolVersion(ProtocolVersion.PROTOCOL_VERSION_26)
+                    .protocolVersion(getHotrodVersion())
                     .addServer()
                         .host(jdgServer)
                         .port(jdgPort)
@@ -382,13 +382,25 @@ public class DefaultInfinispanConnectionProviderFactory implements InfinispanCon
                     .rawValues(true)
                     .forceReturnValues(false)
                     .marshaller(KeycloakHotRodMarshallerFactory.class.getName())
-                    //.protocolVersion(ProtocolVersion.PROTOCOL_VERSION_26)
+                    .protocolVersion(getHotrodVersion())
                     .addServer()
                         .host(jdgServer)
                         .port(jdgPort)
                     .async()
                         .enabled(async);
 
+    }
+
+    private ProtocolVersion getHotrodVersion() {
+        String hotrodVersionStr = config.get("hotrodProtocolVersion", ProtocolVersion.DEFAULT_PROTOCOL_VERSION.toString());
+        ProtocolVersion hotrodVersion = ProtocolVersion.parseVersion(hotrodVersionStr);
+        if (hotrodVersion == null) {
+            hotrodVersion = ProtocolVersion.DEFAULT_PROTOCOL_VERSION;
+        }
+
+        logger.debugf("HotRod protocol version: %s", hotrodVersion);
+
+        return hotrodVersion;
     }
 
     protected Configuration getKeysCacheConfig() {
