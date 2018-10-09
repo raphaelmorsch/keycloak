@@ -14,8 +14,6 @@ env:
     - TESTS=server-group3
     - TESTS=server-group4
     - TESTS=old
-    - TESTS=crossdc-server
-    - TESTS=crossdc-adapter
     - TESTS=ssl
 
 jdk:
