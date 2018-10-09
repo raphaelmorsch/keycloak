@@ -30,6 +30,8 @@
         <subsystem supplement="domain">jmx.xml</subsystem>
         <subsystem>jpa.xml</subsystem>
         <subsystem>mail.xml</subsystem>
+        <subsystem>microprofile-config-smallrye.xml</subsystem>
+        <subsystem>microprofile-opentracing-smallrye.xml</subsystem>
         <subsystem>naming.xml</subsystem>
         <subsystem>remoting.xml</subsystem>
         <subsystem>request-controller.xml</subsystem>
@@ -56,6 +58,8 @@
         <subsystem supplement="domain">jmx.xml</subsystem>
         <subsystem>jpa.xml</subsystem>
         <subsystem>mail.xml</subsystem>
+        <subsystem>microprofile-config-smallrye.xml</subsystem>
+        <subsystem>microprofile-opentracing-smallrye.xml</subsystem>
         <subsystem>mod_cluster.xml</subsystem>
         <subsystem>naming.xml</subsystem>
         <subsystem>remoting.xml</subsystem>

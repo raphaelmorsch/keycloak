@@ -34,6 +34,9 @@
         <subsystem>jmx.xml</subsystem>
         <subsystem>jpa.xml</subsystem>
         <subsystem>mail.xml</subsystem>
+        <subsystem>microprofile-config-smallrye.xml</subsystem>
+        <subsystem>microprofile-health-smallrye.xml</subsystem>
+        <subsystem>microprofile-opentracing-smallrye.xml</subsystem>
         <subsystem supplement="default">mod_cluster.xml</subsystem>
         <subsystem>naming.xml</subsystem>
         <subsystem>remoting.xml</subsystem>

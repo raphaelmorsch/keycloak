@@ -529,17 +529,78 @@ end-if
 
 # Migrate from 4.4.0 to 4.5.0
 if (outcome == failed) of /subsystem=core-management/:read-resource
-    try
-        echo Trying to add core-management extension
-        /extension=org.wildfly.extension.core-management/:add
-        echo
-    catch
-        echo Wasn't able to add core-management extension, it should be already added by migrate-domain-standalone.cli
-        echo
-    end-try
+    echo Adding core-management extension
+    /extension=org.wildfly.extension.core-management/:add
     echo Adding subsystem core-management
     /subsystem=core-management/:add
     echo
+end-if
+
+# Migrate from 4.5.0 to 4.6.0
+if (outcome == failed) of /extension=org.wildfly.extension.microprofile.config-smallrye/:read-resource
+    echo Adding microprofile.config-smallrye extension...
+    /extension=org.wildfly.extension.microprofile.config-smallrye/:add(module=org.wildfly.extension.microprofile.config-smallrye)
+    echo
+end-if
+
+if (outcome == failed) of /subsystem=microprofile-config-smallrye/:read-resource
+    echo Adding microprofile.config-smallrye subsystem...
+    /subsystem=microprofile-config-smallrye/:add()
+    echo
+end-if
+
+if (outcome == failed) of /extension=org.wildfly.extension.microprofile.health-smallrye/:read-resource
+    echo Adding microprofile.health-smallrye extension...
+    /extension=org.wildfly.extension.microprofile.health-smallrye/:add(module=org.wildfly.extension.microprofile.health-smallrye)
+    echo
+end-if
+
+if (outcome == failed) of /subsystem=microprofile-health-smallrye/:read-resource
+    echo Adding microprofile.health-smallrye subsystem...
+    /subsystem=microprofile-health-smallrye/:add(security-enabled=false)
+    echo
+end-if
+
+if (outcome == failed) of /extension=org.wildfly.extension.microprofile.opentracing-smallrye/:read-resource
+    echo Adding microprofile.opentracing-smallrye extension...
+    /extension=org.wildfly.extension.microprofile.opentracing-smallrye/:add(module=org.wildfly.extension.microprofile.opentracing-smallrye)
+    echo
+end-if
+
+if (outcome == failed) of /subsystem=microprofile-opentracing-smallrye/:read-resource
+    echo Adding microprofile.opentracing-smallrye subsystem...
+    /subsystem=microprofile-opentracing-smallrye/:add()
+    echo
+end-if
+
+if (outcome == success) of /subsystem=elytron/http-authentication-factory=application-http-authentication/:read-resource
+    echo Removing application-http-authentication from elytron subsystem
+    /subsystem=elytron/http-authentication-factory=application-http-authentication:remove
+    echo
+end-if
+
+if (result != expression "${jboss.tx.node.id:1}") of /subsystem=transactions/:read-attribute(name=node-identifier)
+    echo Setting node-identifier attribute of core-environment element in transactions subsystem
+    /subsystem=transactions/:write-attribute(name=node-identifier,value=expression "${jboss.tx.node.id:1}")
+    echo
+end-if
+
+if (outcome == success) of /subsystem=jgroups/stack=udp/transport=UDP/property=port_range:read-attribute(name=value)
+    try
+        /subsystem=jgroups/stack=udp/transport=UDP/property=port_range:remove
+        echo Remove port_range property from UDP transport type of udp stack
+    catch
+        echo
+    end-try
+end-if
+
+if (outcome == success) of /subsystem=jgroups/stack=tcp/transport=TCP/property=port_range:read-attribute(name=value)
+    try
+        /subsystem=jgroups/stack=tcp/transport=TCP/property=port_range:remove
+        echo Remove port_range property from TPC transport type of tcp stack
+    catch
+        echo
+    end-try
 end-if
 
 echo *** End Migration ***
