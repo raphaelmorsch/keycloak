@@ -509,7 +509,7 @@ To run the Mutual TLS test for the client:
 
 ## Cluster tests
 
-Cluster tests use 2 backend servers (Keycloak on Wildfly/EAP) and 1 frontend loadbalancer server node. Invalidation tests don't use loadbalancer. 
+Cluster tests use 2 backend servers (Keycloak on Wildfly/EAP or Keycloak on Undertow), 1 frontend loadbalancer server node and one shared DB. Invalidation tests don't use loadbalancer. 
 The browser usually communicates directly with the backend node1 and after doing some change here (eg. updating user), it verifies that the change is visible on node2 and user is updated here as well.
 
 Failover tests use loadbalancer and they require the setup with the distributed infinispan caches switched to have 2 owners (default value is 1 owner). Otherwise failover won't reliably work. 
@@ -517,16 +517,13 @@ Failover tests use loadbalancer and they require the setup with the distributed 
 
 The setup includes:
 
-*  a `mod_cluster` load balancer on Wildfly
-*  two clustered nodes of Keycloak server on Wildfly/EAP
+*  a load balancer on embedded Undertow (SimpleUndertowLoadBalancer)
+*  two clustered nodes of Keycloak server on Wildfly/EAP or on embedded undertow
+*  shared DB
 
-Clustering tests require MULTICAST to be enabled on machine's `loopback` network interface.
-This can be done by running the following commands under root privileges:
+### Cluster tests with Keycloak on Wildfly
 
-    route add -net 224.0.0.0 netmask 240.0.0.0 dev lo
-    ifconfig lo multicast
-
-Then after build the sources, distribution and setup of clean shared database (replace command according your DB), you can use this command to setup servers:
+After build the sources, distribution and setup of clean shared database (replace command according your DB), you can use this command to setup servers:
 
     export DB_HOST=localhost
     mvn -f testsuite/integration-arquillian/servers/pom.xml \
@@ -551,9 +548,21 @@ And then this to run the cluster tests:
     -Dtest=org.keycloak.testsuite.cluster.**.*Test clean install
    
 	  
-### Cluster tests with embedded undertow
+### Cluster tests with Keycloak on embedded undertow
 
-#### Run cluster tests from IDE
+    mvn -f testsuite/integration-arquillian/tests/base/pom.xml \
+    -Pauth-server-cluster-undertow \
+    -Dsession.cache.owners=2 \
+    -Dkeycloak.connectionsInfinispan.sessionsOwners=2 \
+    -Dbackends.console.output=true \
+    -Dauth.server.log.check=false \
+    -Dfrontend.console.output=true \
+    -Dkeycloak.connectionsJpa.url=jdbc:mysql://$DB_HOST/keycloak \
+    -Dkeycloak.connectionsJpa.user=keycloak \
+    -Dkeycloak.connectionsJpa.password=keycloak \
+    -Dtest=org.keycloak.testsuite.cluster.**.*Test clean install
+
+#### Run cluster tests from IDE on embedded undertow
 
 The test uses Undertow loadbalancer on `http://localhost:8180` and two embedded backend Undertow servers with Keycloak on `http://localhost:8181` and `http://localhost:8182` .
 You can use any cluster test (eg. AuthenticationSessionFailoverClusterTest) and run from IDE with those system properties (replace with your DB settings):
