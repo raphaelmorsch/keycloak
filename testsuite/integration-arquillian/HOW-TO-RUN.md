@@ -649,33 +649,7 @@ b2) For **JBoss-based** Keycloak backend containers, you can run the tests like 
 For **JBoss-based** Keycloak backend containers on real DB, the previous commands from (a2) and (b2) can be "squashed" into one. E.g.:
 
   `mvn -f testsuite/integration-arquillian clean install -Dtest=*.crossdc.* -Djdbc.mvn.groupId=org.mariadb.jdbc -Djdbc.mvn.artifactId=mariadb-java-client -Djdbc.mvn.version=2.0.3 -Dkeycloak.connectionsJpa.url=jdbc:mariadb://localhost:3306/keycloak -Dkeycloak.connectionsJpa.password=keycloak -Dkeycloak.connectionsJpa.user=keycloak -Pcache-server-infinispan,auth-servers-crossdc-jboss,auth-server-wildfly,jpa clean install`
-
     
-#### Run "Manual" Cross-DC Tests from Maven
-    
-Tests from package "manual" uses manual lifecycle for all servers, so needs to be executed manually. 
-
-First prepare the environment and do the step (a) from previous paragraph. 
-
-c1) For **Undertow** Keycloak backend containers, you can run the test using following command:
-
-  `mvn -Pcache-server-infinispan,auth-servers-crossdc-undertow -Dtest=*.crossdc.manual.* -Dmanual.mode=true -Drun.h2=true -Dkeycloak.connectionsJpa.url.crossdc="jdbc:h2:tcp://localhost:9092/mem:keycloak-dc-shared;DB_CLOSE_DELAY=-1" -pl testsuite/integration-arquillian/tests/base clean install` 
-
-*note: As you can see, there is a need to run TCP-Based H2 for this test. In-memory H2 won't work due the data need 
-to persist the stop of all the Keycloak servers.*
-
-If you want to test with real DB like MySQL, you can run them with:
-
-  `mvn -Pcache-server-infinispan,auth-servers-crossdc-undertow -Dtest=*.crossdc.manual.* -Dmanual.mode=true -Dkeycloak.connectionsJpa.url.crossdc=jdbc:mysql://localhost/keycloak -Dkeycloak.connectionsJpa.driver.crossdc=com.mysql.jdbc.Driver -Dkeycloak.connectionsJpa.user=keycloak -Dkeycloak.connectionsJpa.password=keycloak -pl testsuite/integration-arquillian/tests/base clean install`
-
-c2) For **JBoss-based** Keycloak backend containers, you can run the tests like this:
-    
-  `mvn -Pcache-server-infinispan,auth-servers-crossdc-jboss,auth-server-wildfly -Dtest=*.crossdc.manual.* -Dmanual.mode=true -pl testsuite/integration-arquillian/tests/base clean install`
-    
-*note: TCP-based H2 is used by default when running cross-dc tests on JBoss-based Keycloak container. 
-So no need to explicitly specify it like in (c1) for undertow.*       
-     
-  
 
 #### Run Cross-DC Tests from Intellij IDEA
 
