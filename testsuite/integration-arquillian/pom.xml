@@ -44,7 +44,6 @@
         <!-- Wildfly deprecated versions -->
         <wildfly.deprecated.version>13.0.0.Final</wildfly.deprecated.version>
         <wildfly.deprecated.wildfly.core.version>5.0.0.Final</wildfly.deprecated.wildfly.core.version>
-        <wildfly.deprecated.infinispan.version>9.2.4.Final</wildfly.deprecated.infinispan.version>
         <wildfly.deprecated.arquillian.wildfly.container>2.1.0.Final</wildfly.deprecated.arquillian.wildfly.container>
 
         <!--component versions-->
