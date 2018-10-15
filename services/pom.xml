@@ -223,6 +223,8 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
+                        <!-- Reverted version as the new version of maven-javadoc-plugin is not compatible with swagger doclet -->
+                        <version>2.10.3</version>
                         <executions>
                             <execution>
                                 <id>generate-service-docs</id>
