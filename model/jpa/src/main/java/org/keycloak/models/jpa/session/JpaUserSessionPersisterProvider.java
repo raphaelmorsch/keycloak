@@ -224,17 +224,6 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
         List<String> userSessionIds = new ArrayList<>();
         for (PersistentUserSessionEntity entity : results) {
             RealmModel realm = session.realms().getRealm(entity.getRealmId());
-            try {
-                UserModel user = session.users().getUserById(entity.getUserId(), realm);
-                // Case when user was deleted in the meantime
-                if (user == null) {
-                    onUserRemoved(realm, entity.getUserId());
-                    return loadUserSessions(firstResult, maxResults, offline);
-                }
-            } catch (Exception e) {
-                logger.debugv(e,"Failed to load user with id {0}", entity.getUserId());
-            }
-
 
             result.add(toAdapter(realm, entity));
             userSessionIds.add(entity.getUserSessionId());

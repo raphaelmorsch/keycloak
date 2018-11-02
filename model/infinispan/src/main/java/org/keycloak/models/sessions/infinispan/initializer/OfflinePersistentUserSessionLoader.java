@@ -79,18 +79,20 @@ public class OfflinePersistentUserSessionLoader implements SessionLoader<Offline
         int first = ctx.getSessionsPerSegment() * segment;
         int max = sessionsPerSegment;
 
-        if (log.isTraceEnabled()) {
-            log.tracef("Loading sessions - first: %d, max: %d", first, max);
-        }
+        log.tracef("Loading sessions - first: %d, max: %d", first, max);
 
         UserSessionPersisterProvider persister = session.getProvider(UserSessionPersisterProvider.class);
         List<UserSessionModel> sessions = persister.loadUserSessions(first, max, true);
+
+        log.tracef("Sessions loaded from DB - first: %d, max: %d", first, max);
 
         for (UserSessionModel persistentSession : sessions) {
 
             // Save to memory/infinispan
             UserSessionModel offlineUserSession = session.sessions().importUserSession(persistentSession, true, true);
         }
+
+        log.tracef("Sessions imported - first: %d, max: %d", first, max);
 
         return true;
     }
