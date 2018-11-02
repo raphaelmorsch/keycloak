@@ -100,26 +100,6 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
     }
 
     @Override
-    public void updateUserSession(UserSessionModel userSession, boolean offline) {
-        PersistentUserSessionAdapter adapter;
-        if (userSession instanceof PersistentUserSessionAdapter) {
-            adapter = (PersistentUserSessionAdapter) userSession;
-        } else {
-            adapter = new PersistentUserSessionAdapter(userSession);
-        }
-
-        PersistentUserSessionModel model = adapter.getUpdatedModel();
-
-        String offlineStr = offlineToString(offline);
-        PersistentUserSessionEntity entity = em.find(PersistentUserSessionEntity.class, new PersistentUserSessionEntity.Key(userSession.getId(), offlineStr));
-        if (entity == null) {
-            throw new ModelException("UserSession with ID " + userSession.getId() + ", offline: " + offline + " not found");
-        }
-        entity.setLastSessionRefresh(model.getLastSessionRefresh());
-        entity.setData(model.getData());
-    }
-
-    @Override
     public void removeUserSession(String userSessionId, boolean offline) {
         String offlineStr = offlineToString(offline);
 

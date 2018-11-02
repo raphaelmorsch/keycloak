@@ -75,11 +75,6 @@ public class DisabledUserSessionPersisterProvider implements UserSessionPersiste
     }
 
     @Override
-    public void updateUserSession(UserSessionModel userSession, boolean offline) {
-
-    }
-
-    @Override
     public void removeUserSession(String userSessionId, boolean offline) {
 
     }

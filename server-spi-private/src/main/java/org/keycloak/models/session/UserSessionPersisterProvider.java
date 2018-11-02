@@ -37,8 +37,6 @@ public interface UserSessionPersisterProvider extends Provider {
     // Assuming that corresponding userSession is already persisted
     void createClientSession(AuthenticatedClientSessionModel clientSession, boolean offline);
 
-    void updateUserSession(UserSessionModel userSession, boolean offline);
-
     // Called during logout (for online session) or during periodic expiration. It will remove all corresponding clientSessions too
     void removeUserSession(String userSessionId, boolean offline);
 

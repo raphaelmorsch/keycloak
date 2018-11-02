@@ -177,48 +177,30 @@ public class UserSessionPersisterProviderTest {
         UserSessionModel persistedSession = loadedSessions.get(0);
         UserSessionProviderTest.assertSession(persistedSession, session.users().getUserByUsername("user1", realm), "127.0.0.2", started, started, "test-app");
 
-        // Update userSession
-        Time.setOffset(10);
-        try {
-            persistedSession.setLastSessionRefresh(Time.currentTime());
-            persistedSession.setNote("foo", "bar");
-            persistedSession.setState(UserSessionModel.State.LOGGED_IN);
-            persister.updateUserSession(persistedSession, true);
+        // create new clientSession
+        AuthenticatedClientSessionModel clientSession = createClientSession(realm.getClientByClientId("third-party"), session.sessions().getUserSession(realm, persistedSession.getId()),
+                "http://redirect", "state");
+        persister.createClientSession(clientSession, true);
 
-            // create new clientSession
-            AuthenticatedClientSessionModel clientSession = createClientSession(realm.getClientByClientId("third-party"), session.sessions().getUserSession(realm, persistedSession.getId()),
-                    "http://redirect", "state");
-            persister.createClientSession(clientSession, true);
+        resetSession();
 
-            resetSession();
+        // Remove clientSession
+        persister.removeClientSession(userSession.getId(), realm.getClientByClientId("third-party").getId(), true);
 
-            // Assert session updated
-            loadedSessions = loadPersistedSessionsPaginated(true, 10, 1, 1);
-            persistedSession = loadedSessions.get(0);
-            UserSessionProviderTest.assertSession(persistedSession, session.users().getUserByUsername("user1", realm), "127.0.0.2", started, started+10, "test-app", "third-party");
-            Assert.assertEquals("bar", persistedSession.getNote("foo"));
-            Assert.assertEquals(UserSessionModel.State.LOGGED_IN, persistedSession.getState());
+        resetSession();
 
-            // Remove clientSession
-            persister.removeClientSession(userSession.getId(), realm.getClientByClientId("third-party").getId(), true);
+        // Assert clientSession removed
+        loadedSessions = loadPersistedSessionsPaginated(true, 10, 1, 1);
+        persistedSession = loadedSessions.get(0);
+        UserSessionProviderTest.assertSession(persistedSession, session.users().getUserByUsername("user1", realm), "127.0.0.2", started, started , "test-app");
 
-            resetSession();
+        // Remove userSession
+        persister.removeUserSession(persistedSession.getId(), true);
 
-            // Assert clientSession removed
-            loadedSessions = loadPersistedSessionsPaginated(true, 10, 1, 1);
-            persistedSession = loadedSessions.get(0);
-            UserSessionProviderTest.assertSession(persistedSession, session.users().getUserByUsername("user1", realm), "127.0.0.2", started, started + 10, "test-app");
+        resetSession();
 
-            // Remove userSession
-            persister.removeUserSession(persistedSession.getId(), true);
-
-            resetSession();
-
-            // Assert nothing found
-            loadPersistedSessionsPaginated(true, 10, 0, 0);
-        } finally {
-            Time.setOffset(0);
-        }
+        // Assert nothing found
+        loadPersistedSessionsPaginated(true, 10, 0, 0);
     }
 
     @Test

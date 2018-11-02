@@ -18,12 +18,13 @@
 package org.keycloak.models.sessions.infinispan.initializer;
 
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.infinispan.Cache;
+import org.infinispan.client.hotrod.ProtocolVersion;
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.RemoteCacheManager;
+import org.infinispan.commons.api.BasicCache;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
@@ -37,7 +38,6 @@ import org.keycloak.common.util.Time;
 import org.keycloak.connections.infinispan.InfinispanConnectionProvider;
 import org.keycloak.models.sessions.infinispan.changes.SessionEntityWrapper;
 import org.keycloak.models.sessions.infinispan.entities.AuthenticatedClientSessionEntity;
-import org.keycloak.models.sessions.infinispan.entities.SessionEntity;
 import org.keycloak.models.sessions.infinispan.entities.UserSessionEntity;
 import java.util.UUID;
 
@@ -53,25 +53,29 @@ public class DistributedCacheConcurrentWritesTest {
     private static final int ITEMS_IN_BATCH = 100;
 
     public static void main(String[] args) throws Exception {
-        CacheWrapper<String, UserSessionEntity> cache1 = createCache("node1");
-        CacheWrapper<String, UserSessionEntity> cache2 = createCache("node2");
+        BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache1 = createCache("node1");
+        BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache2 = createCache("node2");
+
+        // NOTE: This setup requires infinispan servers to be up and running on localhost:12232 and localhost:13232
+//        BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache1 = createRemoteCache("node1");
+//        BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache2 = createRemoteCache("node2");
 
         try {
             testConcurrentPut(cache1, cache2);
         } finally {
 
             // Kill JVM
-            cache1.getCache().stop();
-            cache2.getCache().stop();
-            cache1.getCache().getCacheManager().stop();
-            cache2.getCache().getCacheManager().stop();
+            cache1.stop();
+            cache2.stop();
+            stopMgr(cache1);
+            stopMgr(cache2);
 
             System.out.println("Managers killed");
         }
     }
 
 
-    private static UserSessionEntity createEntityInstance(String id) {
+    private static SessionEntityWrapper<UserSessionEntity> createEntityInstance(String id) {
         // Create initial item
         UserSessionEntity session = new UserSessionEntity();
         session.setId(id);
@@ -90,13 +94,13 @@ public class DistributedCacheConcurrentWritesTest {
         clientSession.setTimestamp(1234);
         session.getAuthenticatedClientSessions().put("foo-client", clientSession.getId());
 
-        return session;
+        return new SessionEntityWrapper<>(session);
     }
 
 
     // Reproducer for KEYCLOAK-7443 and KEYCLOAK-7489. The infinite loop can happen if cache.replace(key, old, new) is called and entity was removed on one cluster node in the meantime
-    private static void testConcurrentPut(CacheWrapper<String, UserSessionEntity> cache1,
-                                          CacheWrapper<String, UserSessionEntity> cache2) throws InterruptedException {
+    private static void testConcurrentPut(BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache1,
+                                          BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache2) throws InterruptedException {
 
         // Create workers for concurrent write and start them
         Worker worker1 = new Worker(1, cache1);
@@ -115,21 +119,19 @@ public class DistributedCacheConcurrentWritesTest {
 
         long took = System.currentTimeMillis() - start;
 
-        System.out.println("Test finished. Took: " + took + " ms. Cache size: " + cache1.getCache().size());
+        System.out.println("Test finished. Took: " + took + " ms. Cache size: " + cache1.size());
 
         // JGroups statistics
-        JChannel channel = ((JGroupsTransport)cache1.wrappedCache.getAdvancedCache().getRpcManager().getTransport()).getChannel();
-        System.out.println("Sent MB: " + channel.getSentBytes() / 1000000 + ", sent messages: " + channel.getSentMessages() + ", received MB: " + channel.getReceivedBytes() / 1000000 +
-                ", received messages: " + channel.getReceivedMessages());
+        printStats(cache1);
     }
 
 
     private static class Worker extends Thread {
 
-        private final CacheWrapper<String, UserSessionEntity> cache;
+        private final BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache;
         private final int startIndex;
 
-        public Worker(int threadId, CacheWrapper<String, UserSessionEntity> cache) {
+        public Worker(int threadId, BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache) {
             this.cache = cache;
             this.startIndex = (threadId - 1) * (ITEMS_IN_BATCH * BATCHES_PER_WORKER);
             setName("th-" + threadId);
@@ -141,8 +143,8 @@ public class DistributedCacheConcurrentWritesTest {
             for (int page = 0; page < BATCHES_PER_WORKER ; page++) {
                 int startPageIndex = startIndex + page * ITEMS_IN_BATCH;
 
-                //putItemsClassic(startPageIndex);
-                putItemsAll(startPageIndex);
+                putItemsClassic(startPageIndex);
+                //putItemsAll(startPageIndex);
 
                 System.out.println("Thread " + getName() + ": Saved items from " + startPageIndex + " to " + (startPageIndex + ITEMS_IN_BATCH - 1));
             }
@@ -153,7 +155,7 @@ public class DistributedCacheConcurrentWritesTest {
         private void putItemsClassic(int startPageIndex) {
             for (int i = startPageIndex ; i < (startPageIndex + ITEMS_IN_BATCH) ; i++) {
                 String key = "key-" + startIndex + i;
-                UserSessionEntity session = createEntityInstance(key);
+                SessionEntityWrapper<UserSessionEntity> session = createEntityInstance(key);
                 cache.put(key, session);
             }
         }
@@ -165,53 +167,22 @@ public class DistributedCacheConcurrentWritesTest {
 
             for (int i = startPageIndex ; i < (startPageIndex + ITEMS_IN_BATCH) ; i++) {
                 String key = "key-" + startIndex + i;
-                UserSessionEntity session = createEntityInstance(key);
-                mapp.put(key, new SessionEntityWrapper<>(session));
+                SessionEntityWrapper<UserSessionEntity> session = createEntityInstance(key);
+                mapp.put(key, session);
             }
 
-            cache.getCache().putAll(mapp);
+            cache.putAll(mapp);
         }
     }
 
 
     // Cache creation utils
 
-    public static class CacheWrapper<K, V extends SessionEntity> {
 
-        private final Cache<K, SessionEntityWrapper<V>> wrappedCache;
-
-        public CacheWrapper(Cache<K, SessionEntityWrapper<V>> wrappedCache) {
-            this.wrappedCache = wrappedCache;
-        }
-
-
-        public SessionEntityWrapper<V> get(K key) {
-            SessionEntityWrapper<V> val = wrappedCache.get(key);
-            return val;
-        }
-
-        public void put(K key, V newVal) {
-            SessionEntityWrapper<V> newWrapper = new SessionEntityWrapper<>(newVal);
-            wrappedCache.put(key, newWrapper);
-        }
-
-
-        public boolean replace(K key, SessionEntityWrapper<V> oldVal, V newVal) {
-            SessionEntityWrapper<V> newWrapper = new SessionEntityWrapper<>(newVal);
-            return wrappedCache.replace(key, oldVal, newWrapper);
-        }
-
-        private Cache<K, SessionEntityWrapper<V>> getCache() {
-            return wrappedCache;
-        }
-
-    }
-
-
-    public static CacheWrapper<String, UserSessionEntity> createCache(String nodeName) {
+    public static BasicCache<String, SessionEntityWrapper<UserSessionEntity>> createCache(String nodeName) {
         EmbeddedCacheManager mgr = createManager(nodeName);
-        Cache<String, SessionEntityWrapper<UserSessionEntity>> wrapped = mgr.getCache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME);
-        return new CacheWrapper<>(wrapped);
+        Cache<String, SessionEntityWrapper<UserSessionEntity>> cache = mgr.getCache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME);
+        return cache;
     }
 
 
@@ -247,5 +218,43 @@ public class DistributedCacheConcurrentWritesTest {
         cacheManager.defineConfiguration(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME, distConfig);
         return cacheManager;
 
+    }
+
+
+    public static BasicCache<String, SessionEntityWrapper<UserSessionEntity>> createRemoteCache(String nodeName) {
+        int port = ("node1".equals(nodeName)) ? 12232 : 13232;
+
+        org.infinispan.client.hotrod.configuration.ConfigurationBuilder builder = new org.infinispan.client.hotrod.configuration.ConfigurationBuilder();
+        org.infinispan.client.hotrod.configuration.Configuration cfg = builder
+                .addServer().host("localhost").port(port)
+                .version(ProtocolVersion.PROTOCOL_VERSION_26)
+                .build();
+        RemoteCacheManager mgr = new RemoteCacheManager(cfg);
+        return mgr.getCache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME);
+    }
+
+    // CLEANUP METHODS
+
+    private static void stopMgr(BasicCache cache) {
+        if (cache instanceof Cache) {
+            ((Cache) cache).getCacheManager().stop();
+        } else {
+            ((RemoteCache) cache).getRemoteCacheManager().stop();
+        }
+    }
+
+
+    private static void printStats(BasicCache cache) {
+        if (cache instanceof Cache) {
+            Cache cache1 = (Cache) cache;
+
+            JChannel channel = ((JGroupsTransport)cache1.getAdvancedCache().getRpcManager().getTransport()).getChannel();
+
+            System.out.println("Sent MB: " + channel.getSentBytes() / 1000000 + ", sent messages: " + channel.getSentMessages() + ", received MB: " + channel.getReceivedBytes() / 1000000 +
+                    ", received messages: " + channel.getReceivedMessages());
+        } else {
+            Map<String, String> stats = ((RemoteCache) cache).stats().getStatsMap();
+            System.out.println("Stats: " + stats);
+        }
     }
 }
