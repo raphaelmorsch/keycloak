@@ -17,8 +17,10 @@
 
 package org.keycloak.models.sessions.infinispan.initializer;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.infinispan.Cache;
@@ -28,6 +30,8 @@ import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.manager.EmbeddedCacheManager;
+import org.infinispan.remoting.transport.jgroups.JGroupsTransport;
+import org.jgroups.JChannel;
 import org.junit.Ignore;
 import org.keycloak.common.util.Time;
 import org.keycloak.connections.infinispan.InfinispanConnectionProvider;
@@ -45,8 +49,8 @@ import java.util.UUID;
 @Ignore
 public class DistributedCacheConcurrentWritesTest {
 
-    private static final int BATCHES_PER_WORKER = 100;
-    private static final int ITEMS_IN_BATCH = 1000;
+    private static final int BATCHES_PER_WORKER = 1000;
+    private static final int ITEMS_IN_BATCH = 100;
 
     public static void main(String[] args) throws Exception {
         CacheWrapper<String, UserSessionEntity> cache1 = createCache("node1");
@@ -113,13 +117,10 @@ public class DistributedCacheConcurrentWritesTest {
 
         System.out.println("Test finished. Took: " + took + " ms. Cache size: " + cache1.getCache().size());
 
-//        System.out.println("Took: " + took + " ms for key . Notes count: " + session.getNotes().size() + ", failedReplaceCounter: " + failedReplaceCounter.get()
-//                + ", failedReplaceCounter2: " + failedReplaceCounter2.get());
-
-//        // JGroups statistics
-//        JChannel channel = (JChannel)((JGroupsTransport)cache1.wrappedCache.getAdvancedCache().getRpcManager().getTransport()).getChannel();
-//        System.out.println("Sent MB: " + channel.getSentBytes() / 1000000 + ", sent messages: " + channel.getSentMessages() + ", received MB: " + channel.getReceivedBytes() / 1000000 +
-//                ", received messages: " + channel.getReceivedMessages());
+        // JGroups statistics
+        JChannel channel = ((JGroupsTransport)cache1.wrappedCache.getAdvancedCache().getRpcManager().getTransport()).getChannel();
+        System.out.println("Sent MB: " + channel.getSentBytes() / 1000000 + ", sent messages: " + channel.getSentMessages() + ", received MB: " + channel.getReceivedBytes() / 1000000 +
+                ", received messages: " + channel.getReceivedMessages());
     }
 
 
@@ -140,15 +141,35 @@ public class DistributedCacheConcurrentWritesTest {
             for (int page = 0; page < BATCHES_PER_WORKER ; page++) {
                 int startPageIndex = startIndex + page * ITEMS_IN_BATCH;
 
-                for (int i = startPageIndex ; i < (startPageIndex + ITEMS_IN_BATCH) ; i++) {
-                    String key = "key-" + startIndex + i;
-                    UserSessionEntity session = createEntityInstance(key);
-                    cache.put(key, session);
-                }
+                //putItemsClassic(startPageIndex);
+                putItemsAll(startPageIndex);
 
                 System.out.println("Thread " + getName() + ": Saved items from " + startPageIndex + " to " + (startPageIndex + ITEMS_IN_BATCH - 1));
             }
+        }
 
+
+        // put items 1 by 1
+        private void putItemsClassic(int startPageIndex) {
+            for (int i = startPageIndex ; i < (startPageIndex + ITEMS_IN_BATCH) ; i++) {
+                String key = "key-" + startIndex + i;
+                UserSessionEntity session = createEntityInstance(key);
+                cache.put(key, session);
+            }
+        }
+
+
+        // put all items together
+        private void putItemsAll(int startPageIndex) {
+            Map<String, SessionEntityWrapper<UserSessionEntity>> mapp = new HashMap<>();
+
+            for (int i = startPageIndex ; i < (startPageIndex + ITEMS_IN_BATCH) ; i++) {
+                String key = "key-" + startIndex + i;
+                UserSessionEntity session = createEntityInstance(key);
+                mapp.put(key, new SessionEntityWrapper<>(session));
+            }
+
+            cache.getCache().putAll(mapp);
         }
     }
 
