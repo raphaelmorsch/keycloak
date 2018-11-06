@@ -18,13 +18,14 @@
 package org.keycloak.models.sessions.infinispan.initializer;
 
 import java.io.Serializable;
+import java.util.List;
 
 import org.keycloak.models.KeycloakSession;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public interface SessionLoader<LOADER_CONTEXT extends SessionLoader.LoaderContext> extends Serializable {
+public interface SessionLoader<LOADER_CONTEXT extends SessionLoader.LoaderContext, WORKER_RESULT extends SessionLoader.WorkerResult> extends Serializable {
 
     /**
      * Will be triggered just once on cluster coordinator node to perform some generic initialization tasks (Eg. update DB before starting load).
@@ -46,7 +47,11 @@ public interface SessionLoader<LOADER_CONTEXT extends SessionLoader.LoaderContex
      * @param session
      * @return
      */
-    LOADER_CONTEXT computeLoaderContext(KeycloakSession session);
+    LOADER_CONTEXT computeInitialLoaderContext(KeycloakSession session);
+
+
+    // TODO:mposolda javadoc etc
+    LOADER_CONTEXT computeLoaderContext(KeycloakSession session, int workerId, List<WORKER_RESULT> previousResults);
 
 
     /**
@@ -57,7 +62,10 @@ public interface SessionLoader<LOADER_CONTEXT extends SessionLoader.LoaderContex
      * @param segment to be computed
      * @return
      */
-    boolean loadSessions(KeycloakSession session, LOADER_CONTEXT loaderContext, int segment);
+    WORKER_RESULT loadSessions(KeycloakSession session, LOADER_CONTEXT loaderContext, int segment);
+
+
+    WORKER_RESULT createFailedWorkerResult(LOADER_CONTEXT loaderContext);
 
 
     /**
@@ -84,6 +92,21 @@ public interface SessionLoader<LOADER_CONTEXT extends SessionLoader.LoaderContex
     interface LoaderContext extends Serializable {
 
         int getSegmentsCount();
+
+        int getSegment();
+
+        int getWorkerId();
+
+    }
+
+
+    interface WorkerResult {
+
+        boolean wasSuccessComputation();
+
+        int getSegment();
+
+
 
     }
 }

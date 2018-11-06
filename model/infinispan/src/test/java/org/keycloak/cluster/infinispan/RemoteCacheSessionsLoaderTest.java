@@ -98,7 +98,7 @@ public class RemoteCacheSessionsLoaderTest {
             RemoteCacheSessionsLoader loader = new CustomLoader(cacheName, 64, cache2, remoteCache);
 
             loader.init(null);
-            RemoteCacheSessionsLoaderContext ctx = loader.computeLoaderContext(null);
+            RemoteCacheSessionsLoaderContext ctx = loader.computeInitialLoaderContext(null);
             Assert.assertEquals(ctx.getSessionsTotal(), COUNT);
             Assert.assertEquals(ctx.getIspnSegmentsCount(), 256);
             //Assert.assertEquals(ctx.getSegmentsCount(), 16);

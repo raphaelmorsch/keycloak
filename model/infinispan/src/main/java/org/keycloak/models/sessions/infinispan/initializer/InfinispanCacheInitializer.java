@@ -78,7 +78,7 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
             KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
                 @Override
                 public void run(KeycloakSession session) {
-                    ctx[0] = sessionLoader.computeLoaderContext(session);
+                    ctx[0] = sessionLoader.computeInitialLoaderContext(session);
                 }
 
             });
@@ -89,7 +89,7 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
             KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
                 @Override
                 public void run(KeycloakSession session) {
-                    ctx[0] = sessionLoader.computeLoaderContext(session);
+                    ctx[0] = sessionLoader.computeInitialLoaderContext(session);
                 }
 
             });
@@ -180,32 +180,32 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
     }
 
 
-    public static class WorkerResult implements Serializable {
-
-        private Integer segment;
-        private Boolean success;
-
-        public static WorkerResult create (Integer segment, boolean success) {
-            WorkerResult res = new WorkerResult();
-            res.setSegment(segment);
-            res.setSuccess(success);
-            return res;
-        }
-
-        public Integer getSegment() {
-            return segment;
-        }
-
-        public void setSegment(Integer segment) {
-            this.segment = segment;
-        }
-
-        public Boolean getSuccess() {
-            return success;
-        }
-
-        public void setSuccess(Boolean success) {
-            this.success = success;
-        }
-    }
+//    public static class WorkerResult implements Serializable {
+//
+//        private Integer segment;
+//        private Boolean success;
+//
+//        public static WorkerResult create (Integer segment, boolean success) {
+//            WorkerResult res = new WorkerResult();
+//            res.setSegment(segment);
+//            res.setSuccess(success);
+//            return res;
+//        }
+//
+//        public Integer getSegment() {
+//            return segment;
+//        }
+//
+//        public void setSegment(Integer segment) {
+//            this.segment = segment;
+//        }
+//
+//        public Boolean getSuccess() {
+//            return success;
+//        }
+//
+//        public void setSuccess(Boolean success) {
+//            this.success = success;
+//        }
+//    }
 }

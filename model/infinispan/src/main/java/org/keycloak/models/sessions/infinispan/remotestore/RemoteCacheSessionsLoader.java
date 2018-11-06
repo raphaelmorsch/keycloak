@@ -61,7 +61,7 @@ public class RemoteCacheSessionsLoader implements SessionLoader<RemoteCacheSessi
 
 
     @Override
-    public RemoteCacheSessionsLoaderContext computeLoaderContext(KeycloakSession session) {
+    public RemoteCacheSessionsLoaderContext computeInitialLoaderContext(KeycloakSession session) {
         RemoteCache remoteCache = getRemoteCache(session);
         int sessionsTotal = remoteCache.size();
         int ispnSegments = getIspnSegmentsCount(remoteCache);

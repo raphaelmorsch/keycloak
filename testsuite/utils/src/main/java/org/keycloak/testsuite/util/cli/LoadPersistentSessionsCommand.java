@@ -42,18 +42,16 @@ public class LoadPersistentSessionsCommand extends AbstractCommand {
 
     @Override
     protected void doRunCommand(KeycloakSession session) {
-        //final int iterations = getIntArg(0);
-        //final int offset = getIntArg(1);
-        //final int limit = getIntArg(2);
+        final int workersCount = getIntArg(0);
+        final int limit = getIntArg(1);
+        //int workersCount = 8;
+        //int limit = 64;
 
         AtomicInteger lastSessionRefresh = new AtomicInteger(0);
         AtomicReference<String> lastSessionId = new AtomicReference<>("abc");
 
         AtomicBoolean finished = new AtomicBoolean(false);
         int i=0;
-
-        int workersCount = 8;
-        int limit = 64;
 
         while (!finished.get()) {
             if (i % 16 == 0) {
@@ -99,7 +97,7 @@ public class LoadPersistentSessionsCommand extends AbstractCommand {
 
     @Override
     public String printUsage() {
-        return super.printUsage() + " <iterations-count> <offset> <limit>";
+        return super.printUsage() + " <workers-count (for example 8)> <limit (for example 64)>";
     }
 
 

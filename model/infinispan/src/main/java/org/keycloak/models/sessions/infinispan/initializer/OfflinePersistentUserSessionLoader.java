@@ -66,7 +66,7 @@ public class OfflinePersistentUserSessionLoader implements SessionLoader<Offline
 
 
     @Override
-    public OfflinePersistentUserSessionLoaderContext computeLoaderContext(KeycloakSession session) {
+    public OfflinePersistentUserSessionLoaderContext computeInitialLoaderContext(KeycloakSession session) {
         UserSessionPersisterProvider persister = session.getProvider(UserSessionPersisterProvider.class);
         int sessionsCount = persister.getUserSessionsCount(true);
 
