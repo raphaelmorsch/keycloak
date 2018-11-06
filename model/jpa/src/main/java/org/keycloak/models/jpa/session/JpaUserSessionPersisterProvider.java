@@ -25,6 +25,7 @@ import org.keycloak.models.ModelException;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.UserSessionModel;
+import org.keycloak.models.jpa.entities.UserEntity;
 import org.keycloak.models.session.PersistentAuthenticatedClientSessionAdapter;
 import org.keycloak.models.session.PersistentClientSessionModel;
 import org.keycloak.models.session.PersistentUserSessionAdapter;
@@ -35,6 +36,11 @@ import org.keycloak.storage.StorageId;
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
 import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -180,7 +186,9 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
                     .setParameter("externalClientId", clientStorageId.getExternalId())
                     .executeUpdate();
         }
-        num = em.createNamedQuery("deleteDetachedUserSessions").executeUpdate();
+
+        // TODO:mposolda Run "deleteDetachedUserSessions" separately in dedicated transaction
+        //num = em.createNamedQuery("deleteDetachedUserSessions").executeUpdate();
     }
 
     @Override
@@ -201,16 +209,18 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
 
     @Override
     public void updateAllTimestamps(int time) {
-        int num = em.createNamedQuery("updateClientSessionsTimestamps").setParameter("timestamp", time).executeUpdate();
-        num = em.createNamedQuery("updateUserSessionsTimestamps").setParameter("lastSessionRefresh", time).executeUpdate();
+//        int num = em.createNamedQuery("updateClientSessionsTimestamps").setParameter("timestamp", time).executeUpdate();
+//        num = em.createNamedQuery("updateUserSessionsTimestamps").setParameter("lastSessionRefresh", time).executeUpdate();
     }
 
     @Override
-    public List<UserSessionModel> loadUserSessions(int firstResult, int maxResults, boolean offline) {
+    public List<UserSessionModel> loadUserSessions(int firstResult, int maxResults, boolean offline, int lastSessionRefresh, String lastUserSessionId) {
         String offlineStr = offlineToString(offline);
 
         TypedQuery<PersistentUserSessionEntity> query = em.createNamedQuery("findUserSessions", PersistentUserSessionEntity.class);
         query.setParameter("offline", offlineStr);
+        query.setParameter("lastSessionRefresh", lastSessionRefresh);
+        query.setParameter("lastSessionId", lastUserSessionId);
 
         if (firstResult != -1) {
             query.setFirstResult(firstResult);
@@ -220,6 +230,27 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
         }
 
         List<PersistentUserSessionEntity> results = query.getResultList();
+
+//        CriteriaBuilder builder = em.getCriteriaBuilder();
+//        CriteriaQuery<PersistentUserSessionEntity> queryBuilder = builder.createQuery(PersistentUserSessionEntity.class);
+//        Root<PersistentUserSessionEntity> root = queryBuilder.from(PersistentUserSessionEntity.class);
+//
+//        List<Predicate> predicates = new ArrayList<>();
+//        predicates.add(builder.equal(root.get("offline"), offlineStr));
+//        queryBuilder.where(predicates.toArray(new Predicate[predicates.size()])).orderBy(builder.asc(root.get("userSessionId")));
+//
+//        TypedQuery<PersistentUserSessionEntity> query = em.createQuery(queryBuilder);
+//
+//        if (firstResult != -1) {
+//            query.setFirstResult(firstResult);
+//        }
+//
+//        if (maxResults != -1) {
+//            query.setMaxResults(maxResults);
+//        }
+//
+//        List<PersistentUserSessionEntity> results = query.getResultList();
+
         List<UserSessionModel> result = new ArrayList<>();
         List<String> userSessionIds = new ArrayList<>();
         for (PersistentUserSessionEntity entity : results) {
@@ -228,6 +259,14 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
             result.add(toAdapter(realm, entity));
             userSessionIds.add(entity.getUserSessionId());
         }
+//
+//        // Update timestamps
+//        Query queryUpdateTimestamps = em.createNamedQuery("updateUserSessionsTimestamps");
+//        queryUpdateTimestamps.setParameter("offline", offlineStr);
+//        queryUpdateTimestamps.setParameter("userSessionIds", userSessionIds);
+//        queryUpdateTimestamps.setParameter("lastSessionRefresh", clusterStartupTime);
+//        int num = queryUpdateTimestamps.executeUpdate();
+//        logger.infof("Count updated: %d", num);
 
         Set<String> removedClientUUIDs = new HashSet<>();
 

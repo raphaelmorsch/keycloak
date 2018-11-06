@@ -54,7 +54,7 @@ public interface UserSessionPersisterProvider extends Provider {
     void updateAllTimestamps(int time);
 
     // Called during startup. For each userSession, it loads also clientSessions
-    List<UserSessionModel> loadUserSessions(int firstResult, int maxResults, boolean offline);
+    List<UserSessionModel> loadUserSessions(int firstResult, int maxResults, boolean offline, int lastSessionRefresh, String lastUserSessionId);
 
     int getUserSessionsCount(boolean offline);
 

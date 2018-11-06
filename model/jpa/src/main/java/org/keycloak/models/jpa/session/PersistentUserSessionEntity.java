@@ -36,8 +36,10 @@ import java.io.Serializable;
         @NamedQuery(name="deleteUserSessionsByUser", query="delete from PersistentUserSessionEntity sess where sess.userId = :userId"),
         @NamedQuery(name="deleteDetachedUserSessions", query="delete from PersistentUserSessionEntity sess where NOT EXISTS (select c.userSessionId from PersistentClientSessionEntity c where c.userSessionId = sess.userSessionId)"),
         @NamedQuery(name="findUserSessionsCount", query="select count(sess) from PersistentUserSessionEntity sess where sess.offline = :offline"),
-        @NamedQuery(name="findUserSessions", query="select sess from PersistentUserSessionEntity sess where sess.offline = :offline order by sess.userSessionId"),
-        @NamedQuery(name="updateUserSessionsTimestamps", query="update PersistentUserSessionEntity c set lastSessionRefresh = :lastSessionRefresh"),
+        @NamedQuery(name="findUserSessions", query="select sess from PersistentUserSessionEntity sess where sess.offline = :offline" +
+                " AND (sess.lastSessionRefresh > :lastSessionRefresh OR (sess.lastSessionRefresh = :lastSessionRefresh AND sess.userSessionId > :lastSessionId))" +
+                " order by sess.lastSessionRefresh,sess.userSessionId"),
+        @NamedQuery(name="updateUserSessionsTimestamps", query="update PersistentUserSessionEntity sess set lastSessionRefresh = :lastSessionRefresh where sess.offline = :offline AND sess.userSessionId IN (:userSessionIds)"),
 
 })
 @Table(name="OFFLINE_USER_SESSION")
