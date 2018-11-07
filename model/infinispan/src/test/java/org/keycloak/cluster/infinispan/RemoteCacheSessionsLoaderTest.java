@@ -99,7 +99,7 @@ public class RemoteCacheSessionsLoaderTest {
             RemoteCacheSessionsLoader loader = new CustomLoader(cacheName, 64, cache2, remoteCache);
 
             loader.init(null);
-            RemoteCacheInitialLoaderContext ctx = loader.computeInitialLoaderContext(null);
+            RemoteCacheInitialLoaderContext ctx = loader.computeLoaderContext(null);
             Assert.assertEquals(ctx.getSessionsTotal(), COUNT);
             Assert.assertEquals(ctx.getIspnSegmentsCount(), 256);
             //Assert.assertEquals(ctx.getSegmentsCount(), 16);
@@ -111,7 +111,7 @@ public class RemoteCacheSessionsLoaderTest {
             Set<String> visitedKeys = new HashSet<>();
             for (int currentSegment=0 ; currentSegment<ctx.getSegmentsCount() ; currentSegment++) {
                 logger.infof("Loading segment %d", currentSegment);
-                loader.loadSessions(null, ctx, new SessionLoader.LoaderContext(currentSegment, currentSegment));
+                loader.loadSessions(null, ctx, new SessionLoader.WorkerContext(currentSegment, currentSegment));
 
                 logger.infof("Loaded %d keys for segment %d", cache2.keySet().size(), currentSegment);
                 totalCount = totalCount + cache2.keySet().size();

@@ -64,7 +64,7 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
     @Override
     protected void startLoading() {
         InitializerState state = getStateFromCache();
-        SessionLoader.InitialLoaderContext[] ctx = new SessionLoader.InitialLoaderContext[1];
+        SessionLoader.LoaderContext[] ctx = new SessionLoader.LoaderContext[1];
         if (state == null) {
             // Rather use separate transactions for update and counting
             KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
@@ -78,18 +78,17 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
             KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
                 @Override
                 public void run(KeycloakSession session) {
-                    ctx[0] = sessionLoader.computeInitialLoaderContext(session);
+                    ctx[0] = sessionLoader.computeLoaderContext(session);
                 }
 
             });
 
             state = new InitializerState(ctx[0].getSegmentsCount());
-            saveStateToCache(state);
         } else {
             KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
                 @Override
                 public void run(KeycloakSession session) {
-                    ctx[0] = sessionLoader.computeInitialLoaderContext(session);
+                    ctx[0] = sessionLoader.computeLoaderContext(session);
                 }
 
             });
@@ -102,7 +101,7 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
     }
 
 
-    protected void startLoadingImpl(InitializerState state, SessionLoader.InitialLoaderContext initialCtx) {
+    protected void startLoadingImpl(InitializerState state, SessionLoader.LoaderContext loaderCtx) {
         // Assume each worker has same processor's count
         int processors = Runtime.getRuntime().availableProcessors();
 
@@ -131,10 +130,10 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
 
                 int workerId = 0;
                 for (Integer segment : segments) {
-                    SessionLoader.LoaderContext ctx = sessionLoader.computeLoaderContext(initialCtx, segment, workerId, previousResults);
+                    SessionLoader.WorkerContext workerCtx = sessionLoader.computeWorkerContext(loaderCtx, segment, workerId, previousResults);
 
                     SessionInitializerWorker worker = new SessionInitializerWorker();
-                    worker.setWorkerEnvironment(initialCtx, ctx, sessionLoader);
+                    worker.setWorkerEnvironment(loaderCtx, workerCtx, sessionLoader);
 
                     if (!distributed) {
                         worker.setEnvironment(workCache, null);
@@ -159,9 +158,11 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
                             anyFailure = true;
                         }
                     } catch (InterruptedException ie) {
+                        anyFailure = true;
                         errors++;
                         log.error("Interruped exception when computed future. Errors: " + errors, ie);
                     } catch (ExecutionException ee) {
+                        anyFailure = true;
                         errors++;
                         log.error("ExecutionException when computed future. Errors: " + errors, ee);
                     }
@@ -177,10 +178,12 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
                         state.markSegmentFinished(result.getSegment());
                     }
 
-                    saveStateToCache(state);
-                    log.debugf("New initializer state pushed. The state is: %s", state);
+                    log.debugf("New initializer state is: %s", state);
                 }
             }
+
+            // Push the state after computation is finished
+            saveStateToCache(state);
 
             // Loader callback after the task is finished
             this.sessionLoader.afterAllSessionsLoaded(this);
@@ -193,33 +196,4 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
         }
     }
 
-
-//    public static class WorkerResult implements Serializable {
-//
-//        private Integer segment;
-//        private Boolean success;
-//
-//        public static WorkerResult create (Integer segment, boolean success) {
-//            WorkerResult res = new WorkerResult();
-//            res.setSegment(segment);
-//            res.setSuccess(success);
-//            return res;
-//        }
-//
-//        public Integer getSegment() {
-//            return segment;
-//        }
-//
-//        public void setSegment(Integer segment) {
-//            this.segment = segment;
-//        }
-//
-//        public Boolean getSuccess() {
-//            return success;
-//        }
-//
-//        public void setSuccess(Boolean success) {
-//            this.success = success;
-//        }
-//    }
 }

@@ -23,7 +23,7 @@ import org.keycloak.models.sessions.infinispan.initializer.SessionLoader;
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public class RemoteCacheInitialLoaderContext extends SessionLoader.InitialLoaderContext {
+public class RemoteCacheInitialLoaderContext extends SessionLoader.LoaderContext {
 
     // Count of hash segments for remote infinispan cache. It's by default 256 for distributed/replicated caches
     private final int ispnSegmentsCount;

@@ -25,8 +25,8 @@ import org.keycloak.models.KeycloakSession;
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public interface SessionLoader<INITIAL_LOADER_CONTEXT extends SessionLoader.InitialLoaderContext,
-        LOADER_CONTEXT extends SessionLoader.LoaderContext,
+public interface SessionLoader<LOADER_CONTEXT extends SessionLoader.LoaderContext,
+        WORKER_CONTEXT extends SessionLoader.WorkerContext,
         WORKER_RESULT extends SessionLoader.WorkerResult> extends Serializable {
 
     /**
@@ -41,7 +41,7 @@ public interface SessionLoader<INITIAL_LOADER_CONTEXT extends SessionLoader.Init
 
     /**
      *
-     * Will be triggered just once on cluster coordinator node to count the number of segments and other context data specific to the worker task.
+     * Will be triggered just once on cluster coordinator node to count the number of segments and other context data specific to whole computation.
      * Each segment will be then later computed in one "worker" task
      *
      * This method could be expensive to call, so the "computed" loaderContext object is passed among workers/loaders and needs to be serializable
@@ -49,25 +49,40 @@ public interface SessionLoader<INITIAL_LOADER_CONTEXT extends SessionLoader.Init
      * @param session
      * @return
      */
-    INITIAL_LOADER_CONTEXT computeInitialLoaderContext(KeycloakSession session);
+    LOADER_CONTEXT computeLoaderContext(KeycloakSession session);
 
 
-    // TODO:mposolda javadoc etc
-    LOADER_CONTEXT computeLoaderContext(INITIAL_LOADER_CONTEXT initialCtx, int segment, int workerId, List<WORKER_RESULT> previousResults);
+    /**
+     * Compute the worker context for current iteration
+     *
+     * @param loaderCtx global loader context
+     * @param segment the current segment (page) to compute
+     * @param workerId ID of worker for current worker iteration. Usually the number 0-8 (with single cluster node)
+     * @param previousResults workerResults from previous computation. Can be empty list in case of the operation is triggered for the 1st time
+     * @return
+     */
+    WORKER_CONTEXT computeWorkerContext(LOADER_CONTEXT loaderCtx, int segment, int workerId, List<WORKER_RESULT> previousResults);
 
 
     /**
      * Will be called on all cluster nodes to load the specified page.
      *
      * @param session
-     * @param initialloaderContext loaderContext object, which was already computed before
-     * @param segment to be computed
+     * @param loaderContext global loaderContext object, which was already computed before
+     * @param workerContext for current iteration
      * @return
      */
-    WORKER_RESULT loadSessions(KeycloakSession session, INITIAL_LOADER_CONTEXT initialLoaderContext, LOADER_CONTEXT loaderContext);
+    WORKER_RESULT loadSessions(KeycloakSession session, LOADER_CONTEXT loaderContext, WORKER_CONTEXT workerContext);
 
 
-    WORKER_RESULT createFailedWorkerResult(INITIAL_LOADER_CONTEXT initialLoaderContext, LOADER_CONTEXT loaderContext);
+    /**
+     * Called when it's not possible to compute current iteration and load session for some reason (EG. infinispan not yet fully initialized)
+     *
+     * @param loaderContext
+     * @param workerContext
+     * @return
+     */
+    WORKER_RESULT createFailedWorkerResult(LOADER_CONTEXT loaderContext, WORKER_CONTEXT workerContext);
 
 
     /**
@@ -91,11 +106,11 @@ public interface SessionLoader<INITIAL_LOADER_CONTEXT extends SessionLoader.Init
      * Object, which contains some context data to be used by SessionLoader implementation. It's computed just once and then passed
      * to each {@link SessionLoader}. It needs to be {@link Serializable}
      */
-    class InitialLoaderContext implements Serializable {
+    class LoaderContext implements Serializable {
 
         private final int segmentsCount;
 
-        public InitialLoaderContext(int segmentsCount) {
+        public LoaderContext(int segmentsCount) {
             this.segmentsCount = segmentsCount;
         }
 
@@ -107,12 +122,16 @@ public interface SessionLoader<INITIAL_LOADER_CONTEXT extends SessionLoader.Init
     }
 
 
-    class LoaderContext implements Serializable {
+    /**
+     * Object, which is computed before each worker iteration and contains some data to be used by the corresponding worker iteration.
+     * For example info about which segment/page should be loaded by current worker.
+     */
+    class WorkerContext implements Serializable {
 
         private final int segment;
         private final int workerId;
 
-        public LoaderContext(int segment, int workerId) {
+        public WorkerContext(int segment, int workerId) {
             this.segment = segment;
             this.workerId = workerId;
         }
@@ -129,6 +148,9 @@ public interface SessionLoader<INITIAL_LOADER_CONTEXT extends SessionLoader.Init
     }
 
 
+    /**
+     * Result of single worker iteration
+     */
     class WorkerResult implements Serializable {
 
         private final boolean success;

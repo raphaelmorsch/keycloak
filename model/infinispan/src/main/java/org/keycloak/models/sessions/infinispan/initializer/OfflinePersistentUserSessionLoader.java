@@ -21,7 +21,6 @@ import org.infinispan.Cache;
 import org.infinispan.client.hotrod.exceptions.HotRodClientException;
 import org.infinispan.context.Flag;
 import org.jboss.logging.Logger;
-import org.keycloak.cluster.ClusterProvider;
 import org.keycloak.common.util.Retry;
 import org.keycloak.common.util.Time;
 import org.keycloak.models.KeycloakSession;
@@ -34,8 +33,8 @@ import java.util.List;
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public class OfflinePersistentUserSessionLoader implements SessionLoader<OfflinePersistentInitialLoaderContext,
-        OfflinePersistentLoaderContext, OfflinePersistentWorkerResult>, Serializable {
+public class OfflinePersistentUserSessionLoader implements SessionLoader<OfflinePersistentLoaderContext,
+        OfflinePersistentWorkerContext, OfflinePersistentWorkerResult>, Serializable {
 
     private static final Logger log = Logger.getLogger(OfflinePersistentUserSessionLoader.class);
 
@@ -64,16 +63,16 @@ public class OfflinePersistentUserSessionLoader implements SessionLoader<Offline
 
 
     @Override
-    public OfflinePersistentInitialLoaderContext computeInitialLoaderContext(KeycloakSession session) {
+    public OfflinePersistentLoaderContext computeLoaderContext(KeycloakSession session) {
         UserSessionPersisterProvider persister = session.getProvider(UserSessionPersisterProvider.class);
         int sessionsCount = persister.getUserSessionsCount(true);
 
-        return new OfflinePersistentInitialLoaderContext(sessionsCount, sessionsPerSegment);
+        return new OfflinePersistentLoaderContext(sessionsCount, sessionsPerSegment);
     }
 
 
     @Override
-    public OfflinePersistentLoaderContext computeLoaderContext(OfflinePersistentInitialLoaderContext initialCtx, int segment, int workerId, List<OfflinePersistentWorkerResult> previousResults) {
+    public OfflinePersistentWorkerContext computeWorkerContext(OfflinePersistentLoaderContext loaderCtx, int segment, int workerId, List<OfflinePersistentWorkerResult> previousResults) {
         int lastSessionRefresh;
         String lastSessionId;
         if (previousResults.size() == 0) {
@@ -86,18 +85,18 @@ public class OfflinePersistentUserSessionLoader implements SessionLoader<Offline
         }
 
         // We know the last loaded session. New workers iteration will start from this place
-        return new OfflinePersistentLoaderContext(segment, workerId, lastSessionRefresh, lastSessionId);
+        return new OfflinePersistentWorkerContext(segment, workerId, lastSessionRefresh, lastSessionId);
     }
 
 
     @Override
-    public OfflinePersistentWorkerResult createFailedWorkerResult(OfflinePersistentInitialLoaderContext initialLoaderContext, OfflinePersistentLoaderContext loaderContext) {
-        return new OfflinePersistentWorkerResult(false, loaderContext.getSegment(), loaderContext.getWorkerId(), -1, "abc");
+    public OfflinePersistentWorkerResult createFailedWorkerResult(OfflinePersistentLoaderContext loaderContext, OfflinePersistentWorkerContext workerContext) {
+        return new OfflinePersistentWorkerResult(false, workerContext.getSegment(), workerContext.getWorkerId(), -1, "abc");
     }
 
 
     @Override
-    public OfflinePersistentWorkerResult loadSessions(KeycloakSession session, OfflinePersistentInitialLoaderContext initialCtx, OfflinePersistentLoaderContext ctx) {
+    public OfflinePersistentWorkerResult loadSessions(KeycloakSession session, OfflinePersistentLoaderContext loaderContext, OfflinePersistentWorkerContext ctx) {
         int first = ctx.getWorkerId() * sessionsPerSegment;
 
         log.tracef("Loading sessions for segment: %d", ctx.getSegment());

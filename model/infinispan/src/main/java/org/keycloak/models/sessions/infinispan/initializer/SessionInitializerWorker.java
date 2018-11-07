@@ -36,15 +36,15 @@ public class SessionInitializerWorker implements DistributedCallable<String, Ser
     private static final Logger log = Logger.getLogger(SessionInitializerWorker.class);
 
 
-    private SessionLoader.InitialLoaderContext initialCtx;
-    private SessionLoader.LoaderContext ctx;
+    private SessionLoader.LoaderContext loaderCtx;
+    private SessionLoader.WorkerContext workerCtx;
     private SessionLoader sessionLoader;
 
     private transient Cache<String, Serializable> workCache;
 
-    public void setWorkerEnvironment(SessionLoader.InitialLoaderContext initialCtx, SessionLoader.LoaderContext ctx, SessionLoader sessionLoader) {
-        this.initialCtx = initialCtx;
-        this.ctx = ctx;
+    public void setWorkerEnvironment(SessionLoader.LoaderContext loaderCtx, SessionLoader.WorkerContext workerCtx, SessionLoader sessionLoader) {
+        this.loaderCtx = loaderCtx;
+        this.workerCtx = workerCtx;
         this.sessionLoader = sessionLoader;
     }
 
@@ -56,13 +56,13 @@ public class SessionInitializerWorker implements DistributedCallable<String, Ser
     @Override
     public SessionLoader.WorkerResult call() throws Exception {
         if (log.isTraceEnabled()) {
-            log.tracef("Running computation for segment: %s", ctx.toString());
+            log.tracef("Running computation for segment: %s", workerCtx.toString());
         }
 
         KeycloakSessionFactory sessionFactory = workCache.getAdvancedCache().getComponentRegistry().getComponent(KeycloakSessionFactory.class);
         if (sessionFactory == null) {
             log.debugf("KeycloakSessionFactory not yet set in cache. Worker skipped");
-            return sessionLoader.createFailedWorkerResult(initialCtx, ctx);
+            return sessionLoader.createFailedWorkerResult(loaderCtx, workerCtx);
         }
 
         SessionLoader.WorkerResult[] ref = new SessionLoader.WorkerResult[1];
@@ -70,7 +70,7 @@ public class SessionInitializerWorker implements DistributedCallable<String, Ser
 
             @Override
             public void run(KeycloakSession session) {
-                ref[0] = sessionLoader.loadSessions(session, initialCtx, ctx);
+                ref[0] = sessionLoader.loadSessions(session, loaderCtx, workerCtx);
             }
 
         });

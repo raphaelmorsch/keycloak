@@ -34,16 +34,16 @@ public class InitializerStateTest {
 
     @Test
     public void testOfflineLoaderContext() {
-        OfflinePersistentInitialLoaderContext ctx = new OfflinePersistentInitialLoaderContext(28, 5);
+        OfflinePersistentLoaderContext ctx = new OfflinePersistentLoaderContext(28, 5);
         Assert.assertEquals(ctx.getSegmentsCount(), 6);
 
-        ctx = new OfflinePersistentInitialLoaderContext(19, 5);
+        ctx = new OfflinePersistentLoaderContext(19, 5);
         Assert.assertEquals(ctx.getSegmentsCount(), 4);
 
-        ctx = new OfflinePersistentInitialLoaderContext(20, 5);
+        ctx = new OfflinePersistentLoaderContext(20, 5);
         Assert.assertEquals(ctx.getSegmentsCount(), 4);
 
-        ctx = new OfflinePersistentInitialLoaderContext(21, 5);
+        ctx = new OfflinePersistentLoaderContext(21, 5);
         Assert.assertEquals(ctx.getSegmentsCount(), 5);
     }
 
@@ -77,7 +77,7 @@ public class InitializerStateTest {
 
     @Test
     public void testComputationState() {
-        OfflinePersistentInitialLoaderContext ctx = new OfflinePersistentInitialLoaderContext(28, 5);
+        OfflinePersistentLoaderContext ctx = new OfflinePersistentLoaderContext(28, 5);
         Assert.assertEquals(ctx.getSegmentsCount(), 6);
 
         InitializerState state = new InitializerState(ctx.getSegmentsCount());

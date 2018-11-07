@@ -22,21 +22,41 @@ package org.keycloak.models.sessions.infinispan.initializer;
  */
 public class OfflinePersistentLoaderContext extends SessionLoader.LoaderContext {
 
-    private final int lastLastSessionRefresh;
-    private final String lastSessionId;
+    private final int sessionsTotal;
+    private final int sessionsPerSegment;
 
-    public OfflinePersistentLoaderContext(int segment, int workerId, int lastLastSessionRefresh, String lastSessionId) {
-        super(segment, workerId);
-        this.lastLastSessionRefresh = lastLastSessionRefresh;
-        this.lastSessionId = lastSessionId;
+    public OfflinePersistentLoaderContext(int sessionsTotal, int sessionsPerSegment) {
+        super(computeSegmentsCount(sessionsTotal, sessionsPerSegment));
+        this.sessionsTotal = sessionsTotal;
+        this.sessionsPerSegment = sessionsPerSegment;
     }
 
 
-    public int getLastLastSessionRefresh() {
-        return lastLastSessionRefresh;
+    private static int computeSegmentsCount(int sessionsTotal, int sessionsPerSegment) {
+        int segmentsCount = sessionsTotal / sessionsPerSegment;
+        if (sessionsTotal % sessionsPerSegment >= 1) {
+            segmentsCount = segmentsCount + 1;
+        }
+        return segmentsCount;
     }
 
-    public String getLastSessionId() {
-        return lastSessionId;
+
+    public int getSessionsTotal() {
+        return sessionsTotal;
+    }
+
+    public int getSessionsPerSegment() {
+        return sessionsPerSegment;
+    }
+
+
+    @Override
+    public String toString() {
+        return new StringBuilder("OfflinePersistentLoaderContext [ ")
+                .append(" sessionsTotal: ").append(sessionsTotal)
+                .append(", sessionsPerSegment: ").append(sessionsPerSegment)
+                .append(", segmentsCount: ").append(getSegmentsCount())
+                .append(" ]")
+                .toString();
     }
 }
