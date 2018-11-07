@@ -113,52 +113,6 @@ public class UserSessionPersisterProviderTest {
         assertSessionLoaded(loadedSessions, origSessions[2].getId(), session.users().getUserByUsername("user2", realm), "127.0.0.3", started, started, "test-app");
     }
 
-    @Test
-    public void testUpdateTimestamps() {
-        // Create some sessions in infinispan
-        int started = Time.currentTime();
-        UserSessionModel[] origSessions = createSessions();
-
-        resetSession();
-
-        // Persist 3 created userSessions and clientSessions as offline
-        ClientModel testApp = realm.getClientByClientId("test-app");
-        List<UserSessionModel> userSessions = session.sessions().getUserSessions(realm, testApp);
-        for (UserSessionModel userSession : userSessions) {
-            persistUserSession(userSession, true);
-        }
-
-        // Persist 1 online session
-        UserSessionModel userSession = session.sessions().getUserSession(realm, origSessions[0].getId());
-        persistUserSession(userSession, false);
-
-        resetSession();
-
-        // update timestamps
-        int newTime = started + 50;
-        persister.updateAllTimestamps(newTime);
-
-        // TODO:mposolda
-//        // Assert online session
-//        List<UserSessionModel> loadedSessions = loadPersistedSessionsPaginated(false, 1, 1, 1);
-//        Assert.assertEquals(2, assertTimestampsUpdated(loadedSessions, newTime));
-//
-//        // Assert offline sessions
-//        loadedSessions = loadPersistedSessionsPaginated(true, 2, 2, 3);
-//        Assert.assertEquals(4, assertTimestampsUpdated(loadedSessions, newTime));
-    }
-
-    private int assertTimestampsUpdated(List<UserSessionModel> loadedSessions, int expectedTime) {
-        int clientSessionsCount = 0;
-        for (UserSessionModel loadedSession : loadedSessions) {
-            Assert.assertEquals(expectedTime, loadedSession.getLastSessionRefresh());
-            for (AuthenticatedClientSessionModel clientSession : loadedSession.getAuthenticatedClientSessions().values()) {
-                Assert.assertEquals(expectedTime, clientSession.getTimestamp());
-                clientSessionsCount++;
-            }
-        }
-        return clientSessionsCount;
-    }
 
     @Test
     public void testUpdateAndRemove() {

@@ -35,7 +35,8 @@ import org.keycloak.models.UserSessionModel;
 import org.keycloak.models.UserSessionProvider;
 import org.keycloak.models.session.UserSessionPersisterProvider;
 import org.keycloak.models.sessions.infinispan.changes.Tasks;
-import org.keycloak.models.sessions.infinispan.changes.sessions.LastSessionRefreshStore;
+import org.keycloak.models.sessions.infinispan.changes.sessions.CrossDCLastSessionRefreshStore;
+import org.keycloak.models.sessions.infinispan.changes.sessions.PersisterLastSessionRefreshStore;
 import org.keycloak.models.sessions.infinispan.remotestore.RemoteCacheInvoker;
 import org.keycloak.models.sessions.infinispan.changes.SessionEntityWrapper;
 import org.keycloak.models.sessions.infinispan.changes.InfinispanChangelogBasedTransaction;
@@ -73,7 +74,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -100,15 +100,17 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
 
     protected final SessionEventsSenderTransaction clusterEventsSenderTx;
 
-    protected final LastSessionRefreshStore lastSessionRefreshStore;
-    protected final LastSessionRefreshStore offlineLastSessionRefreshStore;
+    protected final CrossDCLastSessionRefreshStore lastSessionRefreshStore;
+    protected final CrossDCLastSessionRefreshStore offlineLastSessionRefreshStore;
+    protected final PersisterLastSessionRefreshStore persisterLastSessionRefreshStore;
 
     protected final InfinispanKeyGenerator keyGenerator;
 
     public InfinispanUserSessionProvider(KeycloakSession session,
                                          RemoteCacheInvoker remoteCacheInvoker,
-                                         LastSessionRefreshStore lastSessionRefreshStore,
-                                         LastSessionRefreshStore offlineLastSessionRefreshStore,
+                                         CrossDCLastSessionRefreshStore lastSessionRefreshStore,
+                                         CrossDCLastSessionRefreshStore offlineLastSessionRefreshStore,
+                                         PersisterLastSessionRefreshStore persisterLastSessionRefreshStore,
                                          InfinispanKeyGenerator keyGenerator,
                                          Cache<String, SessionEntityWrapper<UserSessionEntity>> sessionCache,
                                          Cache<String, SessionEntityWrapper<UserSessionEntity>> offlineSessionCache,
@@ -134,6 +136,7 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
 
         this.lastSessionRefreshStore = lastSessionRefreshStore;
         this.offlineLastSessionRefreshStore = offlineLastSessionRefreshStore;
+        this.persisterLastSessionRefreshStore = persisterLastSessionRefreshStore;
         this.keyGenerator = keyGenerator;
 
         session.getTransactionManager().enlistAfterCompletion(clusterEventsSenderTx);
@@ -160,12 +163,16 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
         return offline ? offlineClientSessionTx : clientSessionTx;
     }
 
-    protected LastSessionRefreshStore getLastSessionRefreshStore() {
+    protected CrossDCLastSessionRefreshStore getLastSessionRefreshStore() {
         return lastSessionRefreshStore;
     }
 
-    protected LastSessionRefreshStore getOfflineLastSessionRefreshStore() {
+    protected CrossDCLastSessionRefreshStore getOfflineLastSessionRefreshStore() {
         return offlineLastSessionRefreshStore;
+    }
+
+    protected PersisterLastSessionRefreshStore getPersisterLastSessionRefreshStore() {
+        return persisterLastSessionRefreshStore;
     }
 
     @Override
@@ -532,7 +539,6 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
     }
 
     private void removeExpiredOfflineUserSessions(RealmModel realm) {
-        UserSessionPersisterProvider persister = session.getProvider(UserSessionPersisterProvider.class);
         int expiredOffline = Time.currentTime() - realm.getOfflineSessionIdleTimeout() - SessionTimeoutHelper.PERIODIC_CLEANER_IDLE_TIMEOUT_WINDOW_SECONDS;
 
         // Each cluster node cleanups just local sessions, which are those owned by himself (+ few more taking l1 cache into account)
@@ -567,8 +573,6 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
                             futures.addTask(f);
                         });
 
-                        // TODO:mposolda can be likely optimized to delete all expired at one step
-                        persister.removeUserSession( userSessionEntity.getId(), true);
                     }
                 });
 

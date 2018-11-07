@@ -18,30 +18,27 @@
 package org.keycloak.models.jpa.session;
 
 import org.jboss.logging.Logger;
+import org.keycloak.common.util.Time;
 import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.ModelException;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.UserSessionModel;
-import org.keycloak.models.jpa.entities.UserEntity;
 import org.keycloak.models.session.PersistentAuthenticatedClientSessionAdapter;
 import org.keycloak.models.session.PersistentClientSessionModel;
 import org.keycloak.models.session.PersistentUserSessionAdapter;
 import org.keycloak.models.session.PersistentUserSessionModel;
 import org.keycloak.models.session.UserSessionPersisterProvider;
+import org.keycloak.models.utils.SessionTimeoutHelper;
 import org.keycloak.storage.StorageId;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
 import javax.persistence.TypedQuery;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -201,16 +198,47 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
         num = em.createNamedQuery("deleteUserSessionsByUser").setParameter("userId", userId).executeUpdate();
     }
 
+
     @Override
-    public void clearDetachedUserSessions() {
-        int num = em.createNamedQuery("deleteDetachedClientSessions").executeUpdate();
-        num = em.createNamedQuery("deleteDetachedUserSessions").executeUpdate();
+    public void updateLastSessionRefreshes(RealmModel realm, int lastSessionRefresh, Collection<String> userSessionIds, boolean offline) {
+        int us = em.createNamedQuery("updateUserSessionLastSessionRefresh")
+                .setParameter("lastSessionRefresh", lastSessionRefresh)
+                .setParameter("realmId", realm.getId())
+                .setParameter("offline", offline)
+                .setParameter("userSessionIds", userSessionIds)
+                .executeUpdate();
+
+        int cs = em.createNamedQuery("updateClientSessionTimestamps")
+                .setParameter("timestamp", lastSessionRefresh)
+                .setParameter("realmId", realm.getId())
+                .setParameter("offline", offline)
+                .setParameter("userSessionIds", userSessionIds)
+                .executeUpdate();
+
+        // TODO:mposolda debug
+        logger.infof("Updated lastSessionRefresh of %d user sessions. Updated timestamps of %d client sessions",us, cs);
     }
 
     @Override
-    public void updateAllTimestamps(int time) {
-//        int num = em.createNamedQuery("updateClientSessionsTimestamps").setParameter("timestamp", time).executeUpdate();
-//        num = em.createNamedQuery("updateUserSessionsTimestamps").setParameter("lastSessionRefresh", time).executeUpdate();
+    public void removeExpired(RealmModel realm) {
+        int expiredOffline = Time.currentTime() - realm.getOfflineSessionIdleTimeout() - SessionTimeoutHelper.PERIODIC_CLEANER_IDLE_TIMEOUT_WINDOW_SECONDS;
+
+        // TODO:mposolda: trace
+        logger.infof("Trigger removing expired user sessions");
+
+        int us = em.createNamedQuery("deleteExpiredUserSessions")
+                .setParameter("realmId", realm.getId())
+                .setParameter("lastSessionRefresh", expiredOffline)
+                .executeUpdate();
+
+        int cs = em.createNamedQuery("deleteExpiredClientSessions")
+                .setParameter("realmId", realm.getId())
+                .setParameter("timestamp", expiredOffline)
+                .executeUpdate();
+
+        // TODO:mposolda debug
+        logger.infof("Removed %d expired user sessions and %d expired client sessions",us, cs);
+
     }
 
     @Override
@@ -231,6 +259,7 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
 
         List<PersistentUserSessionEntity> results = query.getResultList();
 
+        // TODO:mposolda
 //        CriteriaBuilder builder = em.getCriteriaBuilder();
 //        CriteriaQuery<PersistentUserSessionEntity> queryBuilder = builder.createQuery(PersistentUserSessionEntity.class);
 //        Root<PersistentUserSessionEntity> root = queryBuilder.from(PersistentUserSessionEntity.class);
@@ -259,6 +288,8 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
             result.add(toAdapter(realm, entity));
             userSessionIds.add(entity.getUserSessionId());
         }
+
+        // TODO:mposolda
 //
 //        // Update timestamps
 //        Query queryUpdateTimestamps = em.createNamedQuery("updateUserSessionsTimestamps");

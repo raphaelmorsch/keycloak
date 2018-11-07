@@ -54,11 +54,6 @@ public class OfflinePersistentUserSessionLoader implements SessionLoader<Offline
 
     @Override
     public void init(KeycloakSession session) {
-        UserSessionPersisterProvider persister = session.getProvider(UserSessionPersisterProvider.class);
-
-        log.debug("Clearing detached sessions from persistent storage");
-
-        persister.clearDetachedUserSessions();
     }
 
 

@@ -24,6 +24,7 @@ import org.keycloak.models.UserModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.provider.Provider;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -47,11 +48,12 @@ public interface UserSessionPersisterProvider extends Provider {
     void onClientRemoved(RealmModel realm, ClientModel client);
     void onUserRemoved(RealmModel realm, UserModel user);
 
-    // Called at startup to remove userSessions without any clientSession
-    void clearDetachedUserSessions();
+    // Bulk update of lastSessionRefresh of all specified userSessions to the given value. The timestamps of all the corresponding clientSessions
+    // attached to those userSessions will be updated as well to the same value
+    void updateLastSessionRefreshes(RealmModel realm, int lastSessionRefresh, Collection<String> userSessionIds, boolean offline);
 
-    // Update "lastSessionRefresh" of all userSessions and "timestamp" of all clientSessions to specified time
-    void updateAllTimestamps(int time);
+    // Remove userSessions and clientSessions, which are expired
+    void removeExpired(RealmModel realm);
 
     // Called during startup. For each userSession, it loads also clientSessions
     List<UserSessionModel> loadUserSessions(int firstResult, int maxResults, boolean offline, int lastSessionRefresh, String lastUserSessionId);
