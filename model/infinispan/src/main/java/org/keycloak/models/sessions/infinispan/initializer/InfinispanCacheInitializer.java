@@ -64,7 +64,7 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
     @Override
     protected void startLoading() {
         InitializerState state = getStateFromCache();
-        SessionLoader.LoaderContext[] ctx = new SessionLoader.LoaderContext[1];
+        SessionLoader.InitialLoaderContext[] ctx = new SessionLoader.InitialLoaderContext[1];
         if (state == null) {
             // Rather use separate transactions for update and counting
             KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
@@ -102,7 +102,7 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
     }
 
 
-    protected void startLoadingImpl(InitializerState state, SessionLoader.LoaderContext ctx) {
+    protected void startLoadingImpl(InitializerState state, SessionLoader.InitialLoaderContext initialCtx) {
         // Assume each worker has same processor's count
         int processors = Runtime.getRuntime().availableProcessors();
 
@@ -126,29 +126,37 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
                     log.trace("unfinished segments for this iteration: " + segments);
                 }
 
-                List<Future<WorkerResult>> futures = new LinkedList<>();
+                List<Future<SessionLoader.WorkerResult>> futures = new LinkedList<>();
+                List<SessionLoader.WorkerResult> previousResults = new LinkedList<>();
+
+                int workerId = 0;
                 for (Integer segment : segments) {
+                    SessionLoader.LoaderContext ctx = sessionLoader.computeLoaderContext(initialCtx, segment, workerId, previousResults);
+
                     SessionInitializerWorker worker = new SessionInitializerWorker();
-                    worker.setWorkerEnvironment(segment, ctx, sessionLoader);
+                    worker.setWorkerEnvironment(initialCtx, ctx, sessionLoader);
+
                     if (!distributed) {
                         worker.setEnvironment(workCache, null);
                     }
 
-                    Future<WorkerResult> future = executorService.submit(worker);
+                    Future<SessionLoader.WorkerResult> future = executorService.submit(worker);
                     futures.add(future);
+
+                    workerId++;
                 }
 
-                for (Future<WorkerResult> future : futures) {
+                boolean anyFailure = false;
+                for (Future<SessionLoader.WorkerResult> future : futures) {
                     try {
-                        WorkerResult result = future.get();
+                        SessionLoader.WorkerResult result = future.get();
+                        previousResults.add(result);
 
-                        if (result.getSuccess()) {
-                            int computedSegment = result.getSegment();
-                            state.markSegmentFinished(computedSegment);
-                        } else {
+                        if (!result.isSuccess()) {
                             if (log.isTraceEnabled()) {
                                 log.tracef("Segment %d failed to compute", result.getSegment());
                             }
+                            anyFailure = true;
                         }
                     } catch (InterruptedException ie) {
                         errors++;
@@ -163,9 +171,15 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
                     throw new RuntimeException("Maximum count of worker errors occured. Limit was " + maxErrors + ". See server.log for details");
                 }
 
-                saveStateToCache(state);
+                // Save just if no error happened. Otherwise re-compute
+                if (!anyFailure) {
+                    for (SessionLoader.WorkerResult result : previousResults) {
+                        state.markSegmentFinished(result.getSegment());
+                    }
 
-                log.debugf("New initializer state pushed. The state is: %s", state);
+                    saveStateToCache(state);
+                    log.debugf("New initializer state pushed. The state is: %s", state);
+                }
             }
 
             // Loader callback after the task is finished

@@ -27,23 +27,23 @@ import org.keycloak.models.utils.KeycloakModelUtils;
 
 import java.io.Serializable;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public class SessionInitializerWorker<LOADER_CONTEXT extends SessionLoader.LoaderContext, WORKER_RESULT extends SessionLoader.WorkerResult> implements DistributedCallable<String, Serializable, WORKER_RESULT>, Serializable {
+public class SessionInitializerWorker implements DistributedCallable<String, Serializable, SessionLoader.WorkerResult>, Serializable {
 
     private static final Logger log = Logger.getLogger(SessionInitializerWorker.class);
 
-    private int segment;
-    private LOADER_CONTEXT ctx;
-    private SessionLoader<LOADER_CONTEXT, WORKER_RESULT> sessionLoader;
+
+    private SessionLoader.InitialLoaderContext initialCtx;
+    private SessionLoader.LoaderContext ctx;
+    private SessionLoader sessionLoader;
 
     private transient Cache<String, Serializable> workCache;
 
-    public void setWorkerEnvironment(int segment, LOADER_CONTEXT ctx, SessionLoader<LOADER_CONTEXT, WORKER_RESULT> sessionLoader) {
-        this.segment = segment;
+    public void setWorkerEnvironment(SessionLoader.InitialLoaderContext initialCtx, SessionLoader.LoaderContext ctx, SessionLoader sessionLoader) {
+        this.initialCtx = initialCtx;
         this.ctx = ctx;
         this.sessionLoader = sessionLoader;
     }
@@ -54,28 +54,28 @@ public class SessionInitializerWorker<LOADER_CONTEXT extends SessionLoader.Loade
     }
 
     @Override
-    public WORKER_RESULT call() throws Exception {
+    public SessionLoader.WorkerResult call() throws Exception {
         if (log.isTraceEnabled()) {
-            log.tracef("Running computation for segment: %d", segment);
+            log.tracef("Running computation for segment: %s", ctx.toString());
         }
 
         KeycloakSessionFactory sessionFactory = workCache.getAdvancedCache().getComponentRegistry().getComponent(KeycloakSessionFactory.class);
         if (sessionFactory == null) {
             log.debugf("KeycloakSessionFactory not yet set in cache. Worker skipped");
-            return sessionLoader.createFailedWorkerResult(ctx);
+            return sessionLoader.createFailedWorkerResult(initialCtx, ctx);
         }
 
-        AtomicReference<WORKER_RESULT> ref = new AtomicReference<>();
+        SessionLoader.WorkerResult[] ref = new SessionLoader.WorkerResult[1];
         KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
 
             @Override
             public void run(KeycloakSession session) {
-                ref.set(sessionLoader.loadSessions(session, ctx, segment));
+                ref[0] = sessionLoader.loadSessions(session, initialCtx, ctx);
             }
 
         });
 
-        return ref.get();
+        return ref[0];
     }
 
 }

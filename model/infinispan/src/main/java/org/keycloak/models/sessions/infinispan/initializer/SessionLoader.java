@@ -25,7 +25,9 @@ import org.keycloak.models.KeycloakSession;
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public interface SessionLoader<LOADER_CONTEXT extends SessionLoader.LoaderContext, WORKER_RESULT extends SessionLoader.WorkerResult> extends Serializable {
+public interface SessionLoader<INITIAL_LOADER_CONTEXT extends SessionLoader.InitialLoaderContext,
+        LOADER_CONTEXT extends SessionLoader.LoaderContext,
+        WORKER_RESULT extends SessionLoader.WorkerResult> extends Serializable {
 
     /**
      * Will be triggered just once on cluster coordinator node to perform some generic initialization tasks (Eg. update DB before starting load).
@@ -47,25 +49,25 @@ public interface SessionLoader<LOADER_CONTEXT extends SessionLoader.LoaderContex
      * @param session
      * @return
      */
-    LOADER_CONTEXT computeInitialLoaderContext(KeycloakSession session);
+    INITIAL_LOADER_CONTEXT computeInitialLoaderContext(KeycloakSession session);
 
 
     // TODO:mposolda javadoc etc
-    LOADER_CONTEXT computeLoaderContext(KeycloakSession session, int workerId, List<WORKER_RESULT> previousResults);
+    LOADER_CONTEXT computeLoaderContext(INITIAL_LOADER_CONTEXT initialCtx, int segment, int workerId, List<WORKER_RESULT> previousResults);
 
 
     /**
      * Will be called on all cluster nodes to load the specified page.
      *
      * @param session
-     * @param loaderContext loaderContext object, which was already computed before
+     * @param initialloaderContext loaderContext object, which was already computed before
      * @param segment to be computed
      * @return
      */
-    WORKER_RESULT loadSessions(KeycloakSession session, LOADER_CONTEXT loaderContext, int segment);
+    WORKER_RESULT loadSessions(KeycloakSession session, INITIAL_LOADER_CONTEXT initialLoaderContext, LOADER_CONTEXT loaderContext);
 
 
-    WORKER_RESULT createFailedWorkerResult(LOADER_CONTEXT loaderContext);
+    WORKER_RESULT createFailedWorkerResult(INITIAL_LOADER_CONTEXT initialLoaderContext, LOADER_CONTEXT loaderContext);
 
 
     /**
@@ -89,24 +91,71 @@ public interface SessionLoader<LOADER_CONTEXT extends SessionLoader.LoaderContex
      * Object, which contains some context data to be used by SessionLoader implementation. It's computed just once and then passed
      * to each {@link SessionLoader}. It needs to be {@link Serializable}
      */
-    interface LoaderContext extends Serializable {
+    class InitialLoaderContext implements Serializable {
 
-        int getSegmentsCount();
+        private final int segmentsCount;
 
-        int getSegment();
+        public InitialLoaderContext(int segmentsCount) {
+            this.segmentsCount = segmentsCount;
+        }
 
-        int getWorkerId();
+
+        public int getSegmentsCount() {
+            return segmentsCount;
+        }
 
     }
 
 
-    interface WorkerResult {
+    class LoaderContext implements Serializable {
 
-        boolean wasSuccessComputation();
+        private final int segment;
+        private final int workerId;
 
-        int getSegment();
+        public LoaderContext(int segment, int workerId) {
+            this.segment = segment;
+            this.workerId = workerId;
+        }
 
 
+        public int getSegment() {
+            return this.segment;
+        }
+
+
+        public int getWorkerId() {
+            return this.workerId;
+        }
+    }
+
+
+    class WorkerResult implements Serializable {
+
+        private final boolean success;
+        private final int segment;
+        private final int workerId;
+
+
+        public WorkerResult(boolean success, int segment, int workerId) {
+            this.success = success;
+            this.segment = segment;
+            this.workerId = workerId;
+        }
+
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+
+        public int getSegment() {
+            return segment;
+        }
+
+
+        public int getWorkerId() {
+            return workerId;
+        }
 
     }
 }

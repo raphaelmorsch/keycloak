@@ -19,8 +19,7 @@ package org.keycloak.models.sessions.infinispan.initializer;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.keycloak.models.cache.infinispan.UserCacheSession;
-import org.keycloak.models.sessions.infinispan.remotestore.RemoteCacheSessionsLoaderContext;
+import org.keycloak.models.sessions.infinispan.remotestore.RemoteCacheInitialLoaderContext;
 import org.keycloak.storage.CacheableStorageProviderModel;
 
 import java.text.DateFormat;
@@ -35,16 +34,16 @@ public class InitializerStateTest {
 
     @Test
     public void testOfflineLoaderContext() {
-        OfflinePersistentUserSessionLoaderContext ctx = new OfflinePersistentUserSessionLoaderContext(28, 5);
+        OfflinePersistentInitialLoaderContext ctx = new OfflinePersistentInitialLoaderContext(28, 5);
         Assert.assertEquals(ctx.getSegmentsCount(), 6);
 
-        ctx = new OfflinePersistentUserSessionLoaderContext(19, 5);
+        ctx = new OfflinePersistentInitialLoaderContext(19, 5);
         Assert.assertEquals(ctx.getSegmentsCount(), 4);
 
-        ctx = new OfflinePersistentUserSessionLoaderContext(20, 5);
+        ctx = new OfflinePersistentInitialLoaderContext(20, 5);
         Assert.assertEquals(ctx.getSegmentsCount(), 4);
 
-        ctx = new OfflinePersistentUserSessionLoaderContext(21, 5);
+        ctx = new OfflinePersistentInitialLoaderContext(21, 5);
         Assert.assertEquals(ctx.getSegmentsCount(), 5);
     }
 
@@ -71,14 +70,14 @@ public class InitializerStateTest {
     }
 
     private void assertSegmentsForRemoteLoader(int sessionsTotal, int sessionsPerSegment, int ispnSegmentsCount, int expectedSegments) {
-        RemoteCacheSessionsLoaderContext ctx = new RemoteCacheSessionsLoaderContext(ispnSegmentsCount, sessionsPerSegment, sessionsTotal);
+        RemoteCacheInitialLoaderContext ctx = new RemoteCacheInitialLoaderContext(ispnSegmentsCount, sessionsPerSegment, sessionsTotal);
         Assert.assertEquals(expectedSegments, ctx.getSegmentsCount());
     }
 
 
     @Test
     public void testComputationState() {
-        OfflinePersistentUserSessionLoaderContext ctx = new OfflinePersistentUserSessionLoaderContext(28, 5);
+        OfflinePersistentInitialLoaderContext ctx = new OfflinePersistentInitialLoaderContext(28, 5);
         Assert.assertEquals(ctx.getSegmentsCount(), 6);
 
         InitializerState state = new InitializerState(ctx.getSegmentsCount());

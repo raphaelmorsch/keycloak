@@ -19,6 +19,7 @@ package org.keycloak.models.sessions.infinispan.remotestore;
 
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,7 +43,7 @@ import static org.infinispan.client.hotrod.impl.Util.await;
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public class RemoteCacheSessionsLoader implements SessionLoader<RemoteCacheSessionsLoaderContext>, Serializable {
+public class RemoteCacheSessionsLoader implements SessionLoader<RemoteCacheInitialLoaderContext, SessionLoader.LoaderContext, SessionLoader.WorkerResult>, Serializable {
 
     private static final Logger log = Logger.getLogger(RemoteCacheSessionsLoader.class);
 
@@ -61,12 +62,12 @@ public class RemoteCacheSessionsLoader implements SessionLoader<RemoteCacheSessi
 
 
     @Override
-    public RemoteCacheSessionsLoaderContext computeInitialLoaderContext(KeycloakSession session) {
+    public RemoteCacheInitialLoaderContext computeInitialLoaderContext(KeycloakSession session) {
         RemoteCache remoteCache = getRemoteCache(session);
         int sessionsTotal = remoteCache.size();
         int ispnSegments = getIspnSegmentsCount(remoteCache);
 
-        return new RemoteCacheSessionsLoaderContext(ispnSegments, sessionsPerSegment, sessionsTotal);
+        return new RemoteCacheInitialLoaderContext(ispnSegments, sessionsPerSegment, sessionsTotal);
 
     }
 
@@ -92,26 +93,38 @@ public class RemoteCacheSessionsLoader implements SessionLoader<RemoteCacheSessi
 
 
     @Override
-    public boolean loadSessions(KeycloakSession session, RemoteCacheSessionsLoaderContext context, int segment) {
+    public LoaderContext computeLoaderContext(RemoteCacheInitialLoaderContext initialCtx, int segment, int workerId, List<WorkerResult> previousResults) {
+        return new LoaderContext(segment, workerId);
+    }
+
+
+    @Override
+    public WorkerResult createFailedWorkerResult(RemoteCacheInitialLoaderContext initialLoaderContext, LoaderContext loaderContext) {
+        return new WorkerResult(false, loaderContext.getSegment(), loaderContext.getWorkerId());
+    }
+
+
+    @Override
+    public WorkerResult loadSessions(KeycloakSession session, RemoteCacheInitialLoaderContext initialCtx, LoaderContext ctx) {
         Cache cache = getCache(session);
         Cache decoratedCache = cache.getAdvancedCache().withFlags(Flag.SKIP_CACHE_LOAD, Flag.SKIP_CACHE_STORE, Flag.IGNORE_RETURN_VALUES);
         RemoteCache remoteCache = getRemoteCache(session);
 
-        Set<Integer> myIspnSegments = getMyIspnSegments(segment, context);
+        Set<Integer> myIspnSegments = getMyIspnSegments(ctx.getSegment(), initialCtx);
 
-        log.debugf("Will do bulk load of sessions from remote cache '%s' . Segment: %d", cache.getName(), segment);
+        log.debugf("Will do bulk load of sessions from remote cache '%s' . Segment: %d", cache.getName(), ctx.getSegment());
 
         CloseableIterator<Map.Entry> iterator = null;
         int countLoaded = 0;
         try {
-            iterator = remoteCache.retrieveEntries(null, myIspnSegments, context.getSessionsPerSegment());
+            iterator = remoteCache.retrieveEntries(null, myIspnSegments, initialCtx.getSessionsPerSegment());
             while (iterator.hasNext()) {
                 countLoaded++;
                 Map.Entry entry = iterator.next();
                 decoratedCache.putAsync(entry.getKey(), entry.getValue());
             }
         } catch (RuntimeException e) {
-            log.warnf(e, "Error loading sessions from remote cache '%s' for segment '%d'", remoteCache.getName(), segment);
+            log.warnf(e, "Error loading sessions from remote cache '%s' for segment '%d'", remoteCache.getName(), ctx.getSegment());
             throw e;
         } finally {
             if (iterator != null) {
@@ -119,14 +132,14 @@ public class RemoteCacheSessionsLoader implements SessionLoader<RemoteCacheSessi
             }
         }
 
-        log.debugf("Successfully finished loading sessions from cache '%s' . Segment: %d, Count of sessions loaded: %d", cache.getName(), segment, countLoaded);
+        log.debugf("Successfully finished loading sessions from cache '%s' . Segment: %d, Count of sessions loaded: %d", cache.getName(), ctx.getSegment(), countLoaded);
 
-        return true;
+        return new WorkerResult(true, ctx.getSegment(), ctx.getWorkerId());
     }
 
 
     // Compute set of ISPN segments into 1 "worker" segment
-    protected Set<Integer> getMyIspnSegments(int segment, RemoteCacheSessionsLoaderContext ctx) {
+    protected Set<Integer> getMyIspnSegments(int segment, RemoteCacheInitialLoaderContext ctx) {
         // Remote cache is non-clustered
         if (ctx.getIspnSegmentsCount() < 0) {
             return null;
