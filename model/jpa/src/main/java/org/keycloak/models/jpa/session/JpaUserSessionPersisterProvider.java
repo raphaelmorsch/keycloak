@@ -208,15 +208,8 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
                 .setParameter("userSessionIds", userSessionIds)
                 .executeUpdate();
 
-        int cs = em.createNamedQuery("updateClientSessionTimestamps")
-                .setParameter("timestamp", lastSessionRefresh)
-                .setParameter("realmId", realm.getId())
-                .setParameter("offline", offline)
-                .setParameter("userSessionIds", userSessionIds)
-                .executeUpdate();
-
         // TODO:mposolda debug
-        logger.infof("Updated lastSessionRefresh of %d user sessions. Updated timestamps of %d client sessions",us, cs);
+        logger.infof("Updated lastSessionRefresh of %d user sessions",us);
     }
 
     @Override
@@ -226,14 +219,14 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
         // TODO:mposolda: trace
         logger.infof("Trigger removing expired user sessions");
 
-        int us = em.createNamedQuery("deleteExpiredUserSessions")
-                .setParameter("realmId", realm.getId())
-                .setParameter("lastSessionRefresh", expiredOffline)
-                .executeUpdate();
-
         int cs = em.createNamedQuery("deleteExpiredClientSessions")
                 .setParameter("realmId", realm.getId())
                 .setParameter("timestamp", expiredOffline)
+                .executeUpdate();
+
+        int us = em.createNamedQuery("deleteExpiredUserSessions")
+                .setParameter("realmId", realm.getId())
+                .setParameter("lastSessionRefresh", expiredOffline)
                 .executeUpdate();
 
         // TODO:mposolda debug

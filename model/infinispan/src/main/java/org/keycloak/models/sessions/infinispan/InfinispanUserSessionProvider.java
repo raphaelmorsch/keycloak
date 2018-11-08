@@ -908,7 +908,10 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
         // Handle client sessions
         if (importAuthenticatedClientSessions) {
             for (AuthenticatedClientSessionModel clientSession : userSession.getAuthenticatedClientSessions().values()) {
-                importClientSession(importedSession, clientSession, userSessionUpdateTx, clientSessionUpdateTx, offline);
+                AuthenticatedClientSessionAdapter clientSessionModel = importClientSession(importedSession, clientSession, userSessionUpdateTx, clientSessionUpdateTx, offline);
+
+                // Update timestamp to same value as userSession. LastSessionRefresh of userSession from DB will have correct value
+                clientSessionModel.setTimestamp(userSession.getLastSessionRefresh());
             }
         }
 

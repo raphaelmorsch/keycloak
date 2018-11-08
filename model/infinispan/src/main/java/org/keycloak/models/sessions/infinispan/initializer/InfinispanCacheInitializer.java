@@ -182,9 +182,6 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
                 }
             }
 
-            // Push the state after computation is finished
-            saveStateToCache(state);
-
             // Loader callback after the task is finished
             this.sessionLoader.afterAllSessionsLoaded(this);
 
