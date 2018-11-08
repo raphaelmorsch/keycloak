@@ -113,6 +113,8 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
         int errors = 0;
 
         try {
+            List<SessionLoader.WorkerResult> previousResults = new LinkedList<>();
+
             while (!state.isFinished()) {
                 int nodesCount = transport==null ? 1 : transport.getMembers().size();
                 int distributedWorkersCount = processors * nodesCount;
@@ -126,7 +128,6 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
                 }
 
                 List<Future<SessionLoader.WorkerResult>> futures = new LinkedList<>();
-                List<SessionLoader.WorkerResult> previousResults = new LinkedList<>();
 
                 int workerId = 0;
                 for (Integer segment : segments) {

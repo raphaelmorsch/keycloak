@@ -74,7 +74,7 @@ public class OfflinePersistentUserSessionLoader implements SessionLoader<Offline
             lastSessionRefresh = 0;
             lastSessionId = "abc";
         } else {
-            OfflinePersistentWorkerResult lastResult = previousResults.get(previousResults.size());
+            OfflinePersistentWorkerResult lastResult = previousResults.get(previousResults.size() - 1);
             lastSessionRefresh = lastResult.getLastLastSessionRefresh();
             lastSessionId = lastResult.getLastSessionId();
         }
@@ -102,17 +102,18 @@ public class OfflinePersistentUserSessionLoader implements SessionLoader<Offline
         log.tracef("Sessions loaded from DB - segment: %d", ctx.getSegment());
 
         UserSessionModel lastSession = null;
-        for (UserSessionModel persistentSession : sessions) {
+        if (!sessions.isEmpty()) {
+            lastSession = sessions.get(sessions.size() - 1);
 
             // Save to memory/infinispan
-            UserSessionModel offlineUserSession = session.sessions().importUserSession(persistentSession, true, true);
-            lastSession = offlineUserSession;
+            session.sessions().importUserSessions(sessions, true);
         }
 
         int lastLastSessionRefresh = lastSession==null ? Time.currentTime() + 100000 : lastSession.getLastSessionRefresh();
         String lastSessionId = lastSession==null ? "abc" : lastSession.getId();
 
-        log.tracef("Sessions imported - segment: %d, lastLastSessionRefresh: %s, lastSessionId: %s", ctx.getSegment(), ctx.getLastLastSessionRefresh(), ctx.getLastSessionId());
+        // TODO:mposolda
+        log.infof("Sessions imported to infinispan - segment: %d, lastLastSessionRefresh: %s, lastSessionId: %s", ctx.getSegment(), lastLastSessionRefresh, lastSessionId);
 
         return new OfflinePersistentWorkerResult(true, ctx.getSegment(), ctx.getWorkerId(), lastLastSessionRefresh, lastSessionId);
     }

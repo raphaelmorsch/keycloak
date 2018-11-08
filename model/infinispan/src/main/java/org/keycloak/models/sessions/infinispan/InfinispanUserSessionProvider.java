@@ -19,10 +19,13 @@ package org.keycloak.models.sessions.infinispan;
 
 import org.infinispan.Cache;
 import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.exceptions.HotRodClientException;
 import org.infinispan.context.Flag;
 import org.infinispan.stream.CacheCollectors;
 import org.jboss.logging.Logger;
 import org.keycloak.cluster.ClusterProvider;
+import org.keycloak.common.util.ObjectUtil;
+import org.keycloak.common.util.Retry;
 import org.keycloak.common.util.Time;
 import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ClientModel;
@@ -62,6 +65,8 @@ import org.keycloak.models.sessions.infinispan.util.InfinispanUtil;
 import org.keycloak.models.utils.SessionTimeoutHelper;
 
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -70,6 +75,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -104,6 +110,7 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
     protected final CrossDCLastSessionRefreshStore offlineLastSessionRefreshStore;
     protected final PersisterLastSessionRefreshStore persisterLastSessionRefreshStore;
 
+    protected final RemoteCacheInvoker remoteCacheInvoker;
     protected final InfinispanKeyGenerator keyGenerator;
 
     public InfinispanUserSessionProvider(KeycloakSession session,
@@ -137,6 +144,7 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
         this.lastSessionRefreshStore = lastSessionRefreshStore;
         this.offlineLastSessionRefreshStore = offlineLastSessionRefreshStore;
         this.persisterLastSessionRefreshStore = persisterLastSessionRefreshStore;
+        this.remoteCacheInvoker = remoteCacheInvoker;
         this.keyGenerator = keyGenerator;
 
         session.getTransactionManager().enlistAfterCompletion(clusterEventsSenderTx);
@@ -797,7 +805,7 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
 
     @Override
     public UserSessionModel createOfflineUserSession(UserSessionModel userSession) {
-        UserSessionAdapter offlineUserSession = importUserSession(userSession, true, false);
+        UserSessionAdapter offlineUserSession = importUserSession(userSession, true);
 
         // started and lastSessionRefresh set to current time
         int currentTime = Time.currentTime();
@@ -867,8 +875,115 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
         return getUserSessions(realm, client, first, max, true);
     }
 
+
     @Override
-    public UserSessionAdapter importUserSession(UserSessionModel userSession, boolean offline, boolean importAuthenticatedClientSessions) {
+    public void importUserSessions(Collection<UserSessionModel> persistentUserSessions, boolean offline) {
+        if (persistentUserSessions == null || persistentUserSessions.isEmpty()) {
+            return;
+        }
+
+        Map<UUID, SessionEntityWrapper<AuthenticatedClientSessionEntity>> clientSessionsById = new HashMap<>();
+
+        Map<String, SessionEntityWrapper<UserSessionEntity>> sessionsById = persistentUserSessions.stream()
+                .map((UserSessionModel persistentUserSession) -> {
+
+                    UserSessionEntity userSessionEntityToImport = createUserSessionEntityInstance(persistentUserSession);
+
+                    for (Map.Entry<String, AuthenticatedClientSessionModel> entry : persistentUserSession.getAuthenticatedClientSessions().entrySet()) {
+                        String clientUUID = entry.getKey();
+                        AuthenticatedClientSessionModel clientSession = entry.getValue();
+                        AuthenticatedClientSessionEntity clientSessionToImport = createAuthenticatedClientSessionInstance(clientSession, userSessionEntityToImport.getRealmId(), offline);
+
+                        // Update timestamp to same value as userSession. LastSessionRefresh of userSession from DB will have correct value
+                        clientSessionToImport.setTimestamp(userSessionEntityToImport.getLastSessionRefresh());
+
+                        clientSessionsById.put(clientSessionToImport.getId(), new SessionEntityWrapper<>(clientSessionToImport));
+
+                        // Update userSession entity with the clientSession
+                        AuthenticatedClientSessionStore clientSessions = userSessionEntityToImport.getAuthenticatedClientSessions();
+                        clientSessions.put(clientUUID, clientSessionToImport.getId());
+                    }
+
+                    return userSessionEntityToImport;
+                })
+                .map(SessionEntityWrapper::new)
+                .collect(Collectors.toMap(sessionEntityWrapper -> sessionEntityWrapper.getEntity().getId(), Function.identity()));
+
+        // Directly put all entities to the infinispan cache
+        Cache<String, SessionEntityWrapper<UserSessionEntity>> cache = getCache(offline);
+        cache.putAll(sessionsById);
+
+        // put all entities to the remoteCache (if exists)
+        RemoteCache remoteCache = InfinispanUtil.getRemoteCache(cache);
+        if (remoteCache != null) {
+            Map<String, SessionEntityWrapper<UserSessionEntity>> sessionsByIdForTransport = sessionsById.values().stream()
+                    .map(SessionEntityWrapper::forTransport)
+                    .collect(Collectors.toMap(sessionEntityWrapper -> sessionEntityWrapper.getEntity().getId(), Function.identity()));
+
+            Retry.executeWithBackoff((int iteration) -> {
+
+                try {
+                    remoteCache.putAll(sessionsByIdForTransport);
+                } catch (HotRodClientException re) {
+                    if (log.isDebugEnabled()) {
+                        log.debugf(re, "Failed to put import %d sessions to remoteCache. Iteration '%s'. Will try to retry the task",
+                                sessionsByIdForTransport.size(), iteration);
+                    }
+
+                    // Rethrow the exception. Retry will take care of handle the exception and eventually retry the operation.
+                    throw re;
+                }
+
+            }, 10, 10);
+        }
+
+        // Import client sessions
+        Cache<UUID, SessionEntityWrapper<AuthenticatedClientSessionEntity>> clientSessCache = offline ? offlineClientSessionCache : clientSessionCache;
+        clientSessCache.putAll(clientSessionsById);
+
+        // put all entities to the remoteCache (if exists)
+        RemoteCache remoteCacheClientSessions = InfinispanUtil.getRemoteCache(clientSessCache);
+        if (remoteCacheClientSessions != null) {
+            Map<UUID, SessionEntityWrapper<AuthenticatedClientSessionEntity>> sessionsByIdForTransport = clientSessionsById.values().stream()
+                    .map(SessionEntityWrapper::forTransport)
+                    .collect(Collectors.toMap(sessionEntityWrapper -> sessionEntityWrapper.getEntity().getId(), Function.identity()));
+
+            Retry.executeWithBackoff((int iteration) -> {
+
+                try {
+                    remoteCacheClientSessions.putAll(sessionsByIdForTransport);
+                } catch (HotRodClientException re) {
+                    if (log.isDebugEnabled()) {
+                        log.debugf(re, "Failed to put import %d client sessions to remoteCache. Iteration '%s'. Will try to retry the task",
+                                sessionsByIdForTransport.size(), iteration);
+                    }
+
+                    // Rethrow the exception. Retry will take care of handle the exception and eventually retry the operation.
+                    throw re;
+                }
+
+            }, 10, 10);
+        }
+    }
+
+
+    // Imports just userSession without it's clientSessions
+    protected UserSessionAdapter importUserSession(UserSessionModel userSession, boolean offline) {
+        UserSessionEntity entity = createUserSessionEntityInstance(userSession);
+
+        InfinispanChangelogBasedTransaction<String, UserSessionEntity> userSessionUpdateTx = getTransaction(offline);
+        InfinispanChangelogBasedTransaction<UUID, AuthenticatedClientSessionEntity> clientSessionUpdateTx = getClientSessionTransaction(offline);
+
+        SessionUpdateTask<UserSessionEntity> importTask = Tasks.addIfAbsentSync();
+        userSessionUpdateTx.addTask(userSession.getId(), importTask, entity);
+
+        UserSessionAdapter importedSession = wrap(userSession.getRealm(), entity, offline);
+
+        return importedSession;
+    }
+
+
+    private UserSessionEntity createUserSessionEntityInstance(UserSessionModel userSession) {
         UserSessionEntity entity = new UserSessionEntity();
         entity.setId(userSession.getId());
         entity.setRealmId(userSession.getRealm().getId());
@@ -897,25 +1012,7 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
         entity.setStarted(userSession.getStarted());
         entity.setLastSessionRefresh(userSession.getLastSessionRefresh());
 
-        InfinispanChangelogBasedTransaction<String, UserSessionEntity> userSessionUpdateTx = getTransaction(offline);
-        InfinispanChangelogBasedTransaction<UUID, AuthenticatedClientSessionEntity> clientSessionUpdateTx = getClientSessionTransaction(offline);
-
-        SessionUpdateTask<UserSessionEntity> importTask = Tasks.addIfAbsentSync();
-        userSessionUpdateTx.addTask(userSession.getId(), importTask, entity);
-
-        UserSessionAdapter importedSession = wrap(userSession.getRealm(), entity, offline);
-
-        // Handle client sessions
-        if (importAuthenticatedClientSessions) {
-            for (AuthenticatedClientSessionModel clientSession : userSession.getAuthenticatedClientSessions().values()) {
-                AuthenticatedClientSessionAdapter clientSessionModel = importClientSession(importedSession, clientSession, userSessionUpdateTx, clientSessionUpdateTx, offline);
-
-                // Update timestamp to same value as userSession. LastSessionRefresh of userSession from DB will have correct value
-                clientSessionModel.setTimestamp(userSession.getLastSessionRefresh());
-            }
-        }
-
-        return importedSession;
+        return entity;
     }
 
 
@@ -923,16 +1020,8 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
                                                                   InfinispanChangelogBasedTransaction<String, UserSessionEntity> userSessionUpdateTx,
                                                                   InfinispanChangelogBasedTransaction<UUID, AuthenticatedClientSessionEntity> clientSessionUpdateTx,
                                                                   boolean offline) {
-        final UUID clientSessionId = keyGenerator.generateKeyUUID(session, getClientSessionCache(offline));
-        AuthenticatedClientSessionEntity entity = new AuthenticatedClientSessionEntity(clientSessionId);
-        entity.setRealmId(sessionToImportInto.getRealm().getId());
-
-        entity.setAction(clientSession.getAction());
-        entity.setAuthMethod(clientSession.getProtocol());
-
-        entity.setNotes(clientSession.getNotes() == null ? new ConcurrentHashMap<>() : clientSession.getNotes());
-        entity.setRedirectUri(clientSession.getRedirectUri());
-        entity.setTimestamp(clientSession.getTimestamp());
+        AuthenticatedClientSessionEntity entity = createAuthenticatedClientSessionInstance(clientSession, sessionToImportInto.getRealm().getId(), offline);
+        final UUID clientSessionId = entity.getId();
 
         SessionUpdateTask<AuthenticatedClientSessionEntity> createClientSessionTask = Tasks.addIfAbsentSync();
         clientSessionUpdateTx.addTask(entity.getId(), createClientSessionTask, entity);
@@ -944,6 +1033,22 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
         userSessionUpdateTx.addTask(sessionToImportInto.getId(), registerClientSessionTask);
 
         return new AuthenticatedClientSessionAdapter(session,this, entity, clientSession.getClient(), sessionToImportInto, userSessionUpdateTx, clientSessionUpdateTx, offline);
+    }
+
+
+    private AuthenticatedClientSessionEntity createAuthenticatedClientSessionInstance(AuthenticatedClientSessionModel clientSession, String realmId, boolean offline) {
+        final UUID clientSessionId = keyGenerator.generateKeyUUID(session, getClientSessionCache(offline));
+        AuthenticatedClientSessionEntity entity = new AuthenticatedClientSessionEntity(clientSessionId);
+        entity.setRealmId(realmId);
+
+        entity.setAction(clientSession.getAction());
+        entity.setAuthMethod(clientSession.getProtocol());
+
+        entity.setNotes(clientSession.getNotes() == null ? new ConcurrentHashMap<>() : clientSession.getNotes());
+        entity.setRedirectUri(clientSession.getRedirectUri());
+        entity.setTimestamp(clientSession.getTimestamp());
+
+        return entity;
     }
 
     private static class RegisterClientSessionTask implements SessionUpdateTask<UserSessionEntity> {
