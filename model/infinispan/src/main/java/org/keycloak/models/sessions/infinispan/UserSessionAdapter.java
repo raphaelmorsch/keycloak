@@ -214,7 +214,7 @@ public class UserSessionAdapter implements UserSessionModel {
             // Received the message from the other DC that we should update the lastSessionRefresh in local cluster. Don't update DB in that case.
             // The other DC already did.
             Boolean ignoreRemoteCacheUpdate = (Boolean) session.getAttribute(CrossDCLastSessionRefreshListener.IGNORE_REMOTE_CACHE_UPDATE);
-            if (ignoreRemoteCacheUpdate != null && ignoreRemoteCacheUpdate) {
+            if (ignoreRemoteCacheUpdate == null || !ignoreRemoteCacheUpdate) {
                 provider.getPersisterLastSessionRefreshStore().putLastSessionRefresh(session, entity.getId(), realm.getId(), lastSessionRefresh);
             }
         }

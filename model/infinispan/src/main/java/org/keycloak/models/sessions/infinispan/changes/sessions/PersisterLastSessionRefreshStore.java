@@ -55,14 +55,21 @@ public class PersisterLastSessionRefreshStore extends AbstractLastSessionRefresh
         // Update DB with a bit lower value than current time to ensure 'revokeRefreshToken' will work correctly taking server
         int lastSessionRefresh = Time.currentTime() - SessionTimeoutHelper.PERIODIC_TASK_INTERVAL_SECONDS;
 
-        if (logger.isDebugEnabled()) {
-            logger.debugf("Updating %d userSessions with lastSessionRefresh: %d", refreshesToSend.size(), lastSessionRefresh);
+        // TODO:mposolda debug
+        if (logger.isInfoEnabled()) {
+            logger.infof("Updating %d userSessions with lastSessionRefresh: %d", refreshesToSend.size(), lastSessionRefresh);
         }
 
         UserSessionPersisterProvider persister = kcSession.getProvider(UserSessionPersisterProvider.class);
 
         for (Map.Entry<String, Set<String>> entry : sessionIdsByRealm.entrySet()) {
             RealmModel realm = kcSession.realms().getRealm(entry.getKey());
+
+            // Case when realm was deleted in the meantime. UserSessions were already deleted as well (callback for realm deletion)
+            if (realm == null) {
+                continue;
+            }
+
             Set<String> userSessionIds = entry.getValue();
 
             persister.updateLastSessionRefreshes(realm, lastSessionRefresh, userSessionIds, offline);
