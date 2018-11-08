@@ -363,6 +363,8 @@ public class UserSessionProviderOfflineTest {
         // sessions are in persister too
         Assert.assertEquals(3, persister.getUserSessionsCount(true));
 
+
+
         // Set lastSessionRefresh to session[0] to 0
         session0.setLastSessionRefresh(0);
 

@@ -38,6 +38,7 @@ import org.keycloak.models.UserManager;
 import org.keycloak.testsuite.rule.KeycloakRule;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -285,6 +286,10 @@ public class UserSessionPersisterProviderTest {
 
         loadedSessions = loadPersistedSessionsPaginated(true, 10, 1, 1);
 
+        // Cleanup
+        UserSessionModel userSession = loadedSessions.get(0);
+        session.sessions().removeUserSession(realm, userSession);
+        persister.removeUserSession(userSession.getId(), userSession.isOffline());
     }
 
     // KEYCLOAK-1999
@@ -293,6 +298,47 @@ public class UserSessionPersisterProviderTest {
         UserSessionPersisterProvider persister = session.getProvider(UserSessionPersisterProvider.class);
         List<UserSessionModel> sessions = persister.loadUserSessions(0, 1, true, 0, "abc");
         Assert.assertEquals(0, sessions.size());
+    }
+
+
+    @Test
+    public void testExpiredSessions() {
+        // Create some sessions in infinispan
+        int started = Time.currentTime();
+        UserSessionModel[] origSessions = createSessions();
+
+        resetSession();
+
+        // Persist 2 offline sessions of 2 users
+        UserSessionModel userSession1 = session.sessions().getUserSession(realm, origSessions[1].getId());
+        UserSessionModel userSession2 = session.sessions().getUserSession(realm, origSessions[2].getId());
+        persistUserSession(userSession1, true);
+        persistUserSession(userSession2, true);
+
+        resetSession();
+
+        // Update one of the sessions with lastSessionRefresh of 20 days ahead
+        int lastSessionRefresh = Time.currentTime() + 1728000;
+        persister.updateLastSessionRefreshes(realm, lastSessionRefresh, Collections.singleton(userSession1.getId()), true);
+
+        resetSession();
+
+        // Increase time offset - 40 days
+        Time.setOffset(3456000);
+        try {
+            // Run expiration thread
+            persister.removeExpired(realm);
+
+            // Test the updated session is still in persister. Not updated session is not there anymore
+            List<UserSessionModel> loadedSessions = loadPersistedSessionsPaginated(true, 10, 1, 1);
+            UserSessionModel persistedSession = loadedSessions.get(0);
+            UserSessionProviderTest.assertSession(persistedSession, session.users().getUserByUsername("user1", realm), "127.0.0.2", started, lastSessionRefresh, "test-app");
+
+        } finally {
+            // Cleanup
+            Time.setOffset(0);
+        }
+
     }
 
 

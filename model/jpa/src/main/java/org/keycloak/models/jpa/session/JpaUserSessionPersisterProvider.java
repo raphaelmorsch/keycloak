@@ -201,36 +201,42 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
 
     @Override
     public void updateLastSessionRefreshes(RealmModel realm, int lastSessionRefresh, Collection<String> userSessionIds, boolean offline) {
+        String offlineStr = offlineToString(offline);
+
         int us = em.createNamedQuery("updateUserSessionLastSessionRefresh")
                 .setParameter("lastSessionRefresh", lastSessionRefresh)
                 .setParameter("realmId", realm.getId())
-                .setParameter("offline", offline)
+                .setParameter("offline", offlineStr)
                 .setParameter("userSessionIds", userSessionIds)
                 .executeUpdate();
 
         // TODO:mposolda debug
-        logger.infof("Updated lastSessionRefresh of %d user sessions",us);
+        logger.infof("Updated lastSessionRefresh of %d user sessions in realm '%s'", us, realm.getName());
     }
 
     @Override
     public void removeExpired(RealmModel realm) {
         int expiredOffline = Time.currentTime() - realm.getOfflineSessionIdleTimeout() - SessionTimeoutHelper.PERIODIC_CLEANER_IDLE_TIMEOUT_WINDOW_SECONDS;
 
+        String offlineStr = offlineToString(true);
+
         // TODO:mposolda: trace
-        logger.infof("Trigger removing expired user sessions");
+        logger.infof("Trigger removing expired user sessions for realm '%s'", realm.getName());
 
         int cs = em.createNamedQuery("deleteExpiredClientSessions")
                 .setParameter("realmId", realm.getId())
-                .setParameter("timestamp", expiredOffline)
+                .setParameter("lastSessionRefresh", expiredOffline)
+                .setParameter("offline", offlineStr)
                 .executeUpdate();
 
         int us = em.createNamedQuery("deleteExpiredUserSessions")
                 .setParameter("realmId", realm.getId())
                 .setParameter("lastSessionRefresh", expiredOffline)
+                .setParameter("offline", offlineStr)
                 .executeUpdate();
 
         // TODO:mposolda debug
-        logger.infof("Removed %d expired user sessions and %d expired client sessions",us, cs);
+        logger.infof("Removed %d expired user sessions and %d expired client sessions in realm '%s'", us, cs, realm.getName());
 
     }
 
