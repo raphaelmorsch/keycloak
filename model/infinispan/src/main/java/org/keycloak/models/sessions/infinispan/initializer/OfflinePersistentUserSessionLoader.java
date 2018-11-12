@@ -113,7 +113,7 @@ public class OfflinePersistentUserSessionLoader implements SessionLoader<Offline
         String lastSessionId = lastSession==null ? "abc" : lastSession.getId();
 
         // TODO:mposolda
-        log.infof("Sessions imported to infinispan - segment: %d, lastLastSessionRefresh: %s, lastSessionId: %s", ctx.getSegment(), lastLastSessionRefresh, lastSessionId);
+        log.infof("Sessions imported to infinispan - segment: %d, lastLastSessionRefresh: %d, lastSessionId: %s", ctx.getSegment(), lastLastSessionRefresh, lastSessionId);
 
         return new OfflinePersistentWorkerResult(true, ctx.getSegment(), ctx.getWorkerId(), lastLastSessionRefresh, lastSessionId);
     }

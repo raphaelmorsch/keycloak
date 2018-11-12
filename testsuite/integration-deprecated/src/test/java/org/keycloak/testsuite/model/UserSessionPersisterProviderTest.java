@@ -41,6 +41,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
@@ -298,6 +301,45 @@ public class UserSessionPersisterProviderTest {
         UserSessionPersisterProvider persister = session.getProvider(UserSessionPersisterProvider.class);
         List<UserSessionModel> sessions = persister.loadUserSessions(0, 1, true, 0, "abc");
         Assert.assertEquals(0, sessions.size());
+    }
+
+
+    @Test
+    public void testMoreSessions() {
+        // Create 10 userSessions - each having 1 clientSession
+        List<UserSessionModel> userSessions = new ArrayList<>();
+        UserModel user = session.users().getUserByUsername("user1", realm);
+
+        for (int i=0 ; i<10 ; i++) {
+            // Having different offsets for each session (to ensure that lastSessionRefresh is also different)
+            Time.setOffset(i);
+
+            UserSessionModel userSession = session.sessions().createUserSession(realm, user, "user1", "127.0.0.1", "form", true, null, null);
+            createClientSession(realm.getClientByClientId("test-app"), userSession, "http://redirect", "state");
+            userSessions.add(userSession);
+        }
+
+        resetSession();
+
+        for (UserSessionModel userSession : userSessions) {
+            UserSessionModel userSession2 = session.sessions().getUserSession(realm, userSession.getId());
+            persistUserSession(userSession2, true);
+        }
+
+        resetSession();
+
+        List<UserSessionModel> loadedSessions = loadPersistedSessionsPaginated(true, 20, 1, 10);
+        user = session.users().getUserByUsername("user1", realm);
+        ClientModel testApp = realm.getClientByClientId("test-app");
+
+        for (UserSessionModel loadedSession : loadedSessions) {
+            assertEquals(user.getId(), loadedSession.getUser().getId());
+            assertEquals("127.0.0.1", loadedSession.getIpAddress());
+            assertEquals(user.getUsername(), loadedSession.getLoginUsername());
+
+            assertEquals(1, loadedSession.getAuthenticatedClientSessions().size());
+            assertTrue(loadedSession.getAuthenticatedClientSessions().containsKey(testApp.getId()));
+        }
     }
 
 

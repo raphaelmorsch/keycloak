@@ -39,6 +39,7 @@ import javax.persistence.TypedQuery;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -297,6 +298,8 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
 //        queryUpdateTimestamps.setParameter("lastSessionRefresh", clusterStartupTime);
 //        int num = queryUpdateTimestamps.executeUpdate();
 //        logger.infof("Count updated: %d", num);
+
+        result.sort(Comparator.comparing(UserSessionModel::getId));
 
         Set<String> removedClientUUIDs = new HashSet<>();
 
