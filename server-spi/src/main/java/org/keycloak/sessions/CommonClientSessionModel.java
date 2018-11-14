@@ -27,9 +27,6 @@ import org.keycloak.models.RealmModel;
  */
 public interface CommonClientSessionModel {
 
-    public String getRedirectUri();
-    public void setRedirectUri(String uri);
-
     public RealmModel getRealm();
     public ClientModel getClient();
 

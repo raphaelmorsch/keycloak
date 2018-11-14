@@ -17,6 +17,7 @@
 
 package org.keycloak.cluster.infinispan;
 
+import org.infinispan.client.hotrod.ProtocolVersion;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.cache.StoreConfigurationBuilder;
@@ -76,7 +77,7 @@ class TestCacheManagerFactory {
                 .rawValues(true)
                 .forceReturnValues(false)
                 .marshaller(KeycloakHotRodMarshallerFactory.class.getName())
-                //.protocolVersion(ProtocolVersion.PROTOCOL_VERSION_26)
+                .protocolVersion(ProtocolVersion.PROTOCOL_VERSION_26)
                 //.maxBatchSize(5)
                 .addServer()
                     .host(host)

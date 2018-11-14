@@ -27,6 +27,15 @@ import org.keycloak.sessions.CommonClientSessionModel;
  */
 public interface AuthenticatedClientSessionModel extends CommonClientSessionModel {
 
+    /**
+     * Deprecated for AuthenticatedClientSessionModel. The redirectUri shouldn't be needed here
+     * @Deprecated
+     */
+    String getRedirectUri();
+
+    @Deprecated
+    void setRedirectUri(String redirectUri);
+
     String getId();
 
     int getTimestamp();

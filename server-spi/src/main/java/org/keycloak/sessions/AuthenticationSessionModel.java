@@ -61,6 +61,19 @@ public interface AuthenticationSessionModel extends CommonClientSessionModel {
 
     void removeRequiredAction(UserModel.RequiredAction action);
 
+    /**
+     * Redirect URI used for this AuthenticationSession
+     *
+     * @return
+     */
+    String getRedirectUri();
+
+
+    /**
+     *
+     * @param uri
+     */
+    void setRedirectUri(String uri);
 
     /**
      *  Sets the given user session note to the given value. User session notes are notes
