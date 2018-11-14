@@ -272,7 +272,7 @@ public class DistributedCacheConcurrentWritesTest {
         ConfigurationBuilder distConfigBuilder = new ConfigurationBuilder();
         if (clustered) {
             distConfigBuilder.clustering().cacheMode(async ? CacheMode.DIST_ASYNC : CacheMode.DIST_SYNC);
-            distConfigBuilder.clustering().hash().numOwners(2);
+            distConfigBuilder.clustering().hash().numOwners(1);
 
             // Disable L1 cache
             distConfigBuilder.clustering().hash().l1().enabled(false);
