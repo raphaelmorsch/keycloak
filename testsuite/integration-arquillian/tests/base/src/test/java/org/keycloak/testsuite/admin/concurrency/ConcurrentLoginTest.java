@@ -48,6 +48,8 @@ import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.ClientsResource;
 import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.jose.jws.JWSInput;
+import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.common.util.Retry;
@@ -56,12 +58,14 @@ import org.keycloak.testsuite.util.ClientBuilder;
 import org.keycloak.testsuite.util.OAuthClient;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.apache.http.client.CookieStore;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.hamcrest.Matchers;
+import org.keycloak.util.JsonSerialization;
 
 import static org.hamcrest.Matchers.containsString;
 
@@ -321,6 +325,10 @@ public class ConcurrentLoginTest extends AbstractConcurrencyTest {
                 protected OAuthClient initialValue() {
                     OAuthClient oauth1 = new OAuthClient();
                     oauth1.init(driver);
+
+                    // Add some randomness to nonce and redirectUri. Verify that login is successful and nonce will match
+                    oauth1.nonce(KeycloakModelUtils.generateId());
+                    oauth1.redirectUri(oauth.getRedirectUri() + "?some=" + new Random().nextInt(1024));
                     return oauth1;
                 }
             };
@@ -383,8 +391,10 @@ public class ConcurrentLoginTest extends AbstractConcurrencyTest {
 
             retryHistogram[invocationIndex].incrementAndGet();
 
+            AccessToken token = JsonSerialization.readValue(new JWSInput(accessResRef.get().getAccessToken()).getContent(), AccessToken.class);
+            Assert.assertEquals("Invalid nonce.", token.getNonce(), oauth1.getNonce());
+
             if (userSessionId.get() == null) {
-                AccessToken token = oauth1.verifyToken(accessResRef.get().getAccessToken());
                 userSessionId.set(token.getSessionState());
             }
         }
