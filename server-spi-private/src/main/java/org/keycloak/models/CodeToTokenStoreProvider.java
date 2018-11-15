@@ -17,6 +17,7 @@
 
 package org.keycloak.models;
 
+import java.util.Map;
 import java.util.UUID;
 
 import org.keycloak.provider.Provider;
@@ -30,5 +31,16 @@ import org.keycloak.provider.Provider;
  */
 public interface CodeToTokenStoreProvider extends Provider {
 
-    boolean putIfAbsent(UUID codeId);
+    boolean put(UUID codeId, Map<String, String> notes);
+
+
+    /**
+     * This method returns data just if removal was successful. Implementation should guarantee that "remove" is single-use. So if
+     * 2 threads (even on different cluster nodes or on different cross-dc nodes) calls "remove(123)" concurrently, then just one of them
+     * is allowed to succeed. It can't happen that both will succeed.
+     *
+     * @param codeId
+     * @return context data related to OAuth2 code
+     */
+    Map<String, String> remove(UUID codeId);
 }

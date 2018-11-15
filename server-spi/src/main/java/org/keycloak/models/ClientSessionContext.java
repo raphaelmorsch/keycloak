@@ -40,4 +40,8 @@ public interface ClientSessionContext {
     Set<ProtocolMapperModel> getProtocolMappers();
 
     String getScopeString();
+
+    void setAttribute(String name, Object value);
+
+    <T> T getAttribute(String attribute, Class<T> clazz);
 }

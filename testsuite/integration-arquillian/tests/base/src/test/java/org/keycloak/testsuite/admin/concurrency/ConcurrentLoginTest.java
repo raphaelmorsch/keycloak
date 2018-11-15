@@ -383,16 +383,23 @@ public class ConcurrentLoginTest extends AbstractConcurrencyTest {
             accessResRef.set(accessRes);
 
             // Refresh access + refresh token using refresh token
+            AtomicReference<OAuthClient.AccessTokenResponse> refreshResRef = new AtomicReference<>();
+
             int invocationIndex = Retry.execute(() -> {
                 OAuthClient.AccessTokenResponse refreshRes = oauth1.doRefreshTokenRequest(accessResRef.get().getRefreshToken(), "password");
                 Assert.assertEquals("AccessTokenResponse: client: " + oauth1.getClientId() + ", error: '" + refreshRes.getError() + "' desc: '" + refreshRes.getErrorDescription() + "'",
                   200, refreshRes.getStatusCode());
+
+                refreshResRef.set(refreshRes);
             }, retryCount, retryDelayMs);
 
             retryHistogram[invocationIndex].incrementAndGet();
 
             AccessToken token = JsonSerialization.readValue(new JWSInput(accessResRef.get().getAccessToken()).getContent(), AccessToken.class);
             Assert.assertEquals("Invalid nonce.", token.getNonce(), oauth1.getNonce());
+
+            AccessToken refreshedToken = JsonSerialization.readValue(new JWSInput(refreshResRef.get().getAccessToken()).getContent(), AccessToken.class);
+            Assert.assertEquals("Invalid nonce.", refreshedToken.getNonce(), oauth1.getNonce());
 
             if (userSessionId.get() == null) {
                 userSessionId.set(token.getSessionState());

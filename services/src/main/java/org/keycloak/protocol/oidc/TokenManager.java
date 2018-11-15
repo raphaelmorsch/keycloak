@@ -268,6 +268,8 @@ public class TokenManager {
         clientSession.setTimestamp(currentTime);
         validation.userSession.setLastSessionRefresh(currentTime);
 
+        validation.clientSessionCtx.setAttribute(OIDCLoginProtocol.NONCE_PARAM, refreshToken.getNonce());
+
         if (refreshToken.getAuthorization() != null) {
             validation.newToken.setAuthorization(refreshToken.getAuthorization());
         }
@@ -614,7 +616,7 @@ public class TokenManager {
 
         AuthenticatedClientSessionModel clientSession = clientSessionCtx.getClientSession();
         token.issuer(clientSession.getNote(OIDCLoginProtocol.ISSUER));
-        token.setNonce(clientSession.getNote(OIDCLoginProtocol.NONCE_PARAM));
+        token.setNonce(clientSessionCtx.getAttribute(OIDCLoginProtocol.NONCE_PARAM, String.class));
         token.setScope(clientSessionCtx.getScopeString());
 
         // Best effort for "acr" value. Use 0 if clientSession was authenticated through cookie ( SSO )
