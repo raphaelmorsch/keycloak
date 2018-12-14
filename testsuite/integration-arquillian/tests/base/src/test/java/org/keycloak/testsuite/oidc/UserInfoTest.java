@@ -33,6 +33,7 @@ import org.keycloak.jose.jws.JWSInput;
 import org.keycloak.jose.jws.crypto.RSAProvider;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.idm.RoleRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.testsuite.util.KeycloakModelUtils;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolService;
@@ -49,6 +50,7 @@ import org.keycloak.testsuite.util.ClientManager;
 import org.keycloak.testsuite.util.OAuthClient;
 import org.keycloak.testsuite.util.RealmBuilder;
 import org.keycloak.testsuite.util.TokenSignatureUtil;
+import org.keycloak.testsuite.util.UserBuilder;
 import org.keycloak.testsuite.util.UserInfoClientUtil;
 import org.keycloak.util.BasicAuthHelper;
 import org.keycloak.util.JsonSerialization;
@@ -71,6 +73,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
 import static org.keycloak.testsuite.util.OAuthClient.AUTH_SERVER_ROOT;
+import static org.keycloak.testsuite.util.ProtocolMapperUtil.createClaimMapper;
 
 /**
  * @author pedroigor
@@ -161,7 +164,7 @@ public class UserInfoTest extends AbstractKeycloakTest {
 
     // KEYCLOAK-8838
     @Test
-    public void testSuccess_dotsInClientId() throws Exception {
+    public void testSuccess_dotsInClientIdAndClaims() throws Exception {
         // Create client with dot in the name and with some role
         ClientRepresentation clientRep = org.keycloak.testsuite.util.ClientBuilder.create()
                 .clientId("my.foo.client")
@@ -178,10 +181,18 @@ public class UserInfoTest extends AbstractKeycloakTest {
         resp.close();
         getCleanup().addClientUuid(clientUUID);
 
-        // Assign role to the user
+        // Add protocolMapper for some claim with dots
+        realm.clients().get(clientUUID).getProtocolMappers().createMapper(createClaimMapper("dotted phone", "phone", "home\\.phone", "String", true, true, false)).close();
+
+        // Assign role and attribute to the user
         RoleRepresentation fooRole = realm.clients().get(clientUUID).roles().get("my.foo.role").toRepresentation();
         UserResource userResource = ApiUtil.findUserByUsernameId(realm, "test-user@localhost");
         userResource.roles().clientLevel(clientUUID).add(Collections.singletonList(fooRole));
+
+        UserRepresentation user = UserBuilder.edit(userResource.toRepresentation())
+                .addAttribute("phone", "111-222-333")
+                .build();
+        userResource.update(user);
 
         // Login to the new client
         OAuthClient.AccessTokenResponse accessTokenResponse = oauth.clientId("my.foo.client")
@@ -196,8 +207,9 @@ public class UserInfoTest extends AbstractKeycloakTest {
         Client client = ClientBuilder.newClient();
         try {
             Response response = UserInfoClientUtil.executeUserInfoRequest_getMethod(client, accessTokenResponse.getAccessToken());
+            UserInfo userInfo = testSuccessfulUserInfoResponse(response, "my.foo.client");
 
-            testSuccessfulUserInfoResponse(response, "my.foo.client");
+            Assert.assertEquals(userInfo.getOtherClaims().get("home.phone"), "111-222-333");
         } finally {
             client.close();
         }
@@ -472,7 +484,7 @@ public class UserInfoTest extends AbstractKeycloakTest {
         testSuccessfulUserInfoResponse(response, "test-app");
     }
 
-    private void testSuccessfulUserInfoResponse(Response response, String expectedClientId) {
+    private UserInfo testSuccessfulUserInfoResponse(Response response, String expectedClientId) {
         events.expect(EventType.USER_INFO_REQUEST)
                 .session(Matchers.notNullValue(String.class))
                 .detail(Details.AUTH_METHOD, Details.VALIDATE_ACCESS_TOKEN)
@@ -480,6 +492,6 @@ public class UserInfoTest extends AbstractKeycloakTest {
                 .detail(Details.SIGNATURE_REQUIRED, "false")
                 .client(expectedClientId)
                 .assertEvent();
-        UserInfoClientUtil.testSuccessfulUserInfoResponse(response, "test-user@localhost", "test-user@localhost");
+        return UserInfoClientUtil.testSuccessfulUserInfoResponse(response, "test-user@localhost", "test-user@localhost");
     }
 }
