@@ -84,6 +84,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     @Override
     public Response processAction(String actionExecution) {
         logger.debugv("processAction: {0}", actionExecution);
+<<<<<<< HEAD
         if (actionExecution == null || actionExecution.isEmpty()) {
             throw new AuthenticationFlowException("action is not in current execution", AuthenticationFlowError.INTERNAL_ERROR);
         }
@@ -115,6 +116,37 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                         processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
                         return processFlow();
                     } else return response;
+=======
+        while (executionIterator.hasNext()) {
+            AuthenticationExecutionModel model = executionIterator.next();
+            logger.debugv("check: {0} requirement: {1}", model.getAuthenticator(), model.getRequirement().toString());
+            if (isProcessed(model)) {
+                logger.debug("execution is processed");
+                if (!alternativeSuccessful && model.isAlternative() && processor.isSuccessful(model))
+                    alternativeSuccessful = true;
+                continue;
+            }
+            if (model.isAuthenticatorFlow()) {
+                AuthenticationFlow authenticationFlow = processor.createFlowExecution(model.getFlowId(), model);
+                Response flowChallenge = null;
+                try {
+                    flowChallenge = authenticationFlow.processAction(actionExecution);
+                } catch (AuthenticationFlowException afe) {
+                    if (model.isAlternative()) {
+                        logger.debug("Thrown exception in alternative Subflow. Ignoring Subflow");
+                        processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
+                        return processFlow();
+                    } else {
+                        throw afe;
+                    }
+                }
+                if (flowChallenge == null) {
+                    processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
+                    if (model.isAlternative()) alternativeSuccessful = true;
+                    return processFlow();
+                } else {
+                   return flowChallenge;
+>>>>>>> d593ac3e6f... KEYCLOAK-9711 REQUIRED authentictor in ALTERNATIVE subflow throws AuthenticationFlowException when the authentictor returns ATTEMPTED.
                 }
             }
             //Otherwise, go up to the parent of the current flow, if one exists
