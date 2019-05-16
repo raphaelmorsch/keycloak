@@ -82,8 +82,13 @@ import org.keycloak.models.ScopeContainerModel;
 import org.keycloak.models.UserConsentModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.UserProvider;
+<<<<<<< HEAD
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.policy.PasswordPolicyManagerProvider;
+=======
+import org.keycloak.models.cache.UserCache;
+import org.keycloak.models.credential.PasswordUserCredentialModel;
+>>>>>>> 72d6ac518c... User password cache is not refreshed after updating the user with hashed credential
 import org.keycloak.policy.PasswordPolicyNotMetException;
 import org.keycloak.policy.PolicyError;
 import org.keycloak.provider.ProviderConfigProperty;
@@ -1649,6 +1654,23 @@ public class RepresentationToModel {
                     session.userCredentialManager().createCredential(realm, user, toModel(cred));
                 }
             }
+<<<<<<< HEAD
+=======
+
+            if (cred.getPeriod() != null) hashedCred.setPeriod(cred.getPeriod());
+            if (cred.getDigits() == null && UserCredentialModel.isOtp(cred.getType())) {
+                hashedCred.setDigits(6);
+            }
+            if (cred.getPeriod() == null && UserCredentialModel.TOTP.equals(cred.getType())) {
+                hashedCred.setPeriod(30);
+            }
+            hashedCred.setCreatedDate(cred.getCreatedDate());
+            session.userCredentialManager().createCredential(realm, user, hashedCred);
+            UserCache userCache = session.userCache();
+            if (userCache != null) {
+                userCache.evict(realm, user);
+            }
+>>>>>>> 72d6ac518c... User password cache is not refreshed after updating the user with hashed credential
         }
     }
 
