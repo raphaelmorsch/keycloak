@@ -76,11 +76,14 @@
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
+<<<<<<< HEAD
                 <artifactId>keycloak-tomcat6-adapter</artifactId>
                 <version>6.0.1</version>
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
+=======
+>>>>>>> 3bbab225c8... KEYCLOAK-9596 Remove Apache Tomcat 6.0.x adapter
                 <artifactId>keycloak-jetty92-adapter</artifactId>
                 <version>6.0.1</version>
             </dependency>
