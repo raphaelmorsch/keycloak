@@ -299,12 +299,13 @@
                             <goal>allocate</goal>
                         </goals>
                     </execution>
-                    <execution>
+                    <!-- TODO: This needs to be figured later -->
+                    <!--<execution>
                         <id>release-db</id>
                         <goals>
                             <goal>release</goal>
                         </goals>
-                    </execution>
+                    </execution>-->
                 </executions>
             </plugin>
         </plugins>

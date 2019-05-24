@@ -4,9 +4,12 @@ import org.apache.commons.io.IOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.keycloak.testsuite.dballocator.client.data.AllocationResult;
+import org.keycloak.testsuite.dballocator.client.data.EraseResult;
+import org.keycloak.testsuite.dballocator.client.data.ReleaseResult;
 import org.keycloak.testsuite.dballocator.client.exceptions.DBAllocatorException;
 import org.keycloak.testsuite.dballocator.client.exceptions.DBAllocatorUnavailableException;
 import org.keycloak.testsuite.dballocator.client.mock.MockResponse;
+import org.keycloak.testsuite.dballocator.client.retry.IncrementalBackoffRetryPolicy;
 
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
@@ -42,6 +45,9 @@ public class DBAllocatorServiceClientTest {
         Assert.assertEquals("username", allocationResult.getUser());
         Assert.assertEquals("password", allocationResult.getPassword());
         Assert.assertEquals("jdbc:mariadb://mariadb-101-galera.keycloak.org:3306", allocationResult.getURL());
+
+        EraseResult erase = client.erase(allocationResult);
+        ReleaseResult result = client.release(allocationResult);
     }
 
     @Test
