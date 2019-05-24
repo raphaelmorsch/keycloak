@@ -105,7 +105,7 @@ In order to use the DB Allocator Service, you must use the `jpa` profile with on
 run JPA with Auth Server Wildfly and MSSQL 2016:
 
 ```
-mvn -f testsuite/integration-arquillian/pom.xml \
+mvn -f testsuite/integration-arquillian/pom.xml clean verify \
     -Pjpa,auth-server-wildfly,db-allocator-db-mssql2016 \
     -Ddballocator.uri=<<db-allocator-servlet-url>> \
     -Ddballocator.user=<<db-allocator-user>> \
