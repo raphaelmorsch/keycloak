@@ -287,28 +287,6 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.keycloak</groupId>
-                <artifactId>db-allocator-plugin</artifactId>
-                <inherited>false</inherited>
-                <executions>
-                    <execution>
-                        <id>allocate-db</id>
-                        <goals>
-                            <goal>allocate</goal>
-                        </goals>
-                    </execution>
-                    <!-- TODO: This needs to be figured later -->
-                    <!--<execution>
-                        <id>release-db</id>
-                        <goals>
-                            <goal>release</goal>
-                        </goals>
-                    </execution>-->
-                </executions>
-            </plugin>
-        </plugins>
     </build>
     
     <modules>

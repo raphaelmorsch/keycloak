@@ -178,6 +178,10 @@ public class AuthServerTestEnricher {
     }
 
     public void initializeSuiteContext(@Observes(precedence = 2) BeforeSuite event) {
+        log.info("keycloak.connectionsJpa.url: " + System.getProperty("keycloak.connectionsJpa.url"));
+        log.info("dballocator.something: " + System.getProperty("dballocator.something"));
+
+
         Set<ContainerInfo> containers = containerRegistry.get().getContainers().stream()
           .map(ContainerInfo::new)
           .collect(Collectors.toSet());

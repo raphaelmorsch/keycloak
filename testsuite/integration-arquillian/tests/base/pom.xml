@@ -185,6 +185,7 @@
                     <systemPropertyVariables>
                         <com.mchange.v2.c3p0.VMID>testsuiteVmId</com.mchange.v2.c3p0.VMID>
                         <auth.server.db.host>${docker.container.testdb.ip}</auth.server.db.host>
+                        <keycloak.connectionsJpa.url>${keycloak.connectionsJpa.url}</keycloak.connectionsJpa.url>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -379,6 +380,27 @@
                         <phase>test</phase>
                         <goals>
                             <goal>stop</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- It is built-in support in the plugin for the property "dballocator.skip" . If that property is true, the plugin is skipped -->
+            <plugin>
+                <groupId>org.keycloak</groupId>
+                <artifactId>db-allocator-plugin</artifactId>
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <id>allocate-db</id>
+                        <goals>
+                            <goal>allocate</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>release-db</id>
+                        <goals>
+                            <goal>release</goal>
                         </goals>
                     </execution>
                 </executions>

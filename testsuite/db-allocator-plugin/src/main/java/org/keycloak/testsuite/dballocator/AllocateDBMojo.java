@@ -173,11 +173,21 @@ public class AllocateDBMojo extends AbstractMojo {
     }
 
     private void setPropertiesToProject(MavenProject project, AllocationResult allocate) {
-        project.getProperties().setProperty(propertyDriver, allocate.getDriver());
-        project.getProperties().setProperty(propertyDatabase, allocate.getDatabase());
-        project.getProperties().setProperty(propertyUser, allocate.getUser());
-        project.getProperties().setProperty(propertyPassword, allocate.getPassword());
-        project.getProperties().setProperty(propertyURL, allocate.getURL());
-        project.getProperties().setProperty(Constants.PROPERTY_ALLOCATED_DB, allocate.getUUID());
+        getLog().info("Set properties for " + project);
+
+        setProperty(project, propertyDriver, allocate.getDriver());
+        setProperty(project, propertyDatabase, allocate.getDatabase());
+        setProperty(project, propertyUser, allocate.getUser());
+        setProperty(project, propertyPassword, allocate.getPassword());
+        setProperty(project, propertyURL, allocate.getURL());
+        setProperty(project, Constants.PROPERTY_ALLOCATED_DB, allocate.getUUID());
+
+        setProperty(project, "dballocator.something", "foo");
+    }
+
+    private void setProperty(MavenProject project, String propertyName, String propertyValue) {
+        project.getProperties().setProperty(propertyName, propertyValue);
+        System.setProperty(propertyName, propertyValue);
+        getLog().info("Set " + propertyName + "=" + propertyValue);
     }
 }

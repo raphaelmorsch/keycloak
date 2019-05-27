@@ -344,6 +344,22 @@
         </profile>
 
         <profile>
+            <id>db-allocator-properties</id>
+            <activation>
+                <property>
+                    <name>dballocator.uri</name>
+                </property>
+            </activation>
+            <properties>
+                <keycloak.connectionsJpa.url>\$\{keycloak.connectionsJpa.url\}</keycloak.connectionsJpa.url>
+                <keycloak.connectionsJpa.driver>\$\{keycloak.connectionsJpa.driver\}</keycloak.connectionsJpa.driver>
+                <keycloak.connectionsJpa.database>\$\{keycloak.connectionsJpa.database\}</keycloak.connectionsJpa.database>
+                <keycloak.connectionsJpa.user>\$\{keycloak.connectionsJpa.user\}</keycloak.connectionsJpa.user>
+                <keycloak.connectionsJpa.password>\$\{keycloak.connectionsJpa.password\}</keycloak.connectionsJpa.password>
+            </properties>
+        </profile>
+
+        <profile>
             <id>jpa</id>
             <properties>
                 <jdbc.driver.tmp.dir>${project.build.directory}/jdbc-driver</jdbc.driver.tmp.dir>
@@ -376,11 +392,6 @@
                                                 <property>jdbc.mvn.version</property>
                                                 <regex>((?!${h2.version}).)*</regex>
                                                 <regexMessage>jdbc.mvn.version property is not set correctly: ${jdbc.mvn.version}. Profile jpa is not supported for default h2 values!</regexMessage>
-                                            </requireProperty>
-                                            <requireProperty>
-                                                <property>keycloak.connectionsJpa.password</property>
-                                                <regex>^(?!\s*$).+</regex>
-                                                <regexMessage>keycloak.connectionsJpa.password property cannot be empty string!</regexMessage>
                                             </requireProperty>
                                         </rules>
                                         <fail>true</fail>

@@ -134,6 +134,9 @@
                 -Dauth.server.truststore=${auth.server.truststore}
                 -Dauth.server.truststore.password=${auth.server.truststore.password}
                 -Dauth.server.db.host=${auth.server.db.host}
+                -Dkeycloak.connectionsJpa.url=${keycloak.connectionsJpa.url}
+                -Dkeycloak.connectionsJpa.user=${keycloak.connectionsJpa.user}
+                -Dkeycloak.connectionsJpa.password=${keycloak.connectionsJpa.password}
             </property>
             <property name="javaVmArguments">
                 ${auth.server.jboss.jvm.debug.args}
@@ -542,6 +545,9 @@
                     -Dkeycloak.connectionsInfinispan.default.remoteStoreSecurityEnabled=${keycloak.connectionsInfinispan.default.remoteStoreSecurityEnabled}
                     -Dkeycloak.connectionsInfinispan.hotrodProtocolVersion=${keycloak.connectionsInfinispan.hotrodProtocolVersion}
                     -Dauth.server.db.host=${auth.server.db.host}
+                    -Dkeycloak.connectionsJpa.url=${keycloak.connectionsJpa.url}
+                    -Dkeycloak.connectionsJpa.user=${keycloak.connectionsJpa.user}
+                    -Dkeycloak.connectionsJpa.password=${keycloak.connectionsJpa.password}
                 </property>
                 <property name="javaVmArguments">
                     ${auth.server.memory.settings}
