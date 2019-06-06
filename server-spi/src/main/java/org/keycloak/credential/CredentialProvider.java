@@ -28,4 +28,8 @@ public interface CredentialProvider extends Provider {
     void close() {
 
     }
+
+    default String getType() {
+        return this.getClass().getCanonicalName();
+    }
 }

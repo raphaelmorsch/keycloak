@@ -20,6 +20,10 @@ package org.keycloak.authentication.authenticators.browser;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.Authenticator;
+import org.keycloak.authentication.CredentialValidator;
+import org.keycloak.credential.CredentialModel;
+import org.keycloak.credential.CredentialProvider;
+import org.keycloak.credential.OTPCredentialProvider;
 import org.keycloak.events.Errors;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.KeycloakSession;
@@ -31,16 +35,18 @@ import org.keycloak.services.messages.Messages;
 
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+import java.util.List;
 
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
  */
-public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator implements Authenticator {
+public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator implements Authenticator, CredentialValidator<OTPCredentialProvider> {
     @Override
     public void action(AuthenticationFlowContext context) {
         validateOTP(context);
     }
+
 
     @Override
     public void authenticate(AuthenticationFlowContext context) {
@@ -104,11 +110,15 @@ public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator impl
         if (!user.getRequiredActions().contains(UserModel.RequiredAction.CONFIGURE_TOTP.name())) {
             user.addRequiredAction(UserModel.RequiredAction.CONFIGURE_TOTP.name());
         }
-
     }
 
     @Override
     public void close() {
 
+    }
+
+    @Override
+    public OTPCredentialProvider getCredentialProvider(AuthenticationFlowContext context) {
+        return context.getSession().getProvider(OTPCredentialProvider.class);
     }
 }

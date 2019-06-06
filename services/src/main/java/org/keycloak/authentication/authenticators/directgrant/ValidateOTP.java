@@ -44,7 +44,7 @@ public class ValidateOTP extends AbstractDirectGrantAuthenticator {
     @Override
     public void authenticate(AuthenticationFlowContext context) {
         if (!isConfigured(context.getSession(), context.getRealm(), context.getUser())) {
-            if (context.getExecution().isOptional()) {
+            if (context.getExecution().isConditional()) {
                 context.attempted();
             } else if (context.getExecution().isRequired()) {
                 context.getEvent().error(Errors.INVALID_USER_CREDENTIALS);
@@ -117,7 +117,7 @@ public class ValidateOTP extends AbstractDirectGrantAuthenticator {
 
     public static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
             AuthenticationExecutionModel.Requirement.REQUIRED,
-            AuthenticationExecutionModel.Requirement.OPTIONAL,
+            AuthenticationExecutionModel.Requirement.CONDITIONAL,
             AuthenticationExecutionModel.Requirement.DISABLED
     };
 

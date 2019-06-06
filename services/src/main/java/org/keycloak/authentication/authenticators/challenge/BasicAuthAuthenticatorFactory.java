@@ -72,7 +72,7 @@ public class BasicAuthAuthenticatorFactory implements AuthenticatorFactory {
         return false;
     }
     public static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
-            AuthenticationExecutionModel.Requirement.REQUIRED, AuthenticationExecutionModel.Requirement.OPTIONAL, AuthenticationExecutionModel.Requirement.DISABLED
+            AuthenticationExecutionModel.Requirement.REQUIRED, AuthenticationExecutionModel.Requirement.CONDITIONAL, AuthenticationExecutionModel.Requirement.DISABLED
     };
 
     @Override

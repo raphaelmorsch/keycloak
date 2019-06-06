@@ -32,7 +32,7 @@ public class ResetPassword extends AbstractSetRequiredActionAuthenticator {
     @Override
     public void authenticate(AuthenticationFlowContext context) {
         if (context.getExecution().isRequired() ||
-                (context.getExecution().isOptional() &&
+                (context.getExecution().isConditional() &&
                         configuredFor(context))) {
             context.getAuthenticationSession().addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
         }
@@ -50,7 +50,7 @@ public class ResetPassword extends AbstractSetRequiredActionAuthenticator {
 
     @Override
     public String getHelpText() {
-        return "Sets the Update Password required action if execution is REQUIRED.  Will also set it if execution is OPTIONAL and the password is currently configured for it.";
+        return "Sets the Update Password required action if execution is REQUIRED.  Will also set it if execution is CONDITIONAL and the password is currently configured for it.";
     }
 
     @Override

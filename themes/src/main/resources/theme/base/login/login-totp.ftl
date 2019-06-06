@@ -1,4 +1,4 @@
-<#import "template.ftl" as layout>
+<#import "select.ftl" as layout>
 <@layout.registrationLayout; section>
     <#if section = "header">
         ${msg("doLogIn")}

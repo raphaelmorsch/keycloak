@@ -26,6 +26,7 @@ import org.keycloak.services.ServicesLogger;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
 import javax.ws.rs.core.Response;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -35,9 +36,6 @@ import java.util.List;
  */
 public class DefaultAuthenticationFlow implements AuthenticationFlow {
     private static final Logger logger = Logger.getLogger(DefaultAuthenticationFlow.class);
-    Response alternativeChallenge = null;
-    AuthenticationExecutionModel challengedAlternativeExecution = null;
-    boolean alternativeSuccessful = false;
     List<AuthenticationExecutionModel> executions;
     Iterator<AuthenticationExecutionModel> executionIterator;
     AuthenticationProcessor processor;
@@ -83,13 +81,13 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     @Override
     public Response processAction(String actionExecution) {
         logger.debugv("processAction: {0}", actionExecution);
+
+
         while (executionIterator.hasNext()) {
             AuthenticationExecutionModel model = executionIterator.next();
             logger.debugv("check: {0} requirement: {1}", model.getAuthenticator(), model.getRequirement().toString());
             if (isProcessed(model)) {
                 logger.debug("execution is processed");
-                if (!alternativeSuccessful && model.isAlternative() && processor.isSuccessful(model))
-                    alternativeSuccessful = true;
                 continue;
             }
             if (model.isAuthenticatorFlow()) {
@@ -97,7 +95,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 Response flowChallenge = authenticationFlow.processAction(actionExecution);
                 if (flowChallenge == null) {
                     processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
-                    if (model.isAlternative()) alternativeSuccessful = true;
                     return processFlow();
                 } else {
                    return flowChallenge;
@@ -124,7 +121,49 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     @Override
     public Response processFlow() {
         logger.debug("processFlow");
-        while (executionIterator.hasNext()) {
+
+        //separate flow elements into required and alternative elements
+        List<AuthenticationExecutionModel> requiredList = new ArrayList<>();
+        List<AuthenticationExecutionModel> alternativeList = new ArrayList<>();
+
+        for (AuthenticationExecutionModel execution : executions) {
+            if (execution.isRequired() /*|| execution.isConditional()*/) {
+                //TODO evaluate conditional, and only add to list if it evaluates to TRUE
+                requiredList.add(execution);
+            } else if (execution.isAlternative()) {
+                alternativeList.add(execution);
+            }
+        }
+        //handle required elements : all required elements need to be executed
+        for (AuthenticationExecutionModel required : requiredList) {
+            Response response = processSingleFlowExecutionModel(required);
+            if (response == null) {
+                continue;
+            }
+            return response;
+        }
+        //Evaluate alternative elements only if there are no required elements
+        if (requiredList.isEmpty()) {
+            //handle alternative elements: the first alternative element to be satisfied is enough
+            for (AuthenticationExecutionModel alternative : alternativeList) {
+                try {
+                    Response response = processSingleFlowExecutionModel(alternative);
+                    if (response == null) {
+                        if (processor.isSuccessful(alternative))
+                            return null;
+                        continue;
+                    }
+                    return response;
+                } catch (AuthenticationFlowException afe) {
+                    processor.getAuthenticationSession().setExecutionStatus(alternative.getId(), AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
+                    continue;
+                }
+            }
+        }
+        return null;
+
+
+        /*while (executionIterator.hasNext()) {
             AuthenticationExecutionModel model = executionIterator.next();
             logger.debugv("check execution: {0} requirement: {1}", model.getAuthenticator(), model.getRequirement().toString());
 
@@ -167,7 +206,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                     } else if (model.isRequired()) {
                         processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
                         return flowChallenge;
-                    } else if (model.isOptional()) {
+                    } else if (model.isConditional()) {
                         processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SKIPPED);
                         continue;
                     } else {
@@ -206,7 +245,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                         } else {
                             throw new AuthenticationFlowException(AuthenticationFlowError.CREDENTIAL_SETUP_REQUIRED);
                         }
-                    } else if (model.isOptional()) {
+                    } else if (model.isConditional()) {
                         processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SKIPPED);
                         continue;
                     }
@@ -221,8 +260,57 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             authenticator.authenticate(context);
             Response response = processResult(context, false);
             if (response != null) return response;
+        }*/
+
+    }
+
+    private Response processSingleFlowExecutionModel(AuthenticationExecutionModel model) {
+        logger.debugv("check execution: {0} requirement: {1}", model.getAuthenticator(), model.getRequirement().toString());
+
+        if (isProcessed(model)) {
+            logger.debug("execution is processed");
+            return null;
         }
-        return null;
+        if (model.isAuthenticatorFlow()) {
+            logger.debug("execution is flow");
+            AuthenticationFlow authenticationFlow = processor.createFlowExecution(model.getFlowId(), model);
+            Response flowChallenge = authenticationFlow.processFlow();
+            if (flowChallenge == null) {
+                processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
+                return null;
+            } else {
+                processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
+                return flowChallenge;
+            }
+        }
+        AuthenticatorFactory factory = (AuthenticatorFactory) processor.getSession().getKeycloakSessionFactory().getProviderFactory(Authenticator.class, model.getAuthenticator());
+        if (factory == null) {
+            throw new RuntimeException("Unable to find factory for AuthenticatorFactory: " + model.getAuthenticator() + " did you forget to declare it in a META-INF/services file?");
+        }
+        Authenticator authenticator = createAuthenticator(factory);
+        logger.debugv("authenticator: {0}", factory.getId());
+        UserModel authUser = processor.getAuthenticationSession().getAuthenticatedUser();
+
+        if (authenticator.requiresUser() && authUser == null) {
+            if (authUser == null) {
+                throw new AuthenticationFlowException("authenticator: " + factory.getId(), AuthenticationFlowError.UNKNOWN_USER);
+            }
+            if (!authenticator.configuredFor(processor.getSession(), processor.getRealm(), authUser)) {
+                if (factory.isUserSetupAllowed()) {
+                    logger.debugv("authenticator SETUP_REQUIRED: {0}", factory.getId());
+                    processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SETUP_REQUIRED);
+                    authenticator.setRequiredActions(processor.getSession(), processor.getRealm(), processor.getAuthenticationSession().getAuthenticatedUser());
+                    return null;
+                } else {
+                    throw new AuthenticationFlowException(AuthenticationFlowError.CREDENTIAL_SETUP_REQUIRED);
+                }
+            }
+        }
+        AuthenticationProcessor.Result context = processor.createAuthenticatorContext(model, authenticator, executions);
+        logger.debugv("invoke authenticator.authenticate: {0}", factory.getId());
+        authenticator.authenticate(context);
+        Response response = processResult(context, false);
+        return response;
     }
 
 
@@ -233,7 +321,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             case SUCCESS:
                 logger.debugv("authenticator SUCCESS: {0}", execution.getAuthenticator());
                 processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
-                if (execution.isAlternative()) alternativeSuccessful = true;
                 return null;
             case FAILED:
                 logger.debugv("authenticator FAILED: {0}", execution.getAuthenticator());
@@ -247,27 +334,10 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 logger.debugv("reset browser login from authenticator: {0}", execution.getAuthenticator());
                 processor.getAuthenticationSession().setAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION, execution.getId());
                 throw new ForkFlowException(result.getSuccessMessage(), result.getErrorMessage());
-            case FORCE_CHALLENGE:
+            case FORCE_CHALLENGE :
+            case CHALLENGE:
                 processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
                 return sendChallenge(result, execution);
-            case CHALLENGE:
-                logger.debugv("authenticator CHALLENGE: {0}", execution.getAuthenticator());
-                if (execution.isRequired()) {
-                    processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
-                    return sendChallenge(result, execution);
-                }
-                UserModel authenticatedUser = processor.getAuthenticationSession().getAuthenticatedUser();
-                if (execution.isOptional() && authenticatedUser != null && result.getAuthenticator().configuredFor(processor.getSession(), processor.getRealm(), authenticatedUser)) {
-                    processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
-                    return sendChallenge(result, execution);
-                }
-                if (execution.isAlternative()) {
-                    alternativeChallenge = result.getChallenge();
-                    challengedAlternativeExecution = execution;
-                } else {
-                    processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.SKIPPED);
-                }
-                return null;
             case FAILURE_CHALLENGE:
                 logger.debugv("authenticator FAILURE_CHALLENGE: {0}", execution.getAuthenticator());
                 processor.logFailure();

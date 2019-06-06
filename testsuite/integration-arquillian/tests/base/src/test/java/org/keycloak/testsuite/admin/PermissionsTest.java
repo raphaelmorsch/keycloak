@@ -1122,7 +1122,7 @@ public class PermissionsTest extends AbstractKeycloakTest {
             public void invoke(RealmResource realm, AtomicReference<Response> response) {
                 AuthenticationExecutionRepresentation rep = new AuthenticationExecutionRepresentation();
                 rep.setAuthenticator("auth-cookie");
-                rep.setRequirement("OPTIONAL");
+                rep.setRequirement("CONDITIONAL");
                 response.set(realm.flows().addExecution(rep));
             }
         }, Resource.REALM, true);

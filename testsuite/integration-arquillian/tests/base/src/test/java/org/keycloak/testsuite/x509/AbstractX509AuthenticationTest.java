@@ -92,7 +92,7 @@ public abstract class AbstractX509AuthenticationTest extends AbstractTestRealmKe
     protected final Logger log = Logger.getLogger(this.getClass());
 
     static final String REQUIRED = "REQUIRED";
-    static final String OPTIONAL = "OPTIONAL";
+    static final String CONDITIONAL = "CONDITIONAL";
     static final String DISABLED = "DISABLED";
     static final String ALTERNATIVE = "ALTERNATIVE";
 

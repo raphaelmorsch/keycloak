@@ -18,7 +18,6 @@
 package org.keycloak.authentication;
 
 import org.jboss.resteasy.spi.HttpRequest;
-import org.keycloak.OAuth2Constants;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.forms.login.LoginFormsProvider;
@@ -203,7 +202,7 @@ public class FormAuthenticationFlow implements AuthenticationFlow {
                         } else {
                             throw new AuthenticationFlowException(AuthenticationFlowError.CREDENTIAL_SETUP_REQUIRED);
                         }
-                    } else if (formActionExecution.isOptional()) {
+                    } else if (formActionExecution.isConditional()) {
                         executionStatus.put(formActionExecution.getId(), AuthenticationSessionModel.ExecutionStatus.SKIPPED);
                         continue;
                     }
