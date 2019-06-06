@@ -18,6 +18,7 @@ package org.keycloak.forms.login.freemarker;
 
 import org.jboss.logging.Logger;
 import org.keycloak.OAuth2Constants;
+import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.requiredactions.util.UpdateProfileContext;
 import org.keycloak.authentication.requiredactions.util.UserUpdateProfileContext;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
@@ -36,7 +37,13 @@ import org.keycloak.forms.login.freemarker.model.RequiredActionUrlFormatterMetho
 import org.keycloak.forms.login.freemarker.model.TotpBean;
 import org.keycloak.forms.login.freemarker.model.UrlBean;
 import org.keycloak.forms.login.freemarker.model.X509ConfirmBean;
-import org.keycloak.models.*;
+import org.keycloak.models.ClientModel;
+import org.keycloak.models.ClientScopeModel;
+import org.keycloak.models.Constants;
+import org.keycloak.models.IdentityProviderModel;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.FormMessage;
 import org.keycloak.services.Urls;
 import org.keycloak.services.messages.Messages;
@@ -61,8 +68,14 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.MessageFormat;
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 
 import static org.keycloak.models.UserModel.RequiredAction.UPDATE_PASSWORD;
 
@@ -80,6 +93,7 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
     protected Map<String, String> httpResponseHeaders = new HashMap<>();
     protected URI actionUri;
     protected String execution;
+    protected AuthenticationFlowContext context;
 
     protected List<FormMessage> messages = null;
     protected MessageType messageType = MessageType.ERROR;
@@ -173,10 +187,15 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
         createCommonAttributes(theme, locale, messagesBundle, uriBuilder, page);
 
         attributes.put("login", new LoginBean(formData));
-
         if (status != null) {
             attributes.put("statusCode", status.getStatusCode());
         }
+
+        if (context != null) {
+            attributes.put("authenticationSelections", context.getAuthenticationSelections());
+            attributes.put("selectedCredential", context.getSelectedCredentialId());
+        }
+        attributes.put(Constants.EXECUTION, execution);
 
         switch (page) {
             case LOGIN_CONFIG_TOTP:
@@ -383,13 +402,13 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
             attributes.put("url", new UrlBean(realm, theme, baseUri, this.actionUri));
             attributes.put("requiredActionUrl", new RequiredActionUrlFormatterMethod(realm, baseUri));
 
+
             if (realm.isInternationalizationEnabled()) {
                 UriBuilder b;
                 if (page != null) {
                     switch (page) {
                         case LOGIN:
-                            b = UriBuilder.fromUri(Urls.realmLoginPage(baseUri, realm.getName()));
-                            break;
+                        case LOGIN_USERNAME:
                         case X509_CONFIRM:
                             b = UriBuilder.fromUri(Urls.realmLoginPage(baseUri, realm.getName()));
                             break;
@@ -446,9 +465,17 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
     }
 
     @Override
-    public Response createLogin() {
+    public Response createLoginUsernamePassword() {
         return createResponse(LoginFormsPages.LOGIN);
     }
+
+    public Response createLoginUsername(){
+        return createResponse(LoginFormsPages.LOGIN_USERNAME);
+    };
+
+    public Response createLoginPassword(){
+        return createResponse(LoginFormsPages.LOGIN_PASSWORD);
+    };
 
     @Override
     public Response createPasswordReset() {
@@ -664,6 +691,11 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
     @Override
     public LoginFormsProvider setResponseHeader(String headerName, String headerValue) {
         this.httpResponseHeaders.put(headerName, headerValue);
+        return this;
+    }
+
+    public LoginFormsProvider setAuthContext(AuthenticationFlowContext context){
+        this.context = context;
         return this;
     }
 

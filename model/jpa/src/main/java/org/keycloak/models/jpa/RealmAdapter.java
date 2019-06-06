@@ -586,6 +586,9 @@ public class RealmAdapter implements RealmModel, JpaModel<RealmEntity> {
 
     @Override
     public int getActionTokenGeneratedByUserLifespan(String actionTokenId) {
+        if (actionTokenId == null || getAttribute(RealmAttributes.ACTION_TOKEN_GENERATED_BY_USER_LIFESPAN + "." + actionTokenId) == null) {
+            return getActionTokenGeneratedByUserLifespan();
+        }
         return getAttribute(RealmAttributes.ACTION_TOKEN_GENERATED_BY_USER_LIFESPAN + "." + actionTokenId, getAccessCodeLifespanUserAction());
     }
 
@@ -1570,6 +1573,16 @@ public class RealmAdapter implements RealmModel, JpaModel<RealmEntity> {
         AuthenticationExecutionEntity entity = em.find(AuthenticationExecutionEntity.class, id);
         if (entity == null) return null;
         return entityToModel(entity);
+    }
+
+    public AuthenticationExecutionModel getAuthenticationExecutionByFlowId(String flowId) {
+        TypedQuery<AuthenticationExecutionEntity> query = em.createNamedQuery("authenticationFlowExecution", AuthenticationExecutionEntity.class)
+                .setParameter("flowId", flowId);
+        if (query.getResultList().isEmpty()) {
+            return null;
+        }
+        AuthenticationExecutionEntity authenticationFlowExecution = query.getResultList().get(0);
+        return entityToModel(authenticationFlowExecution);
     }
 
     @Override

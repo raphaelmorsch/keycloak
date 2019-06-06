@@ -30,4 +30,5 @@ public interface AuthenticationFlow {
 
     Response processAction(String actionExecution);
     Response processFlow();
+    boolean isSuccessful();
 }

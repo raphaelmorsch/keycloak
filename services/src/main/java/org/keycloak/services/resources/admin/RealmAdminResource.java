@@ -27,6 +27,7 @@ import org.keycloak.KeyPairVerifier;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.PemUtils;
+import org.keycloak.credential.CredentialProvider;
 import org.keycloak.email.EmailTemplateProvider;
 import org.keycloak.events.Event;
 import org.keycloak.events.EventQuery;
@@ -107,6 +108,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.keycloak.models.utils.StripSecretsUtils.stripForExport;
 import static org.keycloak.util.JsonSerialization.readValue;
@@ -1150,6 +1152,15 @@ public class RealmAdminResource {
         KeyResource resource =  new KeyResource(realm, session, this.auth);
         ResteasyProviderFactory.getInstance().injectProperties(resource);
         return resource;
+    }
+
+    @GET
+    @Path("credentialTypes")
+    @NoCache
+    @Produces(javax.ws.rs.core.MediaType.APPLICATION_JSON)
+    public List<String> getCredentialTypes(){
+        auth.realm().requireViewRealm();
+        return session.getAllProviders(CredentialProvider.class).stream().map(CredentialProvider::getType).collect(Collectors.toList());
     }
 
 }

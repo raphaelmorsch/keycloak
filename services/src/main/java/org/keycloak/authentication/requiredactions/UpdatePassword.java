@@ -40,6 +40,7 @@ import org.keycloak.services.validation.Validation;
 
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**

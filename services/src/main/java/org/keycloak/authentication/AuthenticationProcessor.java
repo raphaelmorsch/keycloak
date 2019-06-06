@@ -23,6 +23,7 @@ import org.keycloak.authentication.authenticators.browser.AbstractUsernameFormAu
 import org.keycloak.authentication.authenticators.client.ClientAuthUtil;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.util.Time;
+import org.keycloak.credential.CredentialModel;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
@@ -30,7 +31,6 @@ import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
 import org.keycloak.models.AuthenticatorConfigModel;
-import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.ClientSessionContext;
 import org.keycloak.models.Constants;
@@ -276,6 +276,8 @@ public class AuthenticationProcessor {
         List<AuthenticationExecutionModel> currentExecutions;
         FormMessage errorMessage;
         FormMessage successMessage;
+        String selectedCredentialId;
+        List<AuthenticationSelectionOption> authenticationSelections;
 
         private Result(AuthenticationExecutionModel execution, Authenticator authenticator, List<AuthenticationExecutionModel> currentExecutions) {
             this.execution = execution;
@@ -391,6 +393,26 @@ public class AuthenticationProcessor {
         @Override
         public void setUser(UserModel user) {
             setAutheticatedUser(user);
+        }
+
+        @Override
+        public String getSelectedCredentialId() {
+            return selectedCredentialId;
+        }
+
+        @Override
+        public void setSelectedCredentialId(String selectedCredentialId) {
+            this.selectedCredentialId = selectedCredentialId;
+        }
+
+        @Override
+        public List<AuthenticationSelectionOption> getAuthenticationSelections() {
+            return authenticationSelections;
+        }
+
+        @Override
+        public void setAuthenticationSelections(List<AuthenticationSelectionOption> authenticationSelections) {
+            this.authenticationSelections = authenticationSelections;
         }
 
         @Override
@@ -786,7 +808,11 @@ public class AuthenticationProcessor {
         AuthenticationFlow authenticationFlow = createFlowExecution(this.flowId, null);
         try {
             Response challenge = authenticationFlow.processFlow();
-            return challenge;
+            if (challenge != null) return challenge;
+            if (!authenticationFlow.isSuccessful()) {
+                throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS);
+            }
+            return null;
         } catch (Exception e) {
             return handleClientAuthException(e);
         }
@@ -912,7 +938,10 @@ public class AuthenticationProcessor {
         if (authenticationSession.getAuthenticatedUser() == null) {
             throw new AuthenticationFlowException(AuthenticationFlowError.UNKNOWN_USER);
         }
-        return challenge;
+        if (!authenticationFlow.isSuccessful()) {
+            throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS);
+        }
+        return null;
     }
 
     // May create userSession too

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  ~ * Copyright 2018 Red Hat, Inc. and/or its affiliates
+  ~ * and other contributors as indicated by the @author tags.
+  ~ *
+  ~ * Licensed under the Apache License, Version 2.0 (the "License");
+  ~ * you may not use this file except in compliance with the License.
+  ~ * You may obtain a copy of the License at
+  ~ *
+  ~ * http://www.apache.org/licenses/LICENSE-2.0
+  ~ *
+  ~ * Unless required by applicable law or agreed to in writing, software
+  ~ * distributed under the License is distributed on an "AS IS" BASIS,
+  ~ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ * See the License for the specific language governing permissions and
+  ~ * limitations under the License.
+  -->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <!--modifies the credentials to the new format, while copying the data as json in the new fields-->
+    <changeSet author="alistair.doswald@elca.ch" id="7.0.0">
+        <addColumn tableName="CREDENTIAL">
+            <column name="SECRET_DATA" type="CLOB">
+                <constraints nullable="true"/>
+            </column>
+            <column name="CREDENTIAL_DATA" type="CLOB">
+                <constraints nullable="true"/>
+            </column>
+            <column name="PREVIOUS_CREDENTIAL_LINK" type="VARCHAR">
+                <constraints nullable="true"/>
+            </column>
+            <column name="NEXT_CREDENTIAL_LINK" type="VARCHAR">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="FED_USER_CREDENTIAL">
+            <column name="SECRET_DATA" type="CLOB">
+                <constraints nullable="true"/>
+            </column>
+            <column name="CREDENTIAL_DATA" type="CLOB">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!--Update format of credential to fill secret_data and credential_data-->
+        <customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate7_0_0_Credentials"/>
+
+        <!--Update format of fed_user_credential to fill secret_data and credential_data-->
+        <customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate7_0_0_FederatedUserCredentials"/>
+
+        <renameColumn tableName="CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
+
+        <dropColumn tableName="CREDENTIAL" columnName="HASH_ITERATIONS"/>
+        <dropColumn tableName="CREDENTIAL" columnName="SALT"/>
+        <dropColumn tableName="CREDENTIAL" columnName="VALUE"/>
+        <dropColumn tableName="CREDENTIAL" columnName="COUNTER"/>
+        <dropColumn tableName="CREDENTIAL" columnName="DIGITS"/>
+        <dropColumn tableName="CREDENTIAL" columnName="PERIOD"/>
+        <dropColumn tableName="CREDENTIAL" columnName="ALGORITHM"/>
+
+        <!--credential attributes are now held within the json of secret_data and credential_data (not this it was used in any case)-->
+        <dropTable tableName="CREDENTIAL_ATTRIBUTE"/>
+
+        <renameColumn tableName="FED_USER_CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
+
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="HASH_ITERATIONS"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="SALT"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="VALUE"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="COUNTER"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="DIGITS"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="PERIOD"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="ALGORITHM"/>
+
+        <!--credential attributes are now held within the json of secret_data and credential_data (not this it was used in any case)-->
+        <dropTable tableName="FED_CREDENTIAL_ATTRIBUTE "/>
+
+    </changeSet>
+
+</databaseChangeLog>

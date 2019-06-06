@@ -43,7 +43,7 @@ public class IdpUsernamePasswordForm extends UsernamePasswordForm {
 
         return setupForm(context, formData, existingUser)
                 .setStatus(Response.Status.OK)
-                .createLogin();
+                .createLoginUsernamePassword();
     }
 
     @Override
@@ -65,6 +65,7 @@ public class IdpUsernamePasswordForm extends UsernamePasswordForm {
 
         formData.add(AuthenticationManager.FORM_USERNAME, existingUser.getUsername());
         return context.form()
+                .setAuthContext(context)
                 .setFormData(formData)
                 .setAttribute(LoginFormsProvider.USERNAME_EDIT_DISABLED, true)
                 .setInfo(Messages.FEDERATED_IDENTITY_CONFIRM_REAUTHENTICATE_MESSAGE, existingUser.getUsername(), serializedCtx.getIdentityProviderId());

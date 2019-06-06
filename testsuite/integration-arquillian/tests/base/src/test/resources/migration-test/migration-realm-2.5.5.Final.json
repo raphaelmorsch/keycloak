@@ -484,15 +484,9 @@
     "emailVerified" : false,
     "credentials" : [ {
       "type" : "password",
-      "hashedSaltedValue" : "UahGF6QpiHbshvw6GmaLR+cgM7v6ZxNKd3mPywudvAz3KWOhv0sMvespERCykvSC2xP4OBMzbwwxBACRSmGE0w==",
-      "salt" : "mnR0QbmURHVkSej+2eG9ng==",
-      "hashIterations" : 20000,
-      "counter" : 0,
-      "algorithm" : "pbkdf2",
-      "digits" : 0,
-      "period" : 0,
-      "createdDate" : 1489756582960,
-      "config" : { }
+      "secretData" : "{\"value\", : \"UahGF6QpiHbshvw6GmaLR+cgM7v6ZxNKd3mPywudvAz3KWOhv0sMvespERCykvSC2xP4OBMzbwwxBACRSmGE0w==\",\"salt\" : \"mnR0QbmURHVkSej+2eG9ng==\"}",
+      "credentialData" : "{\"hashIterations\" : 20000,\"algorithm\" : \"pbkdf2\"}",
+      "createdDate" : 1489756582960
     } ],
     "disableableCredentialTypes" : [ "password" ],
     "requiredActions" : [ ],

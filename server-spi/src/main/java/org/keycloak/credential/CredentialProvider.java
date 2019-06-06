@@ -16,16 +16,24 @@
  */
 package org.keycloak.credential;
 
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
 import org.keycloak.provider.Provider;
 
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
  */
-public interface CredentialProvider extends Provider {
+public interface CredentialProvider<T extends CredentialModel> extends Provider {
+
     @Override
     default
     void close() {
 
     }
+
+    String getType();
+
+    CredentialModel createCredential(RealmModel realm, UserModel user, T credentialModel);
+    void deleteCredential(RealmModel realm, UserModel user, String credentialId);
 }
