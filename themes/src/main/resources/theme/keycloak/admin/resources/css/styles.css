@@ -424,6 +424,7 @@ div[tree-model] li .deactivate_selected {
     padding: 1px 5px;
 }
 
+<<<<<<< HEAD
 /* Manage credentials */
 table.credentials-table {
     margin-top: 0;
@@ -487,3 +488,10 @@ table.credential-data-table td.value {
     text-align: right;
     padding: 5px;
 }
+=======
+/* search highlighting */
+
+div[tree-model] li .highlight {
+    background-color: #aaddff;
+}
+>>>>>>> b32a9debce... [KEYCLOAK-10018] Adding search highlight with text match
