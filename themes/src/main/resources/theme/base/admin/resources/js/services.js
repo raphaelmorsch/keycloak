@@ -194,7 +194,25 @@ module.factory('Notifications', function($rootScope, $timeout) {
 
 module.factory('ComponentUtils', function() {
 
+    function sortGroups(prop, arr) {
+        // sort current elements
+        arr.sort(function (a, b) {
+            if (a[prop] < b[prop]) { return -1; }
+            if (a[prop] > b[prop]) { return 1; }
+            return 0;
+        });
+        // check sub groups
+        arr.forEach(function (item, index) {
+            if (!!item.subGroups) {
+                sortGroups(prop, item.subGroups);
+            }
+        });
+        return arr;
+    };
+
     var utils = {};
+
+    utils.sortGroups = sortGroups;
 
     utils.findIndexById = function(array, id) {
         for (var i = 0; i < array.length; i++) {
@@ -2068,4 +2086,3 @@ module.factory('UserGroupMembershipCount', function($resource) {
             }
         });
 });
-

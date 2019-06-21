@@ -1,6 +1,6 @@
 module.controller('UserRoleMappingCtrl', function($scope, $http, realm, user, clients, client, Notifications, RealmRoleMapping,
                                                   ClientRoleMapping, AvailableRealmRoleMapping, AvailableClientRoleMapping,
-                                                  CompositeRealmRoleMapping, CompositeClientRoleMapping) {
+                                                  CompositeRealmRoleMapping, CompositeClientRoleMapping, ComponentUtils) {
     $scope.realm = realm;
     $scope.user = user;
     $scope.selectedRealmRoles = [];
@@ -1169,7 +1169,7 @@ module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, U
         });
 
         promiseGetGroups.promise.then(function(groups) {
-            $scope.groupList = groups;
+            $scope.groupList = ComponentUtils.sortGroups('name', groups);
         }, function (failed) {
             Notifications.error(failed);
         });
@@ -1833,8 +1833,3 @@ module.controller('LDAPMapperCreateCtrl', function($scope, realm, provider, mapp
 
 
 });
-
-
-
-
-
