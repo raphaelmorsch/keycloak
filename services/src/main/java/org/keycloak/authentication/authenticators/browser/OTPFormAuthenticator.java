@@ -21,7 +21,6 @@ import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.Authenticator;
 import org.keycloak.authentication.CredentialValidator;
-import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.CredentialProvider;
 import org.keycloak.credential.OTPCredentialProvider;
 import org.keycloak.events.Errors;
@@ -30,12 +29,11 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
-import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.services.messages.Messages;
 
+import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
-import java.util.List;
 
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
@@ -54,6 +52,7 @@ public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator impl
         context.challenge(challengeResponse);
     }
 
+
     public void validateOTP(AuthenticationFlowContext context) {
         MultivaluedMap<String, String> inputData = context.getHttpRequest().getDecodedFormParameters();
         if (inputData.containsKey("cancel")) {
@@ -61,24 +60,34 @@ public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator impl
             return;
         }
 
+        String otp = inputData.getFirst("otp");
+        String credentialId = inputData.getFirst("credentialId");
+
+        //TODO this is lazy for when there is no clearly defined credentialId available (for example direct grant or console OTP), replace with getting the credential from the name
+        if (credentialId == null) {
+            credentialId = getCredentialProvider(context.getSession()).getPreferredCredential(context.getRealm(), context.getUser()).getId();
+        }
+
+        MultivaluedMap<String, String> formData = new MultivaluedHashMap<>();
+        formData.putSingle("credentialId", credentialId);
+
         UserModel userModel = context.getUser();
-        if (!enabledUser(context, userModel)) {
+        if (!enabledUser(context, userModel, formData)) {
             // error in context is set in enabledUser/isTemporarilyDisabledByBruteForce
             return;
         }
 
-        String password = inputData.getFirst(CredentialRepresentation.TOTP);
-        if (password == null) {
-            Response challengeResponse = challenge(context, null);
+        if (otp == null) {
+            Response challengeResponse = challenge(context, formData,null);
             context.challenge(challengeResponse);
             return;
         }
-        boolean valid = context.getSession().userCredentialManager().isValid(context.getRealm(), userModel,
-                UserCredentialModel.otp(context.getRealm().getOTPPolicy().getType(), password));
+        boolean valid = getCredentialProvider(context.getSession()).isValid(context.getRealm(),context.getUser(),
+                new UserCredentialModel(credentialId, getCredentialProvider(context.getSession()).getType(), otp));
         if (!valid) {
             context.getEvent().user(userModel)
                     .error(Errors.INVALID_USER_CREDENTIALS);
-            Response challengeResponse = challenge(context, Messages.INVALID_TOTP);
+            Response challengeResponse = challenge(context, formData, Messages.INVALID_TOTP);
             context.failureChallenge(AuthenticationFlowError.INVALID_CREDENTIALS, challengeResponse);
             return;
         }
@@ -102,7 +111,7 @@ public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator impl
 
     @Override
     public boolean configuredFor(KeycloakSession session, RealmModel realm, UserModel user) {
-        return session.userCredentialManager().isConfiguredFor(realm, user, realm.getOTPPolicy().getType());
+        return getCredentialProvider(session).isConfiguredFor(realm, user);
     }
 
     @Override
@@ -118,7 +127,8 @@ public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator impl
     }
 
     @Override
-    public OTPCredentialProvider getCredentialProvider(AuthenticationFlowContext context) {
-        return context.getSession().getProvider(OTPCredentialProvider.class);
+    public OTPCredentialProvider getCredentialProvider(KeycloakSession session) {
+        return (OTPCredentialProvider)session.getProvider(CredentialProvider.class, "keycloak-otp");
     }
+
 }

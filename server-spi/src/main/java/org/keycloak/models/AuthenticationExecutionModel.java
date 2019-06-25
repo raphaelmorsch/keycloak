@@ -120,7 +120,7 @@ public class AuthenticationExecutionModel implements Serializable {
 
     public enum Requirement {
         REQUIRED,
-        CONDITIONAL,
+        OPTIONAL,
         ALTERNATIVE,
         DISABLED
     }
@@ -128,8 +128,8 @@ public class AuthenticationExecutionModel implements Serializable {
     public boolean isRequired() {
         return requirement == Requirement.REQUIRED;
     }
-    public boolean isConditional() {
-        return requirement == Requirement.CONDITIONAL;
+    public boolean isOptional() {
+        return requirement == Requirement.OPTIONAL;
     }
     public boolean isAlternative() {
         return requirement == Requirement.ALTERNATIVE;

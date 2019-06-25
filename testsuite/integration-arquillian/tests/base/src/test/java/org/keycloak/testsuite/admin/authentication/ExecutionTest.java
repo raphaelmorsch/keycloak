@@ -218,7 +218,7 @@ public class ExecutionTest extends AbstractAuthenticationTest {
         Assert.assertNotNull("auth-cookie added", exec);
 
         // Note: there is no checking in addExecution if requirement is one of requirementChoices
-        // Thus we can have CONDITIONAL which is neither ALTERNATIVE, nor DISABLED
+        // Thus we can have OPTIONAL which is neither ALTERNATIVE, nor DISABLED
         compareExecution(newExecInfo("Cookie", "auth-cookie", false, 0, 3, OPTIONAL, null, new String[]{ALTERNATIVE, DISABLED}), exec);
     }
 

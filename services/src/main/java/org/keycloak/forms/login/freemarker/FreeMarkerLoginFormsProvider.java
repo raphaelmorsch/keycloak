@@ -37,6 +37,8 @@ import org.keycloak.forms.login.freemarker.model.TotpBean;
 import org.keycloak.forms.login.freemarker.model.UrlBean;
 import org.keycloak.forms.login.freemarker.model.X509ConfirmBean;
 import org.keycloak.models.*;
+import org.keycloak.models.credential.OTPCredentialModel;
+import org.keycloak.models.credential.dto.OTPCredentialData;
 import org.keycloak.models.utils.FormMessage;
 import org.keycloak.services.Urls;
 import org.keycloak.services.messages.Messages;
@@ -173,12 +175,15 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
         createCommonAttributes(theme, locale, messagesBundle, uriBuilder, page);
 
         attributes.put("login", new LoginBean(formData));
-
         if (status != null) {
             attributes.put("statusCode", status.getStatusCode());
         }
 
         switch (page) {
+            case LOGIN_TOTP:
+                attributes.put("selectedCredentialId", formData.getFirst("credentialId"));
+                attributes.put("credentials", session.userCredentialManager().getStoredCredentialsByType(realm, user, OTPCredentialModel.TYPE));
+                break;
             case LOGIN_CONFIG_TOTP:
                 attributes.put("totp", new TotpBean(session, realm, user, uriInfo.getRequestUriBuilder()));
                 break;

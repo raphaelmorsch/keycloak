@@ -16,20 +16,17 @@
  */
 package org.keycloak.models.jpa;
 
-import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.UserCredentialStore;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
-import org.keycloak.models.jpa.entities.CredentialAttributeEntity;
 import org.keycloak.models.jpa.entities.CredentialEntity;
 import org.keycloak.models.jpa.entities.UserEntity;
 import org.keycloak.models.utils.KeycloakModelUtils;
 
 import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -51,53 +48,11 @@ public class JpaUserCredentialStore implements UserCredentialStore {
     public void updateCredential(RealmModel realm, UserModel user, CredentialModel cred) {
         CredentialEntity entity = em.find(CredentialEntity.class, cred.getId());
         if (entity == null) return;
-        entity.setAlgorithm(cred.getAlgorithm());
-        entity.setCounter(cred.getCounter());
         entity.setCreatedDate(cred.getCreatedDate());
-        entity.setDevice(cred.getDevice());
-        entity.setDigits(cred.getDigits());
-        entity.setHashIterations(cred.getHashIterations());
-        entity.setPeriod(cred.getPeriod());
-        entity.setSalt(cred.getSalt());
+        entity.setUserLabel(cred.getUserLabel());
         entity.setType(cred.getType());
-        entity.setValue(cred.getValue());
-        if (entity.getCredentialAttributes().isEmpty() && (cred.getConfig() == null || cred.getConfig().isEmpty())) {
-
-        } else {
-            MultivaluedHashMap<String, String> attrs = cred.getConfig();
-            MultivaluedHashMap<String, String> config = cred.getConfig();
-            if (config == null) config = new MultivaluedHashMap<>();
-
-            Iterator<CredentialAttributeEntity> it = entity.getCredentialAttributes().iterator();
-            while (it.hasNext()) {
-                CredentialAttributeEntity attr = it.next();
-                List<String> values = config.getList(attr.getName());
-                if (values == null || !values.contains(attr.getValue())) {
-                    em.remove(attr);
-                    it.remove();
-                } else {
-                    attrs.add(attr.getName(), attr.getValue());
-                }
-
-            }
-            for (String key : config.keySet()) {
-                List<String> values = config.getList(key);
-                List<String> attrValues = attrs.getList(key);
-                for (String val : values) {
-                    if (attrValues == null || !attrValues.contains(val)) {
-                        CredentialAttributeEntity attr = new CredentialAttributeEntity();
-                        attr.setId(KeycloakModelUtils.generateId());
-                        attr.setValue(val);
-                        attr.setName(key);
-                        attr.setCredential(entity);
-                        em.persist(attr);
-                        entity.getCredentialAttributes().add(attr);
-                    }
-                }
-            }
-
-        }
-
+        entity.setSecretData(cred.getSecretData());
+        entity.setCredentialData(cred.getCredentialData());
     }
 
     @Override
@@ -105,36 +60,14 @@ public class JpaUserCredentialStore implements UserCredentialStore {
         CredentialEntity entity = new CredentialEntity();
         String id = cred.getId() == null ? KeycloakModelUtils.generateId() : cred.getId();
         entity.setId(id);
-        entity.setAlgorithm(cred.getAlgorithm());
-        entity.setCounter(cred.getCounter());
         entity.setCreatedDate(cred.getCreatedDate());
-        entity.setDevice(cred.getDevice());
-        entity.setDigits(cred.getDigits());
-        entity.setHashIterations(cred.getHashIterations());
-        entity.setPeriod(cred.getPeriod());
-        entity.setSalt(cred.getSalt());
+        entity.setUserLabel(cred.getUserLabel());
         entity.setType(cred.getType());
-        entity.setValue(cred.getValue());
+        entity.setSecretData(cred.getSecretData());
+        entity.setCredentialData(cred.getCredentialData());
         UserEntity userRef = em.getReference(UserEntity.class, user.getId());
         entity.setUser(userRef);
         em.persist(entity);
-        MultivaluedHashMap<String, String> config = cred.getConfig();
-        if (config != null && !config.isEmpty()) {
-
-            for (String key : config.keySet()) {
-                List<String> values = config.getList(key);
-                for (String val : values) {
-                    CredentialAttributeEntity attr = new CredentialAttributeEntity();
-                    attr.setId(KeycloakModelUtils.generateId());
-                    attr.setValue(val);
-                    attr.setName(key);
-                    attr.setCredential(entity);
-                    em.persist(attr);
-                    entity.getCredentialAttributes().add(attr);
-                }
-            }
-
-        }
         return toModel(entity);
     }
 
@@ -158,19 +91,9 @@ public class JpaUserCredentialStore implements UserCredentialStore {
         CredentialModel model = new CredentialModel();
         model.setId(entity.getId());
         model.setType(entity.getType());
-        model.setValue(entity.getValue());
-        model.setAlgorithm(entity.getAlgorithm());
-        model.setSalt(entity.getSalt());
-        model.setPeriod(entity.getPeriod());
-        model.setCounter(entity.getCounter());
-        model.setCreatedDate(entity.getCreatedDate());
-        model.setDevice(entity.getDevice());
-        model.setDigits(entity.getDigits());
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        model.setConfig(config);
-        for (CredentialAttributeEntity attr : entity.getCredentialAttributes()) {
-            config.add(attr.getName(), attr.getValue());
-        }
+        model.setUserLabel(entity.getUserLabel());
+        model.setSecretData(entity.getSecretData());
+        model.setCredentialData(entity.getCredentialData());
         return model;
     }
 

@@ -43,7 +43,6 @@ import org.keycloak.storage.jpa.entity.FederatedUser;
 import org.keycloak.storage.jpa.entity.FederatedUserAttributeEntity;
 import org.keycloak.storage.jpa.entity.FederatedUserConsentClientScopeEntity;
 import org.keycloak.storage.jpa.entity.FederatedUserConsentEntity;
-import org.keycloak.storage.jpa.entity.FederatedUserCredentialAttributeEntity;
 import org.keycloak.storage.jpa.entity.FederatedUserCredentialEntity;
 import org.keycloak.storage.jpa.entity.FederatedUserGroupMembershipEntity;
 import org.keycloak.storage.jpa.entity.FederatedUserRequiredActionEntity;
@@ -55,7 +54,6 @@ import javax.persistence.TypedQuery;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -560,53 +558,11 @@ public class JpaUserFederatedStorageProvider implements
         FederatedUserCredentialEntity entity = em.find(FederatedUserCredentialEntity.class, cred.getId());
         if (entity == null) return;
         createIndex(realm, userId);
-        entity.setAlgorithm(cred.getAlgorithm());
-        entity.setCounter(cred.getCounter());
         entity.setCreatedDate(cred.getCreatedDate());
-        entity.setDevice(cred.getDevice());
-        entity.setDigits(cred.getDigits());
-        entity.setHashIterations(cred.getHashIterations());
-        entity.setPeriod(cred.getPeriod());
-        entity.setSalt(cred.getSalt());
         entity.setType(cred.getType());
-        entity.setValue(cred.getValue());
-        if (entity.getCredentialAttributes().isEmpty() && (cred.getConfig() == null || cred.getConfig().isEmpty())) {
-
-        } else {
-            MultivaluedHashMap<String, String> attrs = new MultivaluedHashMap<>();
-            MultivaluedHashMap<String, String> config = cred.getConfig();
-            if (config == null) config = new MultivaluedHashMap<>();
-
-            Iterator<FederatedUserCredentialAttributeEntity> it = entity.getCredentialAttributes().iterator();
-            while (it.hasNext()) {
-                FederatedUserCredentialAttributeEntity attr = it.next();
-                List<String> values = config.getList(attr.getName());
-                if (values == null || !values.contains(attr.getValue())) {
-                    em.remove(attr);
-                    it.remove();
-                } else {
-                    attrs.add(attr.getName(), attr.getValue());
-                }
-
-            }
-            for (String key : config.keySet()) {
-                List<String> values = config.getList(key);
-                List<String> attrValues = attrs.getList(key);
-                for (String val : values) {
-                    if (attrValues == null || !attrValues.contains(val)) {
-                        FederatedUserCredentialAttributeEntity attr = new FederatedUserCredentialAttributeEntity();
-                        attr.setId(KeycloakModelUtils.generateId());
-                        attr.setValue(val);
-                        attr.setName(key);
-                        attr.setCredential(entity);
-                        em.persist(attr);
-                        entity.getCredentialAttributes().add(attr);
-                    }
-                }
-            }
-
-        }
-
+        entity.setCredentialData(cred.getCredentialData());
+        entity.setSecretData(cred.getSecretData());
+        cred.setUserLabel(entity.getUserLabel());
     }
 
     @Override
@@ -615,37 +571,16 @@ public class JpaUserFederatedStorageProvider implements
         FederatedUserCredentialEntity entity = new FederatedUserCredentialEntity();
         String id = cred.getId() == null ? KeycloakModelUtils.generateId() : cred.getId();
         entity.setId(id);
-        entity.setAlgorithm(cred.getAlgorithm());
-        entity.setCounter(cred.getCounter());
         entity.setCreatedDate(cred.getCreatedDate());
-        entity.setDevice(cred.getDevice());
-        entity.setDigits(cred.getDigits());
-        entity.setHashIterations(cred.getHashIterations());
-        entity.setPeriod(cred.getPeriod());
-        entity.setSalt(cred.getSalt());
         entity.setType(cred.getType());
-        entity.setValue(cred.getValue());
+        entity.setCredentialData(cred.getCredentialData());
+        entity.setSecretData(cred.getSecretData());
+        cred.setUserLabel(entity.getUserLabel());
+
         entity.setUserId(userId);
         entity.setRealmId(realm.getId());
         entity.setStorageProviderId(new StorageId(userId).getProviderId());
         em.persist(entity);
-        MultivaluedHashMap<String, String> config = cred.getConfig();
-        if (config != null && !config.isEmpty()) {
-
-            for (String key : config.keySet()) {
-                List<String> values = config.getList(key);
-                for (String val : values) {
-                    FederatedUserCredentialAttributeEntity attr = new FederatedUserCredentialAttributeEntity();
-                    attr.setId(KeycloakModelUtils.generateId());
-                    attr.setValue(val);
-                    attr.setName(key);
-                    attr.setCredential(entity);
-                    em.persist(attr);
-                    entity.getCredentialAttributes().add(attr);
-                }
-            }
-
-        }
         return toModel(entity);
     }
 
@@ -669,20 +604,10 @@ public class JpaUserFederatedStorageProvider implements
         CredentialModel model = new CredentialModel();
         model.setId(entity.getId());
         model.setType(entity.getType());
-        model.setValue(entity.getValue());
-        model.setAlgorithm(entity.getAlgorithm());
-        model.setSalt(entity.getSalt());
-        model.setPeriod(entity.getPeriod());
-        model.setCounter(entity.getCounter());
         model.setCreatedDate(entity.getCreatedDate());
-        model.setDevice(entity.getDevice());
-        model.setDigits(entity.getDigits());
-        model.setHashIterations(entity.getHashIterations());
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        model.setConfig(config);
-        for (FederatedUserCredentialAttributeEntity attr : entity.getCredentialAttributes()) {
-            config.add(attr.getName(), attr.getValue());
-        }
+        model.setUserLabel(entity.getUserLabel());
+        model.setSecretData(entity.getSecretData());
+        model.setCredentialData(entity.getCredentialData());
         return model;
     }
 
@@ -786,8 +711,6 @@ public class JpaUserFederatedStorageProvider implements
                 .setParameter("realmId", realm.getId()).executeUpdate();
         num = em.createNamedQuery("deleteBrokerLinkByRealm")
                 .setParameter("realmId", realm.getId()).executeUpdate();
-        num = em.createNamedQuery("deleteFederatedCredentialAttributeByRealm")
-                .setParameter("realmId", realm.getId()).executeUpdate();
         num = em.createNamedQuery("deleteFederatedUserCredentialsByRealm")
                 .setParameter("realmId", realm.getId()).executeUpdate();
         num = em.createNamedQuery("deleteUserFederatedAttributesByRealm")
@@ -857,10 +780,6 @@ public class JpaUserFederatedStorageProvider implements
                 .setParameter("userId", user.getId())
                 .setParameter("realmId", realm.getId())
                 .executeUpdate();
-        em.createNamedQuery("deleteFederatedCredentialAttributeByUser")
-                .setParameter("userId", user.getId())
-                .setParameter("realmId", realm.getId())
-                .executeUpdate();
         em.createNamedQuery("deleteFederatedUserCredentialByUser")
                 .setParameter("userId", user.getId())
                 .setParameter("realmId", realm.getId())
@@ -898,9 +817,6 @@ public class JpaUserFederatedStorageProvider implements
                     .setParameter("storageProviderId", model.getId())
                     .executeUpdate();
             em.createNamedQuery("deleteFederatedUserConsentsByStorageProvider")
-                    .setParameter("storageProviderId", model.getId())
-                    .executeUpdate();
-            em.createNamedQuery("deleteFederatedCredentialAttributeByStorageProvider")
                     .setParameter("storageProviderId", model.getId())
                     .executeUpdate();
             em.createNamedQuery("deleteFederatedUserCredentialsByStorageProvider")

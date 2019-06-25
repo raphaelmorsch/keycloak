@@ -3,8 +3,8 @@ package org.keycloak.connections.jpa.updater.liquibase.custom;
 import liquibase.exception.CustomChangeException;
 import liquibase.statement.core.UpdateStatement;
 import liquibase.structure.core.Table;
-import org.keycloak.credential.OTPCredentialProvider;
-import org.keycloak.credential.PasswordCredentialProvider;
+import org.keycloak.models.credential.OTPCredentialModel;
+import org.keycloak.models.credential.PasswordCredentialModel;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,13 +14,9 @@ public class JpaUpdate7_0_0_Credentials extends CustomKeycloakTask {
     @Override
     protected void generateStatementsImpl() throws CustomChangeException {
         String credentialTableName = database.correctObjectName("CREDENTIAL", Table.class);
-        try (PreparedStatement statement = jdbcConnection.prepareStatement("SELECT DEVICE, HASH_ITERATIONS, SALT, TYPE, VALUE, COUNTER, DIGITS, PERIOD, ALGORITHM FROM " + credentialTableName);
+        try (PreparedStatement statement = jdbcConnection.prepareStatement("SELECT HASH_ITERATIONS, SALT, TYPE, VALUE, COUNTER, DIGITS, PERIOD, ALGORITHM FROM " + credentialTableName);
              ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
-                String device = rs.getString("DEVICE").trim();
-                if (rs.wasNull()) {
-                    device = "";
-                }
                 String hashIterations = rs.getString("HASH_ITERATIONS").trim();
                 if (rs.wasNull()) {
                     hashIterations = "";
@@ -56,23 +52,23 @@ public class JpaUpdate7_0_0_Credentials extends CustomKeycloakTask {
 
                 statements.add(
                         new UpdateStatement(null, null, credentialTableName)
-                                .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\",\"salt\":\"" + salt + "\"}")
-                                .addNewColumnValue("CREDENTIAL_DATA", "{\"hashIterations\":\"" + hashIterations + "\",\"algorithm\":\"" + algorithm + "\"}")
-                                .addNewColumnValue("TYPE", PasswordCredentialProvider.class.getCanonicalName())
+                                .addNewColumnValue("SECRET_DATA", "{\"hash\":\"" + value + "\",\"salt\":\"" + salt + "\"}")
+                                .addNewColumnValue("CREDENTIAL_DATA", "{\"hashIterations\":" + hashIterations + ",\"algorithm\":\"" + algorithm + "\"}")
+                                .addNewColumnValue("TYPE", PasswordCredentialModel.TYPE)
                                 .setWhereClause("TYPE='password'")
                 );
                 statements.add(
                         new UpdateStatement(null, null, credentialTableName)
                                 .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\"}")
-                                .addNewColumnValue("CREDENTIAL_DATA", "{\"subType\":\"" + type + "\",\"digits\":\"" + digits + "\"},\"counter\":\"" + counter + "\",\"algorithm\":\"" + algorithm + "\"}")
-                                .addNewColumnValue("TYPE", OTPCredentialProvider.class.getCanonicalName())
+                                .addNewColumnValue("CREDENTIAL_DATA", "{\"subType\":\"" + type + "\",\"digits\":" + digits + ",\"counter\":" + counter + ",\"algorithm\":\"" + algorithm + "\"}")
+                                .addNewColumnValue("TYPE", OTPCredentialModel.TYPE)
                                 .setWhereClause("TYPE='hotp'")
                 );
                 statements.add(
                         new UpdateStatement(null, null, credentialTableName)
                                 .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\"}")
-                                .addNewColumnValue("CREDENTIAL_DATA", "{\"subType\":\"" + type + "\",\"digits\":\"" + digits + "\"},\"period\":\"" + period + "\",\"algorithm\":\"" + algorithm + "\"}")
-                                .addNewColumnValue("TYPE", OTPCredentialProvider.class.getCanonicalName())
+                                .addNewColumnValue("CREDENTIAL_DATA", "{\"subType\":\"" + type + "\",\"digits\":" + digits + ",\"period\":" + period + ",\"algorithm\":\"" + algorithm + "\"}")
+                                .addNewColumnValue("TYPE", OTPCredentialModel.TYPE)
                                 .setWhereClause("TYPE='totp'")
                 );
 

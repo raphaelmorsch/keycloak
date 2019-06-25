@@ -202,7 +202,7 @@ public class DefaultAuthenticationFlows {
         // otp
         execution = new AuthenticationExecutionModel();
         execution.setParentFlow(grant.getId());
-        execution.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
+        execution.setRequirement(AuthenticationExecutionModel.Requirement.OPTIONAL);
         execution.setAuthenticator("reset-otp");
         execution.setPriority(40);
         execution.setAuthenticatorFlow(false);
@@ -243,7 +243,7 @@ public class DefaultAuthenticationFlows {
         // otp
         execution = new AuthenticationExecutionModel();
         execution.setParentFlow(grant.getId());
-        execution.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
+        execution.setRequirement(AuthenticationExecutionModel.Requirement.OPTIONAL);
         if (migrate && hasCredentialType(realm, RequiredCredentialModel.TOTP.getType())) {
             execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED);
         }
@@ -312,7 +312,7 @@ public class DefaultAuthenticationFlows {
         // otp processing
         execution = new AuthenticationExecutionModel();
         execution.setParentFlow(forms.getId());
-        execution.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
+        execution.setRequirement(AuthenticationExecutionModel.Requirement.OPTIONAL);
         if (migrate && hasCredentialType(realm, RequiredCredentialModel.TOTP.getType())) {
             execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED);
 
@@ -507,7 +507,7 @@ public class DefaultAuthenticationFlows {
 
         execution = new AuthenticationExecutionModel();
         execution.setParentFlow(verifyByReauthenticationAccountFlow.getId());
-        execution.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
+        execution.setRequirement(AuthenticationExecutionModel.Requirement.OPTIONAL);
 
         if (migrate) {
             // Try to read OTP requirement from browser flow

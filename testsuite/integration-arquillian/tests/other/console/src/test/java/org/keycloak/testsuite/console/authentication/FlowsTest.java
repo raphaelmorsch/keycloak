@@ -250,7 +250,7 @@ public class FlowsTest extends AbstractConsoleTest {
         //UI
         List<String> expectedOrder = new ArrayList<>();
         Collections.addAll(expectedOrder,"DISABLED", "ALTERNATIVE", "ALTERNATIVE",
-                                         "ALTERNATIVE", "REQUIRED", "CONDITIONAL");
+                                         "ALTERNATIVE", "REQUIRED", "OPTIONAL");
         assertTrue(expectedOrder.containsAll(flowsPage.table().getFlowsAliasesWithRequirements().values()));
         
         //REST:

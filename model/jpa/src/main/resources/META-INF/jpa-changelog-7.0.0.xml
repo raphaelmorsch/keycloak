@@ -20,29 +20,54 @@
     <!--modifies the credentials to the new format, while copying the data as json in the new fields-->
     <changeSet author="alistair.doswald@elca.ch" id="7.0.0">
         <addColumn tableName="CREDENTIAL">
-            <column name="USER_LABEL" type="VARCHAR(255)">
+            <column name="SECRET_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
-            <column name="SECRET_DATA" type="CLOB)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="CREDENTIAL_DATA" type="CLOB)">
+            <column name="CREDENTIAL_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
         </addColumn>
 
-        <!--Update format of credentials to fill secret_data and credential_data-->
+        <addColumn tableName="FED_USER_CREDENTIAL">
+            <column name="SECRET_DATA" type="CLOB">
+                <constraints nullable="true"/>
+            </column>
+            <column name="CREDENTIAL_DATA" type="CLOB">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!--Update format of credential to fill secret_data and credential_data-->
         <customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate7_0_0_Credentials"/>
 
-        <dropColumn tableName="CREDENTIAL" columnName="DEVICE"/>
+        <!--Update format of fed_user_credential to fill secret_data and credential_data-->
+        <customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate7_0_0_FederatedUserCredentials"/>
+
+        <renameColumn tableName="CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
+
         <dropColumn tableName="CREDENTIAL" columnName="HASH_ITERATIONS"/>
         <dropColumn tableName="CREDENTIAL" columnName="SALT"/>
-        <dropColumn tableName="CREDENTIAL" columnName="TYPE"/>
         <dropColumn tableName="CREDENTIAL" columnName="VALUE"/>
         <dropColumn tableName="CREDENTIAL" columnName="COUNTER"/>
         <dropColumn tableName="CREDENTIAL" columnName="DIGITS"/>
         <dropColumn tableName="CREDENTIAL" columnName="PERIOD"/>
         <dropColumn tableName="CREDENTIAL" columnName="ALGORITHM"/>
+
+        <!--credential attributes are now held within the json of secret_data and credential_data (not this it was used in any case)-->
+        <dropTable tableName="CREDENTIAL_ATTRIBUTE"/>
+
+        <renameColumn tableName="FED_USER_CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
+
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="HASH_ITERATIONS"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="SALT"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="VALUE"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="COUNTER"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="DIGITS"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="PERIOD"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="ALGORITHM"/>
+
+        <!--credential attributes are now held within the json of secret_data and credential_data (not this it was used in any case)-->
+        <dropTable tableName="FED_CREDENTIAL_ATTRIBUTE "/>
 
     </changeSet>
 

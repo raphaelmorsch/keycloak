@@ -21,7 +21,11 @@ import org.jboss.logging.Logger;
 import org.keycloak.authentication.AbstractFormAuthenticator;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
+import org.keycloak.authentication.CredentialValidator;
 import org.keycloak.credential.CredentialInput;
+import org.keycloak.credential.CredentialProvider;
+import org.keycloak.credential.OTPCredentialProvider;
+import org.keycloak.credential.PasswordCredentialProvider;
 import org.keycloak.credential.hash.PasswordHashProvider;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
@@ -60,7 +64,16 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
     protected Response challenge(AuthenticationFlowContext context, String error) {
         LoginFormsProvider form = context.form();
         if (error != null) form.setError(error);
+        return createLoginForm(form);
+    }
 
+    protected Response challenge(AuthenticationFlowContext context, MultivaluedMap<String, String> formData, String error) {
+        if (formData == null || formData.isEmpty()) {
+            return challenge(context, error);
+        }
+        LoginFormsProvider form = context.form();
+        form.setFormData(formData);
+        if (error != null) form.setError(error);
         return createLoginForm(form);
     }
 
@@ -114,17 +127,16 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
         return false;
     }
 
-    public boolean enabledUser(AuthenticationFlowContext context, UserModel user) {
+
+    public boolean enabledUser(AuthenticationFlowContext context, UserModel user, MultivaluedMap<String, String> formData) {
         if (!user.isEnabled()) {
             context.getEvent().user(user);
             context.getEvent().error(Errors.USER_DISABLED);
-            Response challengeResponse = challenge(context, Messages.ACCOUNT_DISABLED);
-            // this is not a failure so don't call failureChallenge.
-            //context.failureChallenge(AuthenticationFlowError.USER_DISABLED, challengeResponse);
+            Response challengeResponse = challenge(context, formData, Messages.ACCOUNT_DISABLED);
             context.forceChallenge(challengeResponse);
             return false;
         }
-        if (isTemporarilyDisabledByBruteForce(context, user)) return false;
+        if (isTemporarilyDisabledByBruteForce(context, user, formData)) return false;
         return true;
     }
 
@@ -167,7 +179,7 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
             return false;
         }
 
-        if (!enabledUser(context, user)) {
+        if (!enabledUser(context, user, null)) {
             return false;
         }
 
@@ -184,13 +196,11 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
     }
 
     public boolean validatePassword(AuthenticationFlowContext context, UserModel user, MultivaluedMap<String, String> inputData) {
-        List<CredentialInput> credentials = new LinkedList<>();
         String password = inputData.getFirst(CredentialRepresentation.PASSWORD);
-        credentials.add(UserCredentialModel.password(password));
 
-        if (isTemporarilyDisabledByBruteForce(context, user)) return false;
+        if (isTemporarilyDisabledByBruteForce(context, user, null)) return false;
 
-        if (password != null && !password.isEmpty() && context.getSession().userCredentialManager().isValid(context.getRealm(), user, credentials)) {
+        if (password != null && !password.isEmpty() && context.getSession().userCredentialManager().isValid(context.getRealm(), user, UserCredentialModel.password(password))) {
             return true;
         } else {
             context.getEvent().user(user);
@@ -202,14 +212,13 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
         }
     }
 
-    protected boolean isTemporarilyDisabledByBruteForce(AuthenticationFlowContext context, UserModel user) {
+
+    protected boolean isTemporarilyDisabledByBruteForce(AuthenticationFlowContext context, UserModel user, MultivaluedMap<String, String> formData) {
         if (context.getRealm().isBruteForceProtected()) {
             if (context.getProtector().isTemporarilyDisabled(context.getSession(), context.getRealm(), user)) {
                 context.getEvent().user(user);
                 context.getEvent().error(Errors.USER_TEMPORARILY_DISABLED);
-                Response challengeResponse = challenge(context, tempDisabledError());
-                // this is not a failure so don't call failureChallenge.
-                //context.failureChallenge(AuthenticationFlowError.USER_TEMPORARILY_DISABLED, challengeResponse);
+                Response challengeResponse = challenge(context, formData, tempDisabledError());
                 context.forceChallenge(challengeResponse);
                 return true;
             }

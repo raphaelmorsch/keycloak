@@ -3476,15 +3476,9 @@
     "emailVerified" : false,
     "credentials" : [ {
       "type" : "password",
-      "hashedSaltedValue" : "3zv1UVKNodAZKHmUlGDAECl+5CbriP4G+JPkuuCxg4q95GzrFECCYmChYeo6a3OByPFwwG24K5xwIypiQ+awuw==",
-      "salt" : "PeH5KAhoLsRmrd4fJVvn3A==",
-      "hashIterations" : 27500,
-      "counter" : 0,
-      "algorithm" : "pbkdf2-sha256",
-      "digits" : 0,
-      "period" : 0,
-      "createdDate" : 1550660988731,
-      "config" : { }
+      "secretData" : "{\"hashedSaltedValue\" : \"3zv1UVKNodAZKHmUlGDAECl+5CbriP4G+JPkuuCxg4q95GzrFECCYmChYeo6a3OByPFwwG24K5xwIypiQ+awuw==\",\"salt\" : \"PeH5KAhoLsRmrd4fJVvn3A==\"}",
+      "credentialData" : "{\"hashIterations\" : 27500,\"algorithm\" : \"pbkdf2-sha256\"}",
+      "createdDate" : 1550660988731
     } ],
     "disableableCredentialTypes" : [ "password" ],
     "requiredActions" : [ ],

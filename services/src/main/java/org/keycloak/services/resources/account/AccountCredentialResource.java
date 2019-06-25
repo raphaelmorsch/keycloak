@@ -24,6 +24,8 @@ import org.keycloak.models.ModelException;
 import org.keycloak.services.managers.Auth;
 import org.keycloak.services.messages.Messages;
 
+import java.io.IOException;
+
 public class AccountCredentialResource {
 
     private final KeycloakSession session;
@@ -43,7 +45,7 @@ public class AccountCredentialResource {
     @GET
     @Path("password")
     @Produces(MediaType.APPLICATION_JSON)
-    public PasswordDetails passwordDetails() {
+    public PasswordDetails passwordDetails() throws IOException {
         auth.requireOneOf(AccountRoles.MANAGE_ACCOUNT, AccountRoles.VIEW_PROFILE);
         
         PasswordCredentialProvider passwordProvider = (PasswordCredentialProvider) session.getProvider(CredentialProvider.class, PasswordCredentialProviderFactory.PROVIDER_ID);

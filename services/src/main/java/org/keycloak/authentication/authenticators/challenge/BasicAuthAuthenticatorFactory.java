@@ -22,7 +22,7 @@ import org.keycloak.authentication.AuthenticatorFactory;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.models.UserCredentialModel;
+import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.provider.ProviderConfigProperty;
 
 import java.util.Collections;
@@ -64,7 +64,7 @@ public class BasicAuthAuthenticatorFactory implements AuthenticatorFactory {
 
     @Override
     public String getReferenceCategory() {
-        return UserCredentialModel.PASSWORD;
+        return PasswordCredentialModel.TYPE;
     }
 
     @Override
@@ -72,7 +72,7 @@ public class BasicAuthAuthenticatorFactory implements AuthenticatorFactory {
         return false;
     }
     public static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
-            AuthenticationExecutionModel.Requirement.REQUIRED, AuthenticationExecutionModel.Requirement.CONDITIONAL, AuthenticationExecutionModel.Requirement.DISABLED
+            AuthenticationExecutionModel.Requirement.REQUIRED, AuthenticationExecutionModel.Requirement.OPTIONAL, AuthenticationExecutionModel.Requirement.DISABLED
     };
 
     @Override

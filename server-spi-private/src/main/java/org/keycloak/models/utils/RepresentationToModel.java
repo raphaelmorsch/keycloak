@@ -47,13 +47,13 @@ import org.keycloak.authorization.store.ResourceServerStore;
 import org.keycloak.authorization.store.ResourceStore;
 import org.keycloak.authorization.store.ScopeStore;
 import org.keycloak.authorization.store.StoreFactory;
-import org.keycloak.common.Profile;
 import org.keycloak.common.enums.SslRequired;
-import org.keycloak.common.util.Base64;
 import org.keycloak.common.util.MultivaluedHashMap;
+import org.keycloak.common.util.Time;
 import org.keycloak.common.util.UriUtils;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialModel;
+import org.keycloak.credential.hash.PasswordHashProvider;
 import org.keycloak.keys.KeyProvider;
 import org.keycloak.migration.MigrationProvider;
 import org.keycloak.migration.migrators.MigrationUtils;
@@ -80,11 +80,12 @@ import org.keycloak.models.RequiredActionProviderModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.ScopeContainerModel;
 import org.keycloak.models.UserConsentModel;
-import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.UserProvider;
-import org.keycloak.models.credential.PasswordUserCredentialModel;
+import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.policy.PasswordPolicyManagerProvider;
 import org.keycloak.policy.PasswordPolicyNotMetException;
+import org.keycloak.policy.PolicyError;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.idm.ApplicationRepresentation;
 import org.keycloak.representations.idm.AuthenticationExecutionExportRepresentation;
@@ -1619,102 +1620,46 @@ public class RepresentationToModel {
     public static void createCredentials(UserRepresentation userRep, KeycloakSession session, RealmModel realm, UserModel user, boolean adminRequest) {
         if (userRep.getCredentials() != null) {
             for (CredentialRepresentation cred : userRep.getCredentials()) {
-                updateCredential(session, realm, user, cred, adminRequest);
-            }
-        }
-    }
+                if (cred.getId() != null && session.userCredentialManager().getStoredCredentialById(realm, user, cred.getId()) != null) {
+                    continue;
+                }
+                if (cred.getValue() != null && !cred.getValue().isEmpty()) {
+                    PasswordPolicy policy = realm.getPasswordPolicy();
+                    RealmModel origRealm = session.getContext().getRealm();
+                    try {
+                        session.getContext().setRealm(realm);
+                        PolicyError error = session.getProvider(PasswordPolicyManagerProvider.class).validate(realm, user, cred.getValue());
+                        if (error != null) throw new ModelException(error.getMessage(), error.getParameters());
 
-    // Detect if it is "plain-text" or "hashed" representation and update model according to it
-    private static void updateCredential(KeycloakSession session, RealmModel realm, UserModel user, CredentialRepresentation cred, boolean adminRequest) {
-        if (cred.getValue() != null) {
-            PasswordUserCredentialModel plainTextCred = convertCredential(cred);
-            plainTextCred.setAdminRequest(adminRequest);
-            
-            //if called from import we need to change realm in context to load password policies from the newly created realm
-            RealmModel origRealm = session.getContext().getRealm();
-            try {
-                session.getContext().setRealm(realm);
-                session.userCredentialManager().updateCredential(realm, user, plainTextCred);
-            } catch (ModelException ex) {
-                throw new PasswordPolicyNotMetException(ex.getMessage(), user.getUsername(), ex);
-            } finally {
-                session.getContext().setRealm(origRealm);
-            }
-        } else {
-            CredentialModel hashedCred = new CredentialModel();
-            hashedCred.setType(cred.getType());
-            hashedCred.setDevice(cred.getDevice());
-            if (cred.getHashIterations() != null) hashedCred.setHashIterations(cred.getHashIterations());
-            try {
-                if (cred.getSalt() != null) hashedCred.setSalt(Base64.decode(cred.getSalt()));
-            } catch (IOException ioe) {
-                throw new RuntimeException(ioe);
-            }
-            hashedCred.setValue(cred.getHashedSaltedValue());
-            if (cred.getCounter() != null) hashedCred.setCounter(cred.getCounter());
-            if (cred.getDigits() != null) hashedCred.setDigits(cred.getDigits());
-
-            if (cred.getAlgorithm() != null) {
-
-                // Could happen when migrating from some early version
-                if ((UserCredentialModel.PASSWORD.equals(cred.getType()) || UserCredentialModel.PASSWORD_HISTORY.equals(cred.getType())) &&
-                        (cred.getAlgorithm().equals(HmacOTP.HMAC_SHA1))) {
-                    hashedCred.setAlgorithm("pbkdf2");
+                        PasswordHashProvider hash = session.getProvider(PasswordHashProvider.class, policy.getHashAlgorithm());
+                        if (hash == null) {
+                            logger.warnv("Realm PasswordPolicy PasswordHashProvider {0} not found", policy.getHashAlgorithm());
+                            throw new ModelException(error.getMessage(), error.getParameters());
+                        }
+                        PasswordCredentialModel credentialModel = hash.encodedCredential(cred.getValue(), policy.getHashIterations());
+                        credentialModel.setCreatedDate(Time.currentTimeMillis());
+                        session.userCredentialManager().createCredential(realm, user, credentialModel);
+                    } catch (ModelException ex) {
+                        throw new PasswordPolicyNotMetException(ex.getMessage(), user.getUsername(), ex);
+                    } finally {
+                        session.getContext().setRealm(origRealm);
+                    }
                 } else {
-                    hashedCred.setAlgorithm(cred.getAlgorithm());
-                }
-
-            } else {
-                if (UserCredentialModel.PASSWORD.equals(cred.getType()) || UserCredentialModel.PASSWORD_HISTORY.equals(cred.getType())) {
-                    hashedCred.setAlgorithm("pbkdf2");
-                } else if (UserCredentialModel.isOtp(cred.getType())) {
-                    hashedCred.setAlgorithm(HmacOTP.HMAC_SHA1);
+                    session.userCredentialManager().createCredential(realm, user, toModel(cred));
                 }
             }
-
-            if (cred.getPeriod() != null) hashedCred.setPeriod(cred.getPeriod());
-            if (cred.getDigits() == null && UserCredentialModel.isOtp(cred.getType())) {
-                hashedCred.setDigits(6);
-            }
-            if (cred.getPeriod() == null && UserCredentialModel.TOTP.equals(cred.getType())) {
-                hashedCred.setPeriod(30);
-            }
-            hashedCred.setCreatedDate(cred.getCreatedDate());
-            session.userCredentialManager().createCredential(realm, user, hashedCred);
         }
-    }
-
-    public static PasswordUserCredentialModel convertCredential(CredentialRepresentation cred) {
-        PasswordUserCredentialModel credential = new PasswordUserCredentialModel();
-        credential.setType(cred.getType());
-        credential.setValue(cred.getValue());
-        return credential;
     }
 
     public static CredentialModel toModel(CredentialRepresentation cred) {
         CredentialModel model = new CredentialModel();
-        model.setHashIterations(cred.getHashIterations());
         model.setCreatedDate(cred.getCreatedDate());
         model.setType(cred.getType());
-        model.setDigits(cred.getDigits());
-        model.setConfig(cred.getConfig());
-        model.setDevice(cred.getDevice());
-        model.setAlgorithm(cred.getAlgorithm());
-        model.setCounter(cred.getCounter());
-        model.setPeriod(cred.getPeriod());
-        if (cred.getSalt() != null) {
-            try {
-                model.setSalt(Base64.decode(cred.getSalt()));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        model.setValue(cred.getValue());
-        if (cred.getHashedSaltedValue() != null) {
-            model.setValue(cred.getHashedSaltedValue());
-        }
+        model.setUserLabel(cred.getUserLabel());
+        model.setSecretData(cred.getSecretData());
+        model.setCredentialData(cred.getCredentialData());
+        model.setId(cred.getId());
         return model;
-
     }
 
     // Role mappings

@@ -37,7 +37,7 @@ import java.util.List;
 public abstract class AbstractSetRequiredActionAuthenticator implements Authenticator, AuthenticatorFactory {
     public static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
             AuthenticationExecutionModel.Requirement.REQUIRED,
-            AuthenticationExecutionModel.Requirement.CONDITIONAL,
+            AuthenticationExecutionModel.Requirement.OPTIONAL,
             AuthenticationExecutionModel.Requirement.DISABLED
 
     };
