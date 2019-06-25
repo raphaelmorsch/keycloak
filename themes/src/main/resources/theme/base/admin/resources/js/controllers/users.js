@@ -1,6 +1,6 @@
 module.controller('UserRoleMappingCtrl', function($scope, $http, realm, user, clients, client, Notifications, RealmRoleMapping,
                                                   ClientRoleMapping, AvailableRealmRoleMapping, AvailableClientRoleMapping,
-                                                  CompositeRealmRoleMapping, CompositeClientRoleMapping, ComponentUtils) {
+                                                  CompositeRealmRoleMapping, CompositeClientRoleMapping) {
     $scope.realm = realm;
     $scope.user = user;
     $scope.selectedRealmRoles = [];
@@ -1045,7 +1045,7 @@ function removeGroupMember(groups, member) {
     }
 }
 
-module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, UserGroupMembership, UserGroupMembershipCount, UserGroupMapping, Notifications, Groups, GroupsCount) {
+module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, UserGroupMembership, UserGroupMembershipCount, UserGroupMapping, Notifications, Groups, GroupsCount, ComponentUtils) {
     $scope.realm = realm;
     $scope.user = user;
     $scope.groupList = [];
