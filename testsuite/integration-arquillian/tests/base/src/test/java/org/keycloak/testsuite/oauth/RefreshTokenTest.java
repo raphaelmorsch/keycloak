@@ -16,12 +16,14 @@
  */
 package org.keycloak.testsuite.oauth;
 
+import org.jboss.arquillian.graphene.page.Page;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.common.enums.SslRequired;
 import org.keycloak.crypto.Algorithm;
 import org.keycloak.events.Details;
@@ -29,6 +31,7 @@ import org.keycloak.events.Errors;
 import org.keycloak.jose.jws.JWSHeader;
 import org.keycloak.jose.jws.JWSInput;
 import org.keycloak.models.utils.SessionTimeoutHelper;
+import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolService;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.RefreshToken;
@@ -37,6 +40,7 @@ import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
+import org.keycloak.testsuite.pages.LoginPage;
 import org.keycloak.testsuite.util.ClientManager;
 import org.keycloak.testsuite.util.OAuthClient;
 import org.keycloak.testsuite.util.RealmBuilder;
@@ -73,6 +77,9 @@ import static org.keycloak.testsuite.util.OAuthClient.AUTH_SERVER_ROOT;
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
  */
 public class RefreshTokenTest extends AbstractKeycloakTest {
+
+    @Page
+    protected LoginPage loginPage;
 
     @Rule
     public AssertEvents events = new AssertEvents(this);
@@ -539,6 +546,79 @@ public class RefreshTokenTest extends AbstractKeycloakTest {
 
         events.clear();
     }
+
+
+    @Test
+    public void refreshTokenAfterUserSessionLogoutAndLoginAgain() {
+        // Login
+        oauth.doLogin("test-user@localhost", "password");
+
+        EventRepresentation loginEvent = events.expectLogin().assertEvent();
+
+        String sessionId1 = loginEvent.getSessionId();
+
+        String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
+        OAuthClient.AccessTokenResponse tokenResponse = oauth.doAccessTokenRequest(code, "password");
+
+        events.poll();
+
+        // Assert refresh successful
+        String refreshToken1 = tokenResponse.getRefreshToken();
+        RefreshToken refreshTokenParsed1 = oauth.parseRefreshToken(tokenResponse.getRefreshToken());
+        processExpectedValidRefresh(sessionId1, refreshTokenParsed1, refreshToken1);
+
+        // Set time offset to 1 (Just to simulate to be more close to real situation)
+        setTimeOffset(1);
+
+        // Open the tab with prompt=login. AuthenticationSession will be created with same ID like userSession
+        String loginFormUri = UriBuilder.fromUri(oauth.getLoginFormUrl())
+                .queryParam(OIDCLoginProtocol.PROMPT_PARAM, OIDCLoginProtocol.PROMPT_VALUE_LOGIN)
+                .build().toString();
+        driver.navigate().to(loginFormUri);
+
+        loginPage.assertCurrent();
+
+        // Logout
+
+        // VARIANT 1 - Logout through user admin endpoint. The notBefore of user is updated AND current authenticationSession with
+        // "prompt=login" is currently removed too -> OK
+//        String userId = refreshTokenParsed1.getSubject();
+//        UserResource user = adminClient.realm("test").users().get(userId);
+//        user.logout();
+
+
+        // VARIANT 2 - Logout through realm admin endpoint. The notBefore of realm is updated and hence refresh below with the "refreshToken1"
+        // will fail -> OK
+        adminClient.realm("test").logoutAll();
+
+
+        // VARIANT 3 - User himself triggers logout. This currently deletes the userSession as well as rootAuthSession, which includes
+        // authSession for the "prompt=login" -> OK
+//        oauth.doLogout(refreshToken1, "password");
+
+        // Set time offset to 2 (Just to simulate to be more close to real situation)
+        setTimeOffset(2);
+
+        // Continue with login
+        oauth.fillLoginForm("test-user@localhost", "password");
+
+        // Login succeeded (Currently happens just with VARIANT 2)
+        if (!loginPage.isCurrent()) {
+            loginEvent = events.expectLogin().assertEvent();
+
+            // The sessionId2 is same as sessionId1. So userSession has same ID as previously logged-out userSession. This itself is not so great and maybe there are some more potential issues with it...
+            String sessionId2 = loginEvent.getSessionId(); //
+
+            code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
+            OAuthClient.AccessTokenResponse tokenResponse2 = oauth.doAccessTokenRequest(code, "password");
+        }
+
+        // Now try refresh with the original refreshToken1 created in logged-out userSession. It should fail! If it doesn't fail, it is security issue
+        OAuthClient.AccessTokenResponse responseReuseExceeded = oauth.doRefreshTokenRequest(refreshToken1, "password");
+        assertEquals(400, responseReuseExceeded.getStatusCode());
+    }
+
+
 
     @Test
     public void testUserSessionRefreshAndIdle() throws Exception {
