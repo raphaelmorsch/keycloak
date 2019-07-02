@@ -28,6 +28,10 @@ public class Templates {
         switch (page) {
             case LOGIN:
                 return "login.ftl";
+            case LOGIN_USERNAME:
+                return "login-username.ftl";
+            case LOGIN_PASSWORD:
+                return "login-password.ftl";
             case LOGIN_TOTP:
                 return "login-otp.ftl";
             case LOGIN_CONFIG_TOTP:

@@ -15,27 +15,42 @@
  * limitations under the License.
  */
 
-package org.keycloak.authentication.authenticators.broker;
+package org.keycloak.authentication.authenticators.browser;
 
-import java.util.List;
 import org.keycloak.Config;
+import org.keycloak.OAuth2Constants;
 import org.keycloak.authentication.Authenticator;
 import org.keycloak.authentication.AuthenticatorFactory;
+import org.keycloak.authentication.DisplayTypeAuthenticatorFactory;
+import org.keycloak.authentication.authenticators.console.ConsoleUsernameAuthenticator;
+import org.keycloak.authentication.authenticators.console.ConsoleUsernamePasswordAuthenticator;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
+import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.provider.ProviderConfigProperty;
 
+import java.util.List;
+
 /**
- * @author <a href="mailto:Ryan.Slominski@gmail.com">Ryan Slominski</a>
+ * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
+ * @version $Revision: 1 $
  */
-public class IdpAutoLinkAuthenticatorFactory implements AuthenticatorFactory {
-    public static final String PROVIDER_ID = "idp-auto-link";
-    static IdpAutoLinkAuthenticator SINGLETON = new IdpAutoLinkAuthenticator();
+public class UsernameFormFactory implements AuthenticatorFactory, DisplayTypeAuthenticatorFactory {
+
+    public static final String PROVIDER_ID = "auth-username-form";
+    public static final UsernameForm SINGLETON = new UsernameForm();
 
     @Override
     public Authenticator create(KeycloakSession session) {
         return SINGLETON;
+    }
+
+    @Override
+    public Authenticator createDisplay(KeycloakSession session, String displayType) {
+        if (displayType == null) return SINGLETON;
+        if (!OAuth2Constants.DISPLAY_CONSOLE.equalsIgnoreCase(displayType)) return null;
+        return ConsoleUsernameAuthenticator.SINGLETON;
     }
 
     @Override
@@ -60,14 +75,16 @@ public class IdpAutoLinkAuthenticatorFactory implements AuthenticatorFactory {
 
     @Override
     public String getReferenceCategory() {
-        return "autoLink";
+        return PasswordCredentialModel.TYPE;
     }
 
     @Override
     public boolean isConfigurable() {
         return false;
     }
-
+    public static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
+            AuthenticationExecutionModel.Requirement.REQUIRED
+    };
 
     @Override
     public AuthenticationExecutionModel.Requirement[] getRequirementChoices() {
@@ -76,12 +93,12 @@ public class IdpAutoLinkAuthenticatorFactory implements AuthenticatorFactory {
 
     @Override
     public String getDisplayType() {
-        return "Automatically link brokered account";
+        return "Username Form";
     }
 
     @Override
     public String getHelpText() {
-        return "Automatically link brokered account without any verification";
+        return "Selects a user from his username.";
     }
 
     @Override
@@ -92,5 +109,6 @@ public class IdpAutoLinkAuthenticatorFactory implements AuthenticatorFactory {
     @Override
     public boolean isUserSetupAllowed() {
         return false;
-    }    
+    }
+
 }

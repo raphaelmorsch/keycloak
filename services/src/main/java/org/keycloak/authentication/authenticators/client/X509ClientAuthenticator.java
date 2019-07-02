@@ -32,10 +32,6 @@ public class X509ClientAuthenticator extends AbstractClientAuthenticator {
 
     protected static ServicesLogger logger = ServicesLogger.LOGGER;
 
-    public static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
-            AuthenticationExecutionModel.Requirement.ALTERNATIVE,
-            AuthenticationExecutionModel.Requirement.DISABLED
-    };
 
     @Override
     public void authenticateClient(ClientAuthenticationFlowContext context) {

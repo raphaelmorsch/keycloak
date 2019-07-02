@@ -57,7 +57,11 @@ public interface LoginFormsProvider extends Provider {
 
     String getMessage(String message, String... parameters);
 
-    Response createLogin();
+    Response createLoginUsernamePassword();
+
+    Response createLoginUsername();
+
+    Response createLoginPassword();
 
     Response createPasswordReset();
 

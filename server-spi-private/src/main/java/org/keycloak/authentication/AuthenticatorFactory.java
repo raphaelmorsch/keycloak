@@ -17,6 +17,7 @@
 
 package org.keycloak.authentication;
 
+import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.provider.ProviderFactory;
 
 /**
@@ -30,4 +31,5 @@ import org.keycloak.provider.ProviderFactory;
 * @version $Revision: 1 $
 */
 public interface AuthenticatorFactory extends ProviderFactory<Authenticator>, ConfigurableAuthenticatorFactory {
+
 }

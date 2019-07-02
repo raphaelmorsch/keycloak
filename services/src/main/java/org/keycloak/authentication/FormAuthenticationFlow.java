@@ -299,4 +299,9 @@ public class FormAuthenticationFlow implements AuthenticationFlow {
         FormContext context = new FormContextImpl(formExecution);
         return formAuthenticator.render(context, form);
     }
+
+    @Override
+    public boolean isSuccessful() {
+        return false;
+    }
 }

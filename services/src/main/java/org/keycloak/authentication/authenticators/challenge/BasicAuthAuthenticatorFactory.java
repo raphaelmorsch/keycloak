@@ -71,9 +71,6 @@ public class BasicAuthAuthenticatorFactory implements AuthenticatorFactory {
     public boolean isConfigurable() {
         return false;
     }
-    public static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
-            AuthenticationExecutionModel.Requirement.REQUIRED, AuthenticationExecutionModel.Requirement.OPTIONAL, AuthenticationExecutionModel.Requirement.DISABLED
-    };
 
     @Override
     public AuthenticationExecutionModel.Requirement[] getRequirementChoices() {

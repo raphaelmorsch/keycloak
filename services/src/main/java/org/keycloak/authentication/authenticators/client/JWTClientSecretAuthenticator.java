@@ -48,11 +48,7 @@ public class JWTClientSecretAuthenticator extends AbstractClientAuthenticator {
 	private static final Logger logger = Logger.getLogger(JWTClientSecretAuthenticator.class);
 	
     public static final String PROVIDER_ID = "client-secret-jwt";
-    
-    public static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
-            AuthenticationExecutionModel.Requirement.ALTERNATIVE,
-            AuthenticationExecutionModel.Requirement.DISABLED
-    };
+
 
     @Override
     public void authenticateClient(ClientAuthenticationFlowContext context) {

@@ -30,7 +30,6 @@ import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
 import org.keycloak.models.AuthenticatorConfigModel;
-import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.ClientSessionContext;
 import org.keycloak.models.Constants;
@@ -786,6 +785,9 @@ public class AuthenticationProcessor {
         AuthenticationFlow authenticationFlow = createFlowExecution(this.flowId, null);
         try {
             Response challenge = authenticationFlow.processFlow();
+            if (!authenticationFlow.isSuccessful()) {
+                throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS);
+            }
             return challenge;
         } catch (Exception e) {
             return handleClientAuthException(e);
@@ -911,6 +913,9 @@ public class AuthenticationProcessor {
         if (challenge != null) return challenge;
         if (authenticationSession.getAuthenticatedUser() == null) {
             throw new AuthenticationFlowException(AuthenticationFlowError.UNKNOWN_USER);
+        }
+        if (!authenticationFlow.isSuccessful()) {
+            throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS);
         }
         return challenge;
     }

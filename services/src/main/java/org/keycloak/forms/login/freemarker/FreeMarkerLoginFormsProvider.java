@@ -18,10 +18,14 @@ package org.keycloak.forms.login.freemarker;
 
 import org.jboss.logging.Logger;
 import org.keycloak.OAuth2Constants;
+import org.keycloak.authentication.AuthenticationFlow;
+import org.keycloak.authentication.Authenticator;
+import org.keycloak.authentication.CredentialValidator;
 import org.keycloak.authentication.requiredactions.util.UpdateProfileContext;
 import org.keycloak.authentication.requiredactions.util.UserUpdateProfileContext;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.common.util.ObjectUtil;
+import org.keycloak.credential.CredentialModel;
 import org.keycloak.forms.login.LoginFormsPages;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.forms.login.freemarker.model.ClientBean;
@@ -56,6 +60,7 @@ import org.keycloak.theme.beans.MessageType;
 import org.keycloak.theme.beans.MessagesPerFieldBean;
 import org.keycloak.utils.MediaType;
 
+import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
@@ -64,6 +69,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.text.MessageFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 import static org.keycloak.models.UserModel.RequiredAction.UPDATE_PASSWORD;
@@ -177,6 +183,26 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
         attributes.put("login", new LoginBean(formData));
         if (status != null) {
             attributes.put("statusCode", status.getStatusCode());
+        }
+
+        if (execution != null) {
+            AuthenticationExecutionModel model = realm.getAuthenticationExecutionById(execution);
+            if (model != null && model.isAlternative()) {
+                List<AuthenticationExecutionModel> alternativeExecutions = realm.getAuthenticationExecutions(model.getParentFlow())
+                        .stream().filter(AuthenticationExecutionModel::isAlternative).collect(Collectors.toList());
+                attributes.put("authenticationExecutions", alternativeExecutions);
+                /*MultivaluedMap<AuthenticationExecutionModel, CredentialModel> authCredentialMap = new MultivaluedHashMap<>();
+                for (AuthenticationExecutionModel alternativeExecution: alternativeExecutions) {
+                    Authenticator authenticator = session.getProvider(Authenticator.class, alternativeExecution.getAuthenticator());
+                    if (authenticator instanceof CredentialValidator) {
+                        CredentialValidator cv = (CredentialValidator)authenticator;
+                        authCredentialMap.addAll(alternativeExecution, cv.getCredentials(session, realm, user));
+                    } else {
+                        authCredentialMap.putSingle(alternativeExecution, null);
+                    }
+                }
+                attributes.put("authenticationExecutions", authCredentialMap);*/
+            }
         }
 
         switch (page) {
@@ -393,8 +419,7 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
                 if (page != null) {
                     switch (page) {
                         case LOGIN:
-                            b = UriBuilder.fromUri(Urls.realmLoginPage(baseUri, realm.getName()));
-                            break;
+                        case LOGIN_USERNAME:
                         case X509_CONFIRM:
                             b = UriBuilder.fromUri(Urls.realmLoginPage(baseUri, realm.getName()));
                             break;
@@ -451,9 +476,17 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
     }
 
     @Override
-    public Response createLogin() {
+    public Response createLoginUsernamePassword() {
         return createResponse(LoginFormsPages.LOGIN);
     }
+
+    public Response createLoginUsername(){
+        return createResponse(LoginFormsPages.LOGIN_USERNAME);
+    };
+
+    public Response createLoginPassword(){
+        return createResponse(LoginFormsPages.LOGIN_PASSWORD);
+    };
 
     @Override
     public Response createPasswordReset() {

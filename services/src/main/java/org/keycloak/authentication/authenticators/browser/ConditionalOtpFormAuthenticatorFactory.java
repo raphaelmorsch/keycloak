@@ -52,11 +52,6 @@ public class ConditionalOtpFormAuthenticatorFactory implements AuthenticatorFact
 
     public static final ConditionalOtpFormAuthenticator SINGLETON = new ConditionalOtpFormAuthenticator();
 
-    public static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
-            AuthenticationExecutionModel.Requirement.REQUIRED,
-            AuthenticationExecutionModel.Requirement.OPTIONAL,
-            AuthenticationExecutionModel.Requirement.DISABLED};
-
     @Override
     public Authenticator create(KeycloakSession session) {
         return SINGLETON;
