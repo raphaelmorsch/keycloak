@@ -232,17 +232,17 @@ module.controller('UserOfflineSessionsCtrl', function($scope, $location, realm, 
 
 
 module.controller('UserListCtrl', function($scope, realm, User, UserSearchState, UserImpersonation, BruteForce, Notifications, $route, Dialog) {
-    
+
     $scope.init = function() {
         $scope.realm = realm;
-        
+
         UserSearchState.query.realm = realm.realm;
         $scope.query = UserSearchState.query;
         $scope.query.briefRepresentation = 'true';
-        
+
         if (!UserSearchState.isFirstSearch) $scope.searchQuery();
     };
-    
+
     $scope.impersonate = function(userId) {
         UserImpersonation.save({realm : realm.realm, user: userId}, function (data) {
             if (data.sameRealm) {
@@ -296,11 +296,11 @@ module.controller('UserListCtrl', function($scope, realm, User, UserSearchState,
                 userId : user.id
             }, function() {
                 $route.reload();
-                
+
                 if ($scope.users.length === 1 && $scope.query.first > 0) {
                     $scope.previousPage();
-                } 
-                
+                }
+
                 Notifications.success("The user has been deleted.");
             }, function() {
                 Notifications.error("User couldn't be deleted");
@@ -512,6 +512,48 @@ module.controller('UserDetailCtrl', function($scope, realm, user, BruteForceUser
 module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, RequiredActions, User, UserExecuteActionsEmail, UserCredentials, Notifications, Dialog, TimeUnit2) {
     console.log('UserCredentialsCtrl');
 
+    $scope.addingPassword = false;
+
+    loadCredentials();
+
+    $scope.keys = function(object) {
+        return object ? Object.keys(object) : [];
+    }
+
+    $scope.saveCredential = function(credential) {
+        UserCredentials.updateCredential({ realm: realm.realm, userId: user.id, credentialId: credential.id }, {
+            'id': credential.id,
+            'userLabel': credential.userLabel,
+            // We JSONify the credential data
+            'credentialData': JSON.stringify(credential.credentialData)
+        }, function() {
+            Notifications.success("Credentials saved!");
+        }, function(err) {
+            Notifications.error("Error while updating the credential. See console for more information.");
+            console.log(err);
+        });
+    }
+
+    $scope.deleteCredential = function(credential) {
+        Dialog.confirm('Delete credentials', 'Are you sure you want to delete these users credentials?', function() {
+            UserCredentials.deleteCredential({ realm: realm.realm, userId: user.id, credentialId: credential.id }, null, function() {
+                Notifications.success("Credentials deleted!");
+                $route.reload();
+            }, function(err) {
+                Notifications.error("Error while deleting the credential. See console for more information.");
+                console.log(err);
+            });
+        });
+    }
+
+    $scope.addCredential = function(type) {
+        if (type == 'password') {
+            $scope.addingPassword = true;
+        } else {
+            alert('Not implemented yet! (type=' + type + ')');
+        }
+    }
+
     $scope.realm = realm;
     $scope.user = angular.copy(user);
     $scope.temporaryPassword = true;
@@ -533,10 +575,43 @@ module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, R
 
     });
 
+    function buildTable(credentials) {
+        var table = credentials.reduce(function(table, cred) {
+            if (!table.hasOwnProperty(cred.type)) {
+                table[cred.type] = [];
+            }
+            table[cred.type].push(cred);
+            return table;
+        }, {});
+
+        // If there are no passwords, we add a dummy password section
+        if (!table.hasOwnProperty('password')) {
+            table['password'] = [ null ];
+        }
+
+        return table;
+    }
+
+    function loadCredentials() {
+        UserCredentials.getCredentials({ realm: realm.realm, userId: user.id }, null, function(credentials) {
+            credentials = credentials.map(function(c) {
+                // We de-JSONify the credential data
+                if (c.credentialData) {
+                    c.credentialData = JSON.parse(c.credentialData);
+                }
+                return c;
+            });
+            $scope.credentialsTable = buildTable(credentials);
+        }, function(err) {
+            Notifications.error("Error while loading user credentials. See console for more information.");
+            console.log(err);
+        });
+    }
+
     $scope.resetPassword = function() {
         // hit enter without entering both fields - ignore
         if (!$scope.passwordAndConfirmPasswordEntered()) return;
-        
+
         if ($scope.pwdChange) {
             if ($scope.password != $scope.confirmPassword) {
                 Notifications.error("Password and confirmation does not match.");
@@ -563,7 +638,7 @@ module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, R
     $scope.passwordAndConfirmPasswordEntered = function() {
         return $scope.password && $scope.confirmPassword;
     }
-    
+
     $scope.disableCredentialTypes = function() {
         Dialog.confirm('Disable credentials', 'Are you sure you want to disable these users credentials?', function() {
             UserCredentials.disableCredentialTypes({ realm: realm.realm, userId: user.id }, $scope.disableableCredentialTypes, function() {
@@ -635,7 +710,7 @@ module.controller('UserFederationCtrl', function($scope, $location, $route, real
     $scope.instancesLoaded = false;
 
     if (!$scope.providers) $scope.providers = [];
-    
+
     $scope.addProvider = function(provider) {
         console.log('Add provider: ' + provider.id);
         $location.url("/create/user-storage/" + realm.realm + "/providers/" + provider.id);
@@ -788,7 +863,7 @@ module.controller('GenericUserStorageCtrl', function($scope, $location, Notifica
             if (!instance.config['priority']) {
                 instance.config['priority'] = ['0'];
             }
-            
+
             if (providerFactory.properties) {
                 for (var i = 0; i < providerFactory.properties.length; i++) {
                     var configProperty = providerFactory.properties[i];
@@ -1474,7 +1549,7 @@ module.controller('LDAPUserStorageCtrl', function($scope, $location, Notificatio
         console.log('GenericCtrl: triggerChangedUsersSync');
         triggerSync('triggerChangedUsersSync');
     }
-    
+
 
     function triggerSync(action) {
         UserStorageOperations.sync.save({ action: action, realm: $scope.realm.realm, componentId: $scope.instance.id }, {}, function(syncResult) {
