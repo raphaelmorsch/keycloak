@@ -17,6 +17,7 @@
 
 package org.keycloak.forms.login;
 
+import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.models.ClientScopeModel;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.RoleModel;
@@ -137,4 +138,6 @@ public interface LoginFormsProvider extends Provider {
     LoginFormsProvider setActionUri(URI requestUri);
 
     LoginFormsProvider setExecution(String execution);
+
+    LoginFormsProvider setAuthContext(AuthenticationFlowContext context);
 }

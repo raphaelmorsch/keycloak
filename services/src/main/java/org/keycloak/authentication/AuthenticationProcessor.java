@@ -23,6 +23,7 @@ import org.keycloak.authentication.authenticators.browser.AbstractUsernameFormAu
 import org.keycloak.authentication.authenticators.client.ClientAuthUtil;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.util.Time;
+import org.keycloak.credential.CredentialModel;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
@@ -56,6 +57,7 @@ import org.keycloak.services.util.AuthenticationFlowURLHelper;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.CommonClientSessionModel;
 
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
@@ -275,6 +277,8 @@ public class AuthenticationProcessor {
         List<AuthenticationExecutionModel> currentExecutions;
         FormMessage errorMessage;
         FormMessage successMessage;
+        String selectedCredentialId;
+        MultivaluedMap<AuthenticationExecutionModel, CredentialModel> authCredentialMap;
 
         private Result(AuthenticationExecutionModel execution, Authenticator authenticator, List<AuthenticationExecutionModel> currentExecutions) {
             this.execution = execution;
@@ -390,6 +394,26 @@ public class AuthenticationProcessor {
         @Override
         public void setUser(UserModel user) {
             setAutheticatedUser(user);
+        }
+
+        @Override
+        public String getSelectedCredentialId() {
+            return selectedCredentialId;
+        }
+
+        @Override
+        public void setSelectedCredentialId(String selectedCredentialId) {
+            this.selectedCredentialId = selectedCredentialId;
+        }
+
+        @Override
+        public MultivaluedMap<AuthenticationExecutionModel, CredentialModel> getAuthCredentialMap() {
+            return authCredentialMap;
+        }
+
+        @Override
+        public void setAuthCredentialMap(MultivaluedMap<AuthenticationExecutionModel, CredentialModel> authCredentialMap) {
+            this.authCredentialMap = authCredentialMap;
         }
 
         @Override

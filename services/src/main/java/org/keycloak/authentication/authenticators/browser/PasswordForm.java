@@ -31,7 +31,7 @@ public class PasswordForm extends UsernamePasswordForm {
 
     @Override
     public void authenticate(AuthenticationFlowContext context) {
-        Response challengeResponse = context.form().createLoginPassword();
+        Response challengeResponse = context.form().setAuthContext(context).createLoginPassword();
         context.challenge(challengeResponse);
     }
 

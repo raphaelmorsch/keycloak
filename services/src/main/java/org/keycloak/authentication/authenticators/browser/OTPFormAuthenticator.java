@@ -31,7 +31,6 @@ import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.messages.Messages;
 
-import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
@@ -61,24 +60,22 @@ public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator impl
         }
 
         String otp = inputData.getFirst("otp");
-        String credentialId = inputData.getFirst("credentialId");
+        String credentialId = context.getSelectedCredentialId();
 
         //TODO this is lazy for when there is no clearly defined credentialId available (for example direct grant or console OTP), replace with getting the credential from the name
-        if (credentialId == null) {
+        if (credentialId == null || credentialId.isEmpty()) {
             credentialId = getCredentialProvider(context.getSession()).getPreferredCredential(context.getRealm(), context.getUser()).getId();
+            context.setSelectedCredentialId(credentialId);
         }
 
-        MultivaluedMap<String, String> formData = new MultivaluedHashMap<>();
-        formData.putSingle("credentialId", credentialId);
-
         UserModel userModel = context.getUser();
-        if (!enabledUser(context, userModel, formData)) {
+        if (!enabledUser(context, userModel)) {
             // error in context is set in enabledUser/isTemporarilyDisabledByBruteForce
             return;
         }
 
         if (otp == null) {
-            Response challengeResponse = challenge(context, formData,null);
+            Response challengeResponse = challenge(context,null);
             context.challenge(challengeResponse);
             return;
         }
@@ -87,7 +84,7 @@ public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator impl
         if (!valid) {
             context.getEvent().user(userModel)
                     .error(Errors.INVALID_USER_CREDENTIALS);
-            Response challengeResponse = challenge(context, formData, Messages.INVALID_TOTP);
+            Response challengeResponse = challenge(context, Messages.INVALID_TOTP);
             context.failureChallenge(AuthenticationFlowError.INVALID_CREDENTIALS, challengeResponse);
             return;
         }

@@ -59,8 +59,8 @@ public class ValidateOTP extends AbstractDirectGrantAuthenticator implements Cre
         MultivaluedMap<String, String> inputData = context.getHttpRequest().getDecodedFormParameters();
 
         String otp = inputData.getFirst("otp");
-        String credentialId = inputData.getFirst("credentialId");
-        if (credentialId == null) {
+        String credentialId = context.getSelectedCredentialId();
+        if (credentialId == null || credentialId.isEmpty()) {
             credentialId = getCredentialProvider(context.getSession()).getPreferredCredential(context.getRealm(), context.getUser()).getId();
         }
         if (otp == null) {

@@ -55,19 +55,9 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
     }
 
     protected Response challenge(AuthenticationFlowContext context, String error) {
-        LoginFormsProvider form = context.form();
-        form.setExecution(context.getExecution().getId());
-        if (error != null) form.setError(error);
-        return createLoginForm(form);
-    }
-
-    protected Response challenge(AuthenticationFlowContext context, MultivaluedMap<String, String> formData, String error) {
-        if (formData == null || formData.isEmpty()) {
-            return challenge(context, error);
-        }
-        LoginFormsProvider form = context.form();
-        form.setExecution(context.getExecution().getId());
-        form.setFormData(formData);
+        LoginFormsProvider form = context.form()
+                .setAuthContext(context)
+                .setExecution(context.getExecution().getId());
         if (error != null) form.setError(error);
         return createLoginForm(form);
     }
@@ -82,7 +72,7 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
 
     protected Response setDuplicateUserChallenge(AuthenticationFlowContext context, String eventError, String loginFormError, AuthenticationFlowError authenticatorError) {
         context.getEvent().error(eventError);
-        Response challengeResponse = context.form()
+        Response challengeResponse = context.form().setAuthContext(context)
                 .setError(loginFormError).createLoginUsernamePassword();
         context.failureChallenge(authenticatorError, challengeResponse);
         return challengeResponse;
@@ -123,15 +113,15 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
     }
 
 
-    public boolean enabledUser(AuthenticationFlowContext context, UserModel user, MultivaluedMap<String, String> formData) {
+    public boolean enabledUser(AuthenticationFlowContext context, UserModel user) {
         if (!user.isEnabled()) {
             context.getEvent().user(user);
             context.getEvent().error(Errors.USER_DISABLED);
-            Response challengeResponse = challenge(context, formData, Messages.ACCOUNT_DISABLED);
+            Response challengeResponse = challenge(context, Messages.ACCOUNT_DISABLED);
             context.forceChallenge(challengeResponse);
             return false;
         }
-        if (isTemporarilyDisabledByBruteForce(context, user, formData)) return false;
+        if (isTemporarilyDisabledByBruteForce(context, user)) return false;
         return true;
     }
 
@@ -176,7 +166,7 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
             return null;
         }
 
-        if (!enabledUser(context, user, null)) {
+        if (!enabledUser(context, user)) {
             return null;
         }
 
@@ -200,7 +190,7 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
     public boolean validatePassword(AuthenticationFlowContext context, UserModel user, MultivaluedMap<String, String> inputData, boolean clearUser) {
         String password = inputData.getFirst(CredentialRepresentation.PASSWORD);
 
-        if (isTemporarilyDisabledByBruteForce(context, user, null)) return false;
+        if (isTemporarilyDisabledByBruteForce(context, user)) return false;
 
         if (password != null && !password.isEmpty() && context.getSession().userCredentialManager().isValid(context.getRealm(), user, UserCredentialModel.password(password))) {
             return true;
@@ -217,12 +207,12 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
     }
 
 
-    protected boolean isTemporarilyDisabledByBruteForce(AuthenticationFlowContext context, UserModel user, MultivaluedMap<String, String> formData) {
+    protected boolean isTemporarilyDisabledByBruteForce(AuthenticationFlowContext context, UserModel user) {
         if (context.getRealm().isBruteForceProtected()) {
             if (context.getProtector().isTemporarilyDisabled(context.getSession(), context.getRealm(), user)) {
                 context.getEvent().user(user);
                 context.getEvent().error(Errors.USER_TEMPORARILY_DISABLED);
-                Response challengeResponse = challenge(context, formData, tempDisabledError());
+                Response challengeResponse = challenge(context, tempDisabledError());
                 context.forceChallenge(challengeResponse);
                 return true;
             }

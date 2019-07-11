@@ -18,14 +18,11 @@ package org.keycloak.forms.login.freemarker;
 
 import org.jboss.logging.Logger;
 import org.keycloak.OAuth2Constants;
-import org.keycloak.authentication.AuthenticationFlow;
-import org.keycloak.authentication.Authenticator;
-import org.keycloak.authentication.CredentialValidator;
+import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.requiredactions.util.UpdateProfileContext;
 import org.keycloak.authentication.requiredactions.util.UserUpdateProfileContext;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.common.util.ObjectUtil;
-import org.keycloak.credential.CredentialModel;
 import org.keycloak.forms.login.LoginFormsPages;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.forms.login.freemarker.model.ClientBean;
@@ -40,9 +37,13 @@ import org.keycloak.forms.login.freemarker.model.RequiredActionUrlFormatterMetho
 import org.keycloak.forms.login.freemarker.model.TotpBean;
 import org.keycloak.forms.login.freemarker.model.UrlBean;
 import org.keycloak.forms.login.freemarker.model.X509ConfirmBean;
-import org.keycloak.models.*;
-import org.keycloak.models.credential.OTPCredentialModel;
-import org.keycloak.models.credential.dto.OTPCredentialData;
+import org.keycloak.models.ClientModel;
+import org.keycloak.models.ClientScopeModel;
+import org.keycloak.models.Constants;
+import org.keycloak.models.IdentityProviderModel;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.FormMessage;
 import org.keycloak.services.Urls;
 import org.keycloak.services.messages.Messages;
@@ -60,7 +61,6 @@ import org.keycloak.theme.beans.MessageType;
 import org.keycloak.theme.beans.MessagesPerFieldBean;
 import org.keycloak.utils.MediaType;
 
-import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
@@ -68,9 +68,14 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.MessageFormat;
-import java.util.*;
-import java.util.stream.Collectors;
-
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 
 import static org.keycloak.models.UserModel.RequiredAction.UPDATE_PASSWORD;
 
@@ -88,6 +93,7 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
     protected Map<String, String> httpResponseHeaders = new HashMap<>();
     protected URI actionUri;
     protected String execution;
+    protected AuthenticationFlowContext context;
 
     protected List<FormMessage> messages = null;
     protected MessageType messageType = MessageType.ERROR;
@@ -185,31 +191,13 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
             attributes.put("statusCode", status.getStatusCode());
         }
 
-        if (execution != null) {
-            AuthenticationExecutionModel model = realm.getAuthenticationExecutionById(execution);
-            if (model != null && model.isAlternative()) {
-                List<AuthenticationExecutionModel> alternativeExecutions = realm.getAuthenticationExecutions(model.getParentFlow())
-                        .stream().filter(AuthenticationExecutionModel::isAlternative).collect(Collectors.toList());
-                attributes.put("authenticationExecutions", alternativeExecutions);
-                /*MultivaluedMap<AuthenticationExecutionModel, CredentialModel> authCredentialMap = new MultivaluedHashMap<>();
-                for (AuthenticationExecutionModel alternativeExecution: alternativeExecutions) {
-                    Authenticator authenticator = session.getProvider(Authenticator.class, alternativeExecution.getAuthenticator());
-                    if (authenticator instanceof CredentialValidator) {
-                        CredentialValidator cv = (CredentialValidator)authenticator;
-                        authCredentialMap.addAll(alternativeExecution, cv.getCredentials(session, realm, user));
-                    } else {
-                        authCredentialMap.putSingle(alternativeExecution, null);
-                    }
-                }
-                attributes.put("authenticationExecutions", authCredentialMap);*/
-            }
+        if (context != null) {
+            attributes.put("authenticationExecutions", context.getAuthCredentialMap());
+            attributes.put("selectedCredential", context.getSelectedCredentialId());
         }
+        attributes.put(Constants.EXECUTION, execution);
 
         switch (page) {
-            case LOGIN_TOTP:
-                attributes.put("selectedCredentialId", formData.getFirst("credentialId"));
-                attributes.put("credentials", session.userCredentialManager().getStoredCredentialsByType(realm, user, OTPCredentialModel.TYPE));
-                break;
             case LOGIN_CONFIG_TOTP:
                 attributes.put("totp", new TotpBean(session, realm, user, uriInfo.getRequestUriBuilder()));
                 break;
@@ -413,6 +401,7 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
 
             attributes.put("url", new UrlBean(realm, theme, baseUri, this.actionUri));
             attributes.put("requiredActionUrl", new RequiredActionUrlFormatterMethod(realm, baseUri));
+
 
             if (realm.isInternationalizationEnabled()) {
                 UriBuilder b;
@@ -702,6 +691,11 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
     @Override
     public LoginFormsProvider setResponseHeader(String headerName, String headerValue) {
         this.httpResponseHeaders.put(headerName, headerValue);
+        return this;
+    }
+
+    public LoginFormsProvider setAuthContext(AuthenticationFlowContext context){
+        this.context = context;
         return this;
     }
 

@@ -14,25 +14,6 @@
                            autofocus/>
                 </div>
             </div>
-            <div class="${properties.kcFormGroupClass!}">
-                <div class="${properties.kcLabelWrapperClass!}">
-                    <label for="credentialId"
-                           class="${properties.kcLabelClass!}">${msg("loginChooseAuthenticator")}</label>
-                </div>
-                <div class="${properties.kcFormOptionsClass}">
-                    <select name="credentialId" size="1">
-                        <#list credentials as credential>
-                            <#if selectedCredentialId?has_content && selectedCredentialId == credential.id>
-                                <option value="${credential.id}" selected>
-                            <#else >
-                                <option value="${credential.id}">
-                            </#if>
-                                <#if credential.userLabel?has_content>${credential.userLabel}<#else>${credential.id}</#if>
-                            </option>
-                        </#list>
-                    </select>
-                </div>
-            </div>
 
             <div class="${properties.kcFormGroupClass!}">
                 <div id="kc-form-options" class="${properties.kcFormOptionsClass!}">
@@ -42,6 +23,7 @@
 
                 <div id="kc-form-buttons" class="${properties.kcFormButtonsClass!}">
                     <div class="${properties.kcFormButtonsWrapperClass!}">
+                        <input type="hidden" id="id-hidden-input" name="credentialId" <#if selectedCredential?has_content>value="${selectedCredential}"</#if>/>
                         <input class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!} ${properties.kcButtonLargeClass!}"
                                name="login" id="kc-login" type="submit" value="${msg("doLogIn")}"/>
                         <input class="${properties.kcButtonClass!} ${properties.kcButtonDefaultClass!} ${properties.kcButtonLargeClass!}"
