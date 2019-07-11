@@ -489,7 +489,7 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
         }
         return users;
     }
-    
+
     @Override
     public List<UserModel> getRoleMembers(RealmModel realm, RoleModel role) {
         TypedQuery<UserEntity> query = em.createNamedQuery("usersInRole", UserEntity.class);
@@ -533,11 +533,11 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
         query.setParameter("email", email.toLowerCase());
         query.setParameter("realmId", realm.getId());
         List<UserEntity> results = query.getResultList();
-        
+
         if (results.isEmpty()) return null;
-        
+
         ensureEmailConstraint(results, realm);
-        
+
         return new UserAdapter(session, realm, em, results.get(0));
     }
 
@@ -650,7 +650,7 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
         }
         return users;
     }
-    
+
     @Override
     public List<UserModel> getRoleMembers(RealmModel realm, RoleModel role, int firstResult, int maxResults) {
         TypedQuery<UserEntity> query = em.createNamedQuery("usersInRole", UserEntity.class);
@@ -747,7 +747,7 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
             Root from1 = subquery1.from(ResourceEntity.class);
 
             List<Predicate> subs = new ArrayList<>();
-            
+
             Expression<String> groupId = from.get("groupId");
             subs.add(builder.like(from1.get("name"), builder.concat("group.resource.", groupId)));
 
@@ -931,7 +931,7 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
         if (userEntity != null) {
 
             // user already in persistence context, no need to execute a query
-            results = userEntity.getCredentials().stream().filter(it -> it.getType().equals(type)).collect(Collectors.toList());
+            results = userEntity.getCredentials().stream().filter(it -> type.equals(it.getType())).collect(Collectors.toList());
         } else {
             userEntity = em.getReference(UserEntity.class, user.getId());
             TypedQuery<CredentialEntity> query = em.createNamedQuery("credentialByUserAndType", CredentialEntity.class)
@@ -961,23 +961,23 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
     // Could override this to provide a custom behavior.
     protected void ensureEmailConstraint(List<UserEntity> users, RealmModel realm) {
         UserEntity user = users.get(0);
-        
+
         if (users.size() > 1) {
             // Realm settings have been changed from allowing duplicate emails to not allowing them
             // but duplicates haven't been removed.
             throw new ModelDuplicateException("Multiple users with email '" + user.getEmail() + "' exist in Keycloak.");
         }
-        
+
         if (realm.isDuplicateEmailsAllowed()) {
             return;
         }
-     
+
         if (user.getEmail() != null && !user.getEmail().equals(user.getEmailConstraint())) {
             // Realm settings have been changed from allowing duplicate emails to not allowing them.
             // We need to update the email constraint to reflect this change in the user entities.
             user.setEmailConstraint(user.getEmail());
             em.persist(user);
-        }  
+        }
     }
 
     private UserEntity userInEntityManagerContext(String id) {

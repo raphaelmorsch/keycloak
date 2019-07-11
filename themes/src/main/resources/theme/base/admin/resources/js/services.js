@@ -254,7 +254,7 @@ module.factory('ComponentUtils', function() {
     }
 
 
-    
+
     utils.addLastEmptyValueToMultivaluedLists = function(properties, config) {
         if (!properties) {
             return;
@@ -291,24 +291,24 @@ module.factory('ComponentUtils', function() {
             }
         }
     }
-    
+
     // Allows you to use ui-select2 with <input> tag.
     // In HTML you will then use property.mvOptions like this:
     // <input ui-select2="prop.mvOptions" ng-model="...
     utils.addMvOptionsToMultivaluedLists = function(properties) {
         if (!properties) return;
-        
+
         for (var i=0 ; i<properties.length ; i++) {
             var prop = properties[i];
             if (prop.type !== 'MultivaluedList') continue;
-            
+
             prop.mvOptions = {
                 'multiple' : true,
                 'simple_tags' : true,
                 'tags' : angular.copy(prop.options)
             }
         }
-        
+
     }
 
     return utils;
@@ -624,6 +624,27 @@ module.factory('UserImpersonation', function($resource) {
 module.factory('UserCredentials', function($resource) {
     var credentials = {};
 
+    credentials.getCredentials = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials', {
+        realm : '@realm',
+        userId : '@userId'
+    }).query;
+
+    credentials.deleteCredential = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials/:credentialId', {
+        realm : '@realm',
+        userId : '@userId',
+        credentialId : '@credentialId'
+    }).delete;
+
+    credentials.updateCredential = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials/:credentialId', {
+        realm : '@realm',
+        userId : '@userId',
+        credentialId : '@credentialId'
+    }, {
+        update : {
+            method : 'PUT'
+        }
+    }).update;
+
     credentials.resetPassword = $resource(authUrl + '/admin/realms/:realm/users/:userId/reset-password', {
         realm : '@realm',
         userId : '@userId'
@@ -908,7 +929,7 @@ function roleControl($scope, realm, role, roles, clients,
             Notifications.success("Role added to composite.");
         });
     };
-    
+
     $scope.deleteRealmRole = function() {
         $scope.compositeSwitchDisabled=true;
         $scope.selectedRealmMappingsToRemove = JSON.parse('[' + $scope.selectedRealmMappings + ']');
