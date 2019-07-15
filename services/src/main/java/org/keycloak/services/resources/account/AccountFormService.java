@@ -739,7 +739,19 @@ public class AccountFormService extends AbstractSecuredLocalService {
 
     @Path("resource/{resource_id}/grant")
     @POST
+<<<<<<< HEAD
     public Response grantPermission(@PathParam("resource_id") String resourceId, @FormParam("action") String action, @FormParam("permission_id") List<String> permissionId, @FormParam("requester") String requester) {
+=======
+    public Response grantPermission(@PathParam("resource_id") String resourceId, @FormParam("action") String action, @FormParam("permission_id") String[] permissionId, @FormParam("requester") String requester, MultivaluedMap<String, String> formData) {
+        if (auth == null) {
+            return login("resource");
+        }
+
+        auth.require(AccountRoles.MANAGE_ACCOUNT);
+        
+        csrfCheck(formData);
+
+>>>>>>> e12c245355... [KEYCLOAK-10779] - CSRF check to My Resources
         AuthorizationProvider authorization = session.getProvider(AuthorizationProvider.class);
         PermissionTicketStore ticketStore = authorization.getStoreFactory().getPermissionTicketStore();
         Resource resource = authorization.getStoreFactory().getResourceStore().findById(resourceId, null);
@@ -853,7 +865,19 @@ public class AccountFormService extends AbstractSecuredLocalService {
 
     @Path("resource/{resource_id}/share")
     @POST
+<<<<<<< HEAD
     public Response shareResource(@PathParam("resource_id") String resourceId, @FormParam("user_id") List<String> userIds, @FormParam("scope_id") List<String> scopes) {
+=======
+    public Response shareResource(@PathParam("resource_id") String resourceId, @FormParam("user_id") String[] userIds, @FormParam("scope_id") String[] scopes, MultivaluedMap<String, String> formData) {
+        if (auth == null) {
+            return login("resource");
+        }
+
+        auth.require(AccountRoles.MANAGE_ACCOUNT);
+        
+        csrfCheck(formData);
+        
+>>>>>>> e12c245355... [KEYCLOAK-10779] - CSRF check to My Resources
         AuthorizationProvider authorization = session.getProvider(AuthorizationProvider.class);
         PermissionTicketStore ticketStore = authorization.getStoreFactory().getPermissionTicketStore();
         Resource resource = authorization.getStoreFactory().getResourceStore().findById(resourceId, null);
@@ -940,7 +964,18 @@ public class AccountFormService extends AbstractSecuredLocalService {
 
     @Path("resource")
     @POST
+<<<<<<< HEAD
     public Response processResourceActions(@FormParam("resource_id") List<String> resourceIds, @FormParam("action") String action) {
+=======
+    public Response processResourceActions(@FormParam("resource_id") String[] resourceIds, @FormParam("action") String action, MultivaluedMap<String, String> formData) {
+        if (auth == null) {
+            return login("resource");
+        }
+
+        auth.require(AccountRoles.MANAGE_ACCOUNT);
+        csrfCheck(formData);
+
+>>>>>>> e12c245355... [KEYCLOAK-10779] - CSRF check to My Resources
         AuthorizationProvider authorization = session.getProvider(AuthorizationProvider.class);
         PermissionTicketStore ticketStore = authorization.getStoreFactory().getPermissionTicketStore();
 
