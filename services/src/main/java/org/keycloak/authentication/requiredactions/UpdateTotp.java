@@ -45,6 +45,11 @@ import javax.ws.rs.core.Response;
  */
 public class UpdateTotp implements RequiredActionProvider, RequiredActionFactory, DisplayTypeRequiredActionFactory {
     @Override
+    public InitiatedActionSupport initiatedActionSupport() {
+        return InitiatedActionSupport.SUPPORTED;
+    }
+    
+    @Override
     public void evaluateTriggers(RequiredActionContext context) {
     }
 

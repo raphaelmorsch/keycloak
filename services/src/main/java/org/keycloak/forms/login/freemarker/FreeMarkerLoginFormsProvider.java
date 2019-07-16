@@ -79,6 +79,7 @@ import java.util.Objects;
 import java.util.Properties;
 
 import static org.keycloak.models.UserModel.RequiredAction.UPDATE_PASSWORD;
+import static org.keycloak.services.managers.AuthenticationManager.IS_AIA_REQUEST;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
@@ -191,6 +192,7 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
         if (status != null) {
             attributes.put("statusCode", status.getStatusCode());
         }
+<<<<<<< HEAD
 
         if (context != null) {
             attributes.put("authenticationSelections", context.getAuthenticationSelections());
@@ -198,6 +200,13 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
         }
         attributes.put(Constants.EXECUTION, execution);
 
+=======
+        
+        if (authenticationSession != null && authenticationSession.getClientNote(IS_AIA_REQUEST) != null) {
+            attributes.put("isAppInitiatedAction", true);
+        }
+        
+>>>>>>> 6c79bdee41... KEYCLOAK-10854: App initiated actions phase I
         switch (page) {
             case LOGIN_CONFIG_TOTP:
                 attributes.put("totp", new TotpBean(session, realm, user, uriInfo.getRequestUriBuilder()));
@@ -236,7 +245,7 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
 
         return processTemplate(theme, Templates.getTemplate(page), locale);
     }
-
+    
     @Override
     public Response createForm(String form) {
         Theme theme;
