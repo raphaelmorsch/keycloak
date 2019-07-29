@@ -417,11 +417,21 @@ public class AccountFormService extends AbstractSecuredLocalService {
 
         String clientId = formData.getFirst("clientId");
         if (clientId == null) {
+<<<<<<< HEAD
             return account.setError(Status.OK, Messages.CLIENT_NOT_FOUND).createResponse(AccountPages.APPLICATIONS);
         }
         ClientModel client = realm.getClientById(clientId);
         if (client == null) {
             return account.setError(Status.OK, Messages.CLIENT_NOT_FOUND).createResponse(AccountPages.APPLICATIONS);
+=======
+            setReferrerOnPage();
+            return account.setError(Response.Status.BAD_REQUEST, Messages.CLIENT_NOT_FOUND).createResponse(AccountPages.APPLICATIONS);
+        }
+        ClientModel client = realm.getClientById(clientId);
+        if (client == null) {
+            setReferrerOnPage();
+            return account.setError(Response.Status.BAD_REQUEST, Messages.CLIENT_NOT_FOUND).createResponse(AccountPages.APPLICATIONS);
+>>>>>>> c0f73c0df4... KEYCLOAK-10817 Set referrer on error
         }
 
         // Revoke grant in UserModel
@@ -852,8 +862,14 @@ public class AccountFormService extends AbstractSecuredLocalService {
             return ErrorResponse.error("Invalid resource", Response.Status.BAD_REQUEST);
         }
 
+<<<<<<< HEAD
         if (userIds == null || userIds.isEmpty()) {
             return account.setError(Status.OK, Messages.MISSING_PASSWORD).createResponse(AccountPages.PASSWORD);
+=======
+        if (userIds == null || userIds.length == 0) {
+            setReferrerOnPage();
+            return account.setError(Status.BAD_REQUEST, Messages.MISSING_PASSWORD).createResponse(AccountPages.PASSWORD);
+>>>>>>> c0f73c0df4... KEYCLOAK-10817 Set referrer on error
         }
 
         for (String id : userIds) {
@@ -868,7 +884,12 @@ public class AccountFormService extends AbstractSecuredLocalService {
             }
 
             if (user == null) {
+<<<<<<< HEAD
                 return account.setError(Status.OK, Messages.INVALID_USER).createResponse(AccountPages.RESOURCE_DETAIL);
+=======
+                setReferrerOnPage();
+                return account.setError(Status.BAD_REQUEST, Messages.INVALID_USER).createResponse(AccountPages.RESOURCE_DETAIL);
+>>>>>>> c0f73c0df4... KEYCLOAK-10817 Set referrer on error
             }
 
             Map<String, String> filters = new HashMap<>();
