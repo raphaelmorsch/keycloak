@@ -19,7 +19,6 @@ package org.keycloak.services.resources.admin;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.annotations.cache.NoCache;
 import org.jboss.resteasy.spi.BadRequestException;
-import org.jboss.resteasy.spi.NotFoundException;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
 import org.keycloak.authentication.RequiredActionProvider;
 import org.keycloak.authentication.actiontoken.execactions.ExecuteActionsActionToken;
@@ -79,6 +78,7 @@ import org.keycloak.utils.ProfileHelper;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -611,6 +611,8 @@ public class UserResource {
 
     @GET
     @Path("credentials")
+    @NoCache
+    @Produces(MediaType.APPLICATION_JSON)
     public List<CredentialRepresentation> credentials(){
         auth.users().requireManage(user);
         List<CredentialModel> models = session.userCredentialManager().getStoredCredentials(realm, user);
@@ -669,6 +671,34 @@ public class UserResource {
         if (rep.getUserLabel() != null) {
             credential.setUserLabel(rep.getUserLabel());
         }
+    }
+
+    /**
+     * Move a credential to a position behind another credential
+     * @param credentialId The credential to move
+     */
+    @Path("credentials/{credentialId}/moveToFirst")
+    @POST
+    public void moveToFirst(final @PathParam("credentialId") String credentialId){
+        moveCredentialAfter(credentialId, null);
+    }
+
+    /**
+     * Move a credential to a position behind another credential
+     * @param credentialId The credential to move
+     * @param newPreviousCredentialId The credential that will be the previous element in the list. If set to null, the moved credential will be the first element in the list.
+     */
+    @Path("credentials/{credentialId}/moveAfter/{newPreviousCredentialId}")
+    @POST
+    public void moveCredentialAfter(final @PathParam("credentialId") String credentialId, final @PathParam("newPreviousCredentialId") String newPreviousCredentialId){
+        auth.users().requireManage(user);
+        CredentialModel credential = session.userCredentialManager().getStoredCredentialById(realm, user, credentialId);
+        if (credential == null) {
+            // we do this to make sure somebody can't phish ids
+            if (auth.users().canQuery()) throw new NotFoundException("User not found");
+            else throw new ForbiddenException();
+        }
+        session.userCredentialManager().moveCredentialTo(realm, user, credentialId, newPreviousCredentialId);
     }
 
     /**

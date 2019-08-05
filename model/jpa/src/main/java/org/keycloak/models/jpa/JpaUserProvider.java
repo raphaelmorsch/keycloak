@@ -72,6 +72,7 @@ import javax.persistence.criteria.Expression;
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
  */
+@SuppressWarnings("JpaQueryApiInspection")
 public class JpaUserProvider implements UserProvider, UserCredentialStore {
 
     private static final String EMAIL = "email";
@@ -81,10 +82,12 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
 
     private final KeycloakSession session;
     protected EntityManager em;
+    private final JpaUserCredentialStore credentialStore;
 
     public JpaUserProvider(KeycloakSession session, EntityManager em) {
         this.session = session;
         this.em = em;
+        credentialStore = new JpaUserCredentialStore(session, em);
     }
 
     @Override
@@ -848,30 +851,12 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
 
     @Override
     public void updateCredential(RealmModel realm, UserModel user, CredentialModel cred) {
-        CredentialEntity entity = em.find(CredentialEntity.class, cred.getId());
-        if (entity == null) return;
-        entity.setCreatedDate(cred.getCreatedDate());
-        entity.setUserLabel(cred.getUserLabel());
-        entity.setType(cred.getType());
-        entity.setSecretData(cred.getSecretData());
-        entity.setCredentialData(cred.getCredentialData());
+        credentialStore.updateCredential(realm, user, cred);
     }
 
     @Override
     public CredentialModel createCredential(RealmModel realm, UserModel user, CredentialModel cred) {
-        CredentialEntity entity = new CredentialEntity();
-        String id = cred.getId() == null ? KeycloakModelUtils.generateId() : cred.getId();
-        entity.setId(id);
-        entity.setCreatedDate(cred.getCreatedDate());
-        entity.setUserLabel(cred.getUserLabel());
-        entity.setType(cred.getType());
-        entity.setSecretData(cred.getSecretData());
-        entity.setCredentialData(cred.getCredentialData());
-
-
-        UserEntity userRef = em.getReference(UserEntity.class, user.getId());
-        entity.setUser(userRef);
-        em.persist(entity);
+        CredentialEntity entity = credentialStore.createCredentialEntity(realm, user, cred);
 
         UserEntity userEntity = userInEntityManagerContext(user.getId());
         if (userEntity != null) {
@@ -882,46 +867,26 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
 
     @Override
     public boolean removeStoredCredential(RealmModel realm, UserModel user, String id) {
-        CredentialEntity entity = em.find(CredentialEntity.class, id);
-        if (entity == null) return false;
-        em.remove(entity);
+        CredentialEntity entity = credentialStore.removeCredentialEntity(id);
         UserEntity userEntity = userInEntityManagerContext(user.getId());
-        if (userEntity != null) {
+        if (entity != null && userEntity != null) {
             userEntity.getCredentials().remove(entity);
         }
-        return true;
+        return entity != null;
     }
 
     @Override
     public CredentialModel getStoredCredentialById(RealmModel realm, UserModel user, String id) {
-        CredentialEntity entity = em.find(CredentialEntity.class, id);
-        if (entity == null) return null;
-        CredentialModel model = toModel(entity);
-        return model;
+        return credentialStore.getStoredCredentialById(realm, user, id);
     }
 
     protected CredentialModel toModel(CredentialEntity entity) {
-        CredentialModel model = new CredentialModel();
-        model.setId(entity.getId());
-        model.setCreatedDate(entity.getCreatedDate());
-        model.setUserLabel(entity.getUserLabel());
-        model.setType(entity.getType());
-        model.setSecretData(entity.getSecretData());
-        model.setCredentialData(entity.getCredentialData());
-        return model;
+        return credentialStore.toModel(entity);
     }
 
     @Override
     public List<CredentialModel> getStoredCredentials(RealmModel realm, UserModel user) {
-        UserEntity userEntity = em.getReference(UserEntity.class, user.getId());
-        TypedQuery<CredentialEntity> query = em.createNamedQuery("credentialByUser", CredentialEntity.class)
-                .setParameter("user", userEntity);
-        List<CredentialEntity> results = query.getResultList();
-        List<CredentialModel> rtn = new LinkedList<>();
-        for (CredentialEntity entity : results) {
-            rtn.add(toModel(entity));
-        }
-        return rtn;
+        return credentialStore.getStoredCredentials(realm, user);
     }
 
     @Override
@@ -932,30 +897,23 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
 
             // user already in persistence context, no need to execute a query
             results = userEntity.getCredentials().stream().filter(it -> type.equals(it.getType())).collect(Collectors.toList());
+            List<CredentialModel> rtn = new LinkedList<>();
+            for (CredentialEntity entity : results) {
+                rtn.add(toModel(entity));
+            }
+            return rtn;
         } else {
-            userEntity = em.getReference(UserEntity.class, user.getId());
-            TypedQuery<CredentialEntity> query = em.createNamedQuery("credentialByUserAndType", CredentialEntity.class)
-                    .setParameter("type", type)
-                    .setParameter("user", userEntity);
-            results = query.getResultList();
+           return credentialStore.getStoredCredentialsByType(realm, user, type);
         }
-        List<CredentialModel> rtn = new LinkedList<>();
-        for (CredentialEntity entity : results) {
-            rtn.add(toModel(entity));
-        }
-        return rtn;
     }
 
     @Override
     public CredentialModel getStoredCredentialByNameAndType(RealmModel realm, UserModel user, String name, String type) {
-        UserEntity userEntity = em.getReference(UserEntity.class, user.getId());
-        TypedQuery<CredentialEntity> query = em.createNamedQuery("credentialByNameAndType", CredentialEntity.class)
-                .setParameter("type", type)
-                .setParameter("device", name)
-                .setParameter("user", userEntity);
-        List<CredentialEntity> results = query.getResultList();
-        if (results.isEmpty()) return null;
-        return toModel(results.get(0));
+        return credentialStore.getStoredCredentialByNameAndType(realm, user, name, type);
+    }
+
+    public void moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId) {
+        credentialStore.moveCredentialTo(realm, user, id, newPreviousCredentialId);
     }
 
     // Could override this to provide a custom behavior.

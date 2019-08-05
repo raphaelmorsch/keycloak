@@ -40,8 +40,8 @@ import java.util.Collection;
  */
 @NamedQueries({
         @NamedQuery(name="credentialByUser", query="select cred from CredentialEntity cred where cred.user = :user"),
-        @NamedQuery(name="credentialByUserAndType", query="select cred from CredentialEntity cred where cred.user = :user and cred.type = :type"),
-        @NamedQuery(name="credentialByNameAndType", query="select cred from CredentialEntity cred where cred.user = :user and cred.type = :type and cred.userLabel = :userLabel"),
+        @NamedQuery(name="firstCredentialInList", query="select cred from CredentialEntity cred where cred.user = :user and previousCredentialLink is null"),
+        @NamedQuery(name="lastCredentialInList", query="select cred from CredentialEntity cred where cred.user = :user and nextCredentialLink is null"),
         @NamedQuery(name="deleteCredentialsByRealm", query="delete from CredentialEntity cred where cred.user IN (select u from UserEntity u where u.realmId=:realmId)"),
         @NamedQuery(name="deleteCredentialsByRealmAndLink", query="delete from CredentialEntity cred where cred.user IN (select u from UserEntity u where u.realmId=:realmId and u.federationLink=:link)")
 
@@ -72,6 +72,12 @@ public class CredentialEntity {
 
     @Column(name="CREDENTIAL_DATA")
     protected String credentialData;
+
+    @Column(name="PREVIOUS_CREDENTIAL_LINK")
+    protected String previousCredentialLink;
+
+    @Column(name="NEXT_CREDENTIAL_LINK")
+    protected String nextCredentialLink;
 
     public String getId() {
         return id;
@@ -120,6 +126,20 @@ public class CredentialEntity {
     }
     public void setCredentialData(String credentialData) {
         this.credentialData = credentialData;
+    }
+
+    public String getPreviousCredentialLink() {
+        return previousCredentialLink;
+    }
+    public void setPreviousCredentialLink(String previousCredentialLink) {
+        this.previousCredentialLink = previousCredentialLink;
+    }
+
+    public String getNextCredentialLink() {
+        return nextCredentialLink;
+    }
+    public void setNextCredentialLink(String nextCredentialLink) {
+        this.nextCredentialLink = nextCredentialLink;
     }
 
     @Override

@@ -30,7 +30,9 @@ import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -99,7 +101,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         String selectedCredentialId = inputData.getFirst("credentialId");
         if (authExecId != null && !authExecId.isEmpty()) {
             model = processor.getRealm().getAuthenticationExecutionById(authExecId);
-            Response response = processSingleFlowExecutionModel(model, selectedCredentialId);
+            Response response = processSingleFlowExecutionModel(model, selectedCredentialId, false);
             if (response == null) {
                 processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
                 return processFlow();
@@ -112,8 +114,10 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         }
         Authenticator authenticator = createAuthenticator(factory);
         AuthenticationProcessor.Result result = processor.createAuthenticatorContext(model, authenticator, executions);
-        createAuthentictorCredentialMap(model, result);
+        result.setAuthenticationSelections(createAuthenticationSelectionList(model));
+
         result.setSelectedCredentialId(selectedCredentialId);
+
         logger.debugv("action: {0}", model.getAuthenticator());
         authenticator.action(result);
         Response response = processResult(result, true);
@@ -142,7 +146,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         //handle required elements : all required elements need to be executed
         boolean requiredElementsSuccessful = true;
         for (AuthenticationExecutionModel required : requiredList) {
-            Response response = processSingleFlowExecutionModel(required, null);
+            Response response = processSingleFlowExecutionModel(required, null, true);
             requiredElementsSuccessful &= processor.isSuccessful(required);
             if (response == null) {
                 continue;
@@ -163,7 +167,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             //handle alternative elements: the first alternative element to be satisfied is enough
             for (AuthenticationExecutionModel alternative : alternativeList) {
                 try {
-                    Response response = processSingleFlowExecutionModel(alternative, null);
+                    Response response = processSingleFlowExecutionModel(alternative, null, true);
                     if (response == null) {
                         if (processor.isSuccessful(alternative)) {
                             successful = true;
@@ -183,13 +187,14 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         return null;
     }
 
-    private Response processSingleFlowExecutionModel(AuthenticationExecutionModel model, String selectedCredentialId) {
+    private Response processSingleFlowExecutionModel(AuthenticationExecutionModel model, String selectedCredentialId, boolean calledFromFlow) {
         logger.debugv("check execution: {0} requirement: {1}", model.getAuthenticator(), model.getRequirement().toString());
 
         if (isProcessed(model)) {
             logger.debug("execution is processed");
             return null;
         }
+        //handle case where execution is a flow
         if (model.isAuthenticatorFlow()) {
             logger.debug("execution is flow");
             AuthenticationFlow authenticationFlow = processor.createFlowExecution(model.getFlowId(), model);
@@ -206,6 +211,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 return flowChallenge;
             }
         }
+        //handle normal execution case
         AuthenticatorFactory factory = (AuthenticatorFactory) processor.getSession().getKeycloakSessionFactory().getProviderFactory(Authenticator.class, model.getAuthenticator());
         if (factory == null) {
             throw new RuntimeException("Unable to find factory for AuthenticatorFactory: " + model.getAuthenticator() + " did you forget to declare it in a META-INF/services file?");
@@ -213,12 +219,25 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         Authenticator authenticator = createAuthenticator(factory);
         logger.debugv("authenticator: {0}", factory.getId());
         UserModel authUser = processor.getAuthenticationSession().getAuthenticatedUser();
+
+        //If executions are alternative, get the actual execution to show based on user preference
+        List<AuthenticationSelectionOption> selectionOptions = createAuthenticationSelectionList(model);
+        if (!selectionOptions.isEmpty() && calledFromFlow){
+            model = selectionOptions.stream().findFirst().get().getAuthenticationExecution();
+            factory = (AuthenticatorFactory) processor.getSession().getKeycloakSessionFactory().getProviderFactory(Authenticator.class, model.getAuthenticator());
+            if (factory == null) {
+                throw new RuntimeException("Unable to find factory for AuthenticatorFactory: " + model.getAuthenticator() + " did you forget to declare it in a META-INF/services file?");
+            }
+            authenticator = createAuthenticator(factory);
+        }
         AuthenticationProcessor.Result context = processor.createAuthenticatorContext(model, authenticator, executions);
+        context.setAuthenticationSelections(selectionOptions);
+        if (selectedCredentialId != null) {
+            context.setSelectedCredentialId(selectedCredentialId);
+        }
 
-        createAuthentictorCredentialMap(model, context);
-        context.setSelectedCredentialId(selectedCredentialId);
 
-        if (authenticator.requiresUser() && authUser == null) {
+        if (authenticator.requiresUser()) {
             if (authUser == null) {
                 throw new AuthenticationFlowException("authenticator: " + factory.getId(), AuthenticationFlowError.UNKNOWN_USER);
             }
@@ -235,27 +254,52 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         }
         logger.debugv("invoke authenticator.authenticate: {0}", factory.getId());
         authenticator.authenticate(context);
-        Response response = processResult(context, false);
-        return response;
+        return processResult(context, false);
     }
 
-    private void createAuthentictorCredentialMap(AuthenticationExecutionModel model, AuthenticationProcessor.Result context) {
-        //Add authentication executor - credential list map to context, along with the current credential
+    private List<AuthenticationSelectionOption> createAuthenticationSelectionList(AuthenticationExecutionModel model) {
+        List<AuthenticationSelectionOption> authenticationSelectionList = new ArrayList<>();
         if (model.isAlternative() && processor.getAuthenticationSession() != null && processor.getAuthenticationSession().getAuthenticatedUser() != null) {
             List<AuthenticationExecutionModel> alternativeExecutions = processor.getRealm().getAuthenticationExecutions(model.getParentFlow())
                     .stream().filter(AuthenticationExecutionModel::isAlternative).collect(Collectors.toList());
-            MultivaluedMap<AuthenticationExecutionModel, CredentialModel> authCredentialMap = new MultivaluedHashMap<>();
-            for (AuthenticationExecutionModel alternativeExecution : alternativeExecutions) {
-                Authenticator localAuthenticator = processor.getSession().getProvider(Authenticator.class, alternativeExecution.getAuthenticator());
-                if (localAuthenticator instanceof CredentialValidator) {
-                    CredentialValidator cv = (CredentialValidator) localAuthenticator;
-                    authCredentialMap.addAll(alternativeExecution, cv.getCredentials(processor.getSession(), processor.getRealm(), processor.getAuthenticationSession().getAuthenticatedUser()));
-                } else {
-                    authCredentialMap.putSingle(alternativeExecution, null);
+
+            List<AuthenticationExecutionModel> nonCredentialExecutions = new ArrayList<>();
+            Map<String, AuthenticationExecutionModel> typeAuthExecMap = new HashMap<>();
+
+            for (AuthenticationExecutionModel execution : alternativeExecutions) {
+                Authenticator localAuthenticator = processor.getSession().getProvider(Authenticator.class, execution.getAuthenticator());
+                if (!(localAuthenticator instanceof CredentialValidator)){
+                    nonCredentialExecutions.add(execution);
+                    continue;
+                }
+                CredentialValidator cv = (CredentialValidator)localAuthenticator;
+                typeAuthExecMap.put(cv.getType(processor.getSession()), execution);
+            }
+
+            List<CredentialModel> credentials = processor.getSession().userCredentialManager()
+                    .getStoredCredentials(processor.getRealm(), processor.getAuthenticationSession().getAuthenticatedUser())
+                    .stream()
+                    .filter(credential -> typeAuthExecMap.containsKey(credential.getType()))
+                    .collect(Collectors.toList());
+
+            MultivaluedMap<String, AuthenticationSelectionOption> countAuthSelections = new MultivaluedHashMap<>();
+
+            for (CredentialModel credential : credentials) {
+                AuthenticationSelectionOption authSel = new AuthenticationSelectionOption(typeAuthExecMap.get(credential.getType()), credential);
+                authenticationSelectionList.add(authSel);
+                countAuthSelections.add(credential.getType(), authSel);
+            }
+            for (String type : countAuthSelections.keySet()) {
+                if (countAuthSelections.get(type).size() == 1) {
+                    countAuthSelections.get(type).get(0).setShowCredentialName(false);
                 }
             }
-            context.setAuthCredentialMap(authCredentialMap);
+
+            for (AuthenticationExecutionModel exec : nonCredentialExecutions) {
+                authenticationSelectionList.add(new AuthenticationSelectionOption(exec));
+            }
         }
+        return authenticationSelectionList;
     }
 
 

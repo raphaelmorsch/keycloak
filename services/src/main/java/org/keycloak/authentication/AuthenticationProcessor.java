@@ -57,7 +57,6 @@ import org.keycloak.services.util.AuthenticationFlowURLHelper;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.CommonClientSessionModel;
 
-import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
@@ -278,7 +277,7 @@ public class AuthenticationProcessor {
         FormMessage errorMessage;
         FormMessage successMessage;
         String selectedCredentialId;
-        MultivaluedMap<AuthenticationExecutionModel, CredentialModel> authCredentialMap;
+        List<AuthenticationSelectionOption> authenticationSelections;
 
         private Result(AuthenticationExecutionModel execution, Authenticator authenticator, List<AuthenticationExecutionModel> currentExecutions) {
             this.execution = execution;
@@ -407,13 +406,13 @@ public class AuthenticationProcessor {
         }
 
         @Override
-        public MultivaluedMap<AuthenticationExecutionModel, CredentialModel> getAuthCredentialMap() {
-            return authCredentialMap;
+        public List<AuthenticationSelectionOption> getAuthenticationSelections() {
+            return authenticationSelections;
         }
 
         @Override
-        public void setAuthCredentialMap(MultivaluedMap<AuthenticationExecutionModel, CredentialModel> authCredentialMap) {
-            this.authCredentialMap = authCredentialMap;
+        public void setAuthenticationSelections(List<AuthenticationSelectionOption> authenticationSelections) {
+            this.authenticationSelections = authenticationSelections;
         }
 
         @Override

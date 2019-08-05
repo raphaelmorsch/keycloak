@@ -192,7 +192,7 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
         }
 
         if (context != null) {
-            attributes.put("authenticationExecutions", context.getAuthCredentialMap());
+            attributes.put("authenticationSelections", context.getAuthenticationSelections());
             attributes.put("selectedCredential", context.getSelectedCredentialId());
         }
         attributes.put(Constants.EXECUTION, execution);

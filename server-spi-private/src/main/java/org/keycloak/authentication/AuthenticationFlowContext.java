@@ -25,8 +25,9 @@ import org.keycloak.models.UserSessionModel;
 import org.keycloak.models.utils.FormMessage;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
-import javax.ws.rs.core.MultivaluedMap;
 import java.net.URI;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This interface encapsulates information about an execution in an AuthenticationFlow.  It is also used to set
@@ -65,9 +66,9 @@ public interface AuthenticationFlowContext extends AbstractAuthenticationFlowCon
      */
     void setSelectedCredentialId(String credentialModel);
 
-    MultivaluedMap<AuthenticationExecutionModel, CredentialModel> getAuthCredentialMap();
+    List<AuthenticationSelectionOption> getAuthenticationSelections();
 
-    void setAuthCredentialMap(MultivaluedMap<AuthenticationExecutionModel, CredentialModel> authCredentialMap);
+    void setAuthenticationSelections(List<AuthenticationSelectionOption>  credentialAuthExecMap);
 
     /**
      * Clear the user from the flow.

@@ -16,6 +16,7 @@ public class JpaUpdate7_0_0_Credentials extends CustomKeycloakTask {
         String credentialTableName = database.correctObjectName("CREDENTIAL", Table.class);
         try (PreparedStatement statement = jdbcConnection.prepareStatement("SELECT HASH_ITERATIONS, SALT, TYPE, VALUE, COUNTER, DIGITS, PERIOD, ALGORITHM FROM " + credentialTableName);
              ResultSet rs = statement.executeQuery()) {
+            String previousId = null;
             while (rs.next()) {
                 String hashIterations = rs.getString("HASH_ITERATIONS").trim();
                 if (rs.wasNull()) {
@@ -72,6 +73,18 @@ public class JpaUpdate7_0_0_Credentials extends CustomKeycloakTask {
                                 .setWhereClause("TYPE='totp'")
                 );
 
+                statements.add(
+                        new UpdateStatement(null, null, credentialTableName)
+                                .addNewColumnValue("PREVIOUS_CREDENTIAL_LINK", previousId)
+                .setWhereClause("ID='"+ rs.getString("ID") + "'"));
+                if (previousId != null){
+                    statements.add(
+                            new UpdateStatement(null, null, credentialTableName)
+                                    .addNewColumnValue("NEXT_CREDENTIAL_LINK", rs.getString("ID"))
+                                    .setWhereClause("ID='"+ previousId +"'"));
+                }
+
+                previousId = rs.getString("ID");
                 confirmationMessage.append("Updated " + statements.size() + " records in CREDENTIAL table");
             }
         } catch (Exception e) {

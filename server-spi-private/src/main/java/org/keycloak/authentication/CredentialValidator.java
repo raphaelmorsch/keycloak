@@ -13,4 +13,7 @@ public interface CredentialValidator<T extends CredentialProvider> {
     default List<CredentialModel> getCredentials(KeycloakSession session, RealmModel realm, UserModel user) {
         return session.userCredentialManager().getStoredCredentialsByType(realm, user, getCredentialProvider(session).getType());
     }
+    default String getType(KeycloakSession session) {
+        return getCredentialProvider(session).getType();
+    }
 }

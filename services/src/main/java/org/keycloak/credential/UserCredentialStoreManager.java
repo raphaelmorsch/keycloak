@@ -93,6 +93,11 @@ public class UserCredentialStoreManager implements UserCredentialManager, OnUser
     }
 
     @Override
+    public void moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId){
+        getStoreForUser(user).moveCredentialTo(realm, user, id, newPreviousCredentialId);
+    }
+
+    @Override
     public boolean isValid(RealmModel realm, UserModel user, CredentialInput... inputs) {
         return isValid(realm, user, Arrays.asList(inputs));
     }

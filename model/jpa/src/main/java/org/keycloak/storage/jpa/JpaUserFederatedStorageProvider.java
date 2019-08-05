@@ -692,6 +692,11 @@ public class JpaUserFederatedStorageProvider implements
     }
 
     @Override
+    public void moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId) {
+        //do nothing, these credentials are not ordered
+    }
+
+    @Override
     public int getStoredUsersCount(RealmModel realm) {
         Object count = em.createNamedQuery("getFederatedUserCount")
                 .setParameter("realmId", realm.getId())

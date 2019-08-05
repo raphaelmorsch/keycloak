@@ -85,8 +85,7 @@
             </div>
 
             <div class="col-sm-10 col-md-10">
-                <input type="text" class="form-control" id="totp" name="totp" autocomplete="off" autofocus
-                       autocomplete="off">
+                <input type="text" class="form-control" id="totp" name="totp" autocomplete="off" autofocus>
                 <input type="hidden" id="totpSecret" name="totpSecret" value="${totp.totpSecret}"/>
             </div>
 
@@ -99,8 +98,7 @@
             </div>
 
             <div class="col-sm-10 col-md-10">
-                <input type="text" class="form-control" id="userLabel" name="userLabel" autocomplete="off" autofocus
-                       autocomplete="off">
+                <input type="text" class="form-control" id="userLabel" name="userLabel" autocomplete="off">
             </div>
         </div>
 
