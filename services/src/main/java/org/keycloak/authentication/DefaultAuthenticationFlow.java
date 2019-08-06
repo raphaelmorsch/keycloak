@@ -19,6 +19,7 @@ package org.keycloak.authentication;
 
 import org.jboss.logging.Logger;
 import org.keycloak.OAuth2Constants;
+import org.keycloak.authentication.authenticators.conditional.ConditionalBlockAuthenticator;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
@@ -33,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 /**
@@ -138,10 +140,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             } else return response;
         }
 
-        AuthenticatorFactory factory = (AuthenticatorFactory) processor.getSession().getKeycloakSessionFactory().getProviderFactory(Authenticator.class, model.getAuthenticator());
-        if (factory == null) {
-            throw new RuntimeException("Unable to find factory for AuthenticatorFactory: " + model.getAuthenticator() + " did you forget to declare it in a META-INF/services file?");
-        }
+        AuthenticatorFactory factory = getAuthenticatorFactory(model);
         Authenticator authenticator = createAuthenticator(factory);
         AuthenticationProcessor.Result result = processor.createAuthenticatorContext(model, authenticator, executions);
         result.setAuthenticationSelections(createAuthenticationSelectionList(model));
@@ -162,17 +161,28 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         logger.debug("processFlow");
 
         //separate flow elements into required and alternative elements
+        List<AuthenticationExecutionModel> conditionalList = new ArrayList<>();
         List<AuthenticationExecutionModel> requiredList = new ArrayList<>();
         List<AuthenticationExecutionModel> alternativeList = new ArrayList<>();
 
         for (AuthenticationExecutionModel execution : executions) {
-            if (execution.isRequired() /*|| execution.isOptional()*/) {
-                //TODO evaluate optional flow, and only add to list if it evaluates to TRUE
+            if (isConditionalAuthenticator(execution)) {
+                conditionalList.add(execution);
+            } else if (execution.isRequired() || execution.isOptional()) {
                 requiredList.add(execution);
             } else if (execution.isAlternative()) {
                 alternativeList.add(execution);
             }
         }
+
+        // Conditionals should be executed without considering SUCCESS/FAILED status
+        // If condition is matched, nothing happens and the execution of the flow goes on
+        // If condition is not matched, an exception is thrown to stop this flow's execution
+        if (conditionalList.stream().anyMatch(this::conditionalNotMatched)) {
+            successful = true;
+            return null;
+        }
+
         //handle required elements : all required elements need to be executed
         boolean requiredElementsSuccessful = true;
         for (AuthenticationExecutionModel required : requiredList) {
@@ -187,11 +197,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         //Evaluate alternative elements only if there are no required elements
         if (requiredList.isEmpty()) {
             //check if an alternative is already successful, in case we are returning in the flow after an action
-            for (AuthenticationExecutionModel alternative : alternativeList) {
-                if (processor.isSuccessful(alternative)) {
-                    successful = true;
-                    return null;
-                }
+            if (alternativeList.stream().anyMatch(processor::isSuccessful)) {
+                successful = true;
+                return null;
             }
 
             //handle alternative elements: the first alternative element to be satisfied is enough
@@ -203,18 +211,37 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                             successful = true;
                             return null;
                         }
-                        continue;
+                    } else {
+                        return response;
                     }
-                    return response;
                 } catch (AuthenticationFlowException afe) {
                     processor.getAuthenticationSession().setExecutionStatus(alternative.getId(), AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
-                    continue;
                 }
             }
         } else {
             successful = requiredElementsSuccessful;
         }
         return null;
+    }
+
+    private boolean isConditionalAuthenticator(AuthenticationExecutionModel model) {
+        return !model.isAuthenticatorFlow() && model.getAuthenticator() != null && createAuthenticator(getAuthenticatorFactory(model)) instanceof ConditionalBlockAuthenticator;
+    }
+
+    private AuthenticatorFactory getAuthenticatorFactory(AuthenticationExecutionModel model) {
+        AuthenticatorFactory factory = (AuthenticatorFactory) processor.getSession().getKeycloakSessionFactory().getProviderFactory(Authenticator.class, model.getAuthenticator());
+        if (factory == null) {
+            throw new RuntimeException("Unable to find factory for AuthenticatorFactory: " + model.getAuthenticator() + " did you forget to declare it in a META-INF/services file?");
+        }
+        return factory;
+    }
+
+    private boolean conditionalNotMatched(AuthenticationExecutionModel model) {
+        AuthenticatorFactory factory = getAuthenticatorFactory(model);
+        ConditionalBlockAuthenticator authenticator = (ConditionalBlockAuthenticator) createAuthenticator(factory);
+        AuthenticationProcessor.Result context = processor.createAuthenticatorContext(model, authenticator, executions);
+
+        return !authenticator.matchCondition(context);
     }
 
     private Response processSingleFlowExecutionModel(AuthenticationExecutionModel model, String selectedCredentialId, boolean calledFromFlow) {
@@ -242,10 +269,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             }
         }
         //handle normal execution case
-        AuthenticatorFactory factory = (AuthenticatorFactory) processor.getSession().getKeycloakSessionFactory().getProviderFactory(Authenticator.class, model.getAuthenticator());
-        if (factory == null) {
-            throw new RuntimeException("Unable to find factory for AuthenticatorFactory: " + model.getAuthenticator() + " did you forget to declare it in a META-INF/services file?");
-        }
+        AuthenticatorFactory factory = getAuthenticatorFactory(model);
         Authenticator authenticator = createAuthenticator(factory);
         logger.debugv("authenticator: {0}", factory.getId());
         UserModel authUser = processor.getAuthenticationSession().getAuthenticatedUser();
@@ -265,7 +289,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         if (selectedCredentialId != null) {
             context.setSelectedCredentialId(selectedCredentialId);
         }
-
 
         if (authenticator.requiresUser()) {
             if (authUser == null) {
@@ -303,7 +326,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                             nonCredentialExecutions.add(execution);
                             continue;
                         }
-                        CredentialValidator cv = (CredentialValidator) localAuthenticator;
+                        CredentialValidator<?> cv = (CredentialValidator<?>) localAuthenticator;
                         typeAuthExecMap.put(cv.getType(processor.getSession()), execution);
                     }
                 }
@@ -311,7 +334,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 //only get current credentials
                 Authenticator authenticator = processor.getSession().getProvider(Authenticator.class, model.getAuthenticator());
                 if (authenticator instanceof CredentialValidator) {
-                    typeAuthExecMap.put(((CredentialValidator) authenticator).getType(processor.getSession()), model);
+                    typeAuthExecMap.put(((CredentialValidator<?>) authenticator).getType(processor.getSession()), model);
                 }
             }
 
@@ -329,9 +352,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                     authenticationSelectionList.add(authSel);
                     countAuthSelections.add(credential.getType(), authSel);
                 }
-                for (String type : countAuthSelections.keySet()) {
-                    if (countAuthSelections.get(type).size() == 1) {
-                        countAuthSelections.get(type).get(0).setShowCredentialName(false);
+                for(Entry<String, List<AuthenticationSelectionOption>> entry : countAuthSelections.entrySet()) {
+                    if (entry.getValue().size() == 1) {
+                        entry.getValue().get(0).setShowCredentialName(false);
                     }
                 }
                 //don't show credential type if there's only a single type in the list

@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 org.keycloak.authentication.authenticators.browser.CookieAuthenticatorFactory
 org.keycloak.authentication.authenticators.browser.UsernamePasswordFormFactory
 org.keycloak.authentication.authenticators.browser.UsernameFormFactory
@@ -23,6 +22,7 @@ org.keycloak.authentication.authenticators.browser.OTPFormAuthenticatorFactory
 org.keycloak.authentication.authenticators.browser.ScriptBasedAuthenticatorFactory
 org.keycloak.authentication.authenticators.browser.SpnegoAuthenticatorFactory
 org.keycloak.authentication.authenticators.browser.IdentityProviderAuthenticatorFactory
+org.keycloak.authentication.authenticators.conditional.ConditionalBlockRoleAuthenticatorFactory
 org.keycloak.authentication.authenticators.directgrant.ValidateOTP
 org.keycloak.authentication.authenticators.directgrant.ValidatePassword
 org.keycloak.authentication.authenticators.directgrant.ValidateUsername
