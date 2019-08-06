@@ -170,7 +170,7 @@ public class JpaUserCredentialStore implements UserCredentialStore {
         }
         CredentialEntity credentialToMove = em.find(CredentialEntity.class, id);
         //moved to the same place, do nothing
-        if (newPreviousCredentialId == credentialToMove.getPreviousCredentialLink()){
+        if (newPreviousCredentialId == credentialToMove.getPreviousCredentialLink() || id == newPreviousCredentialId){
             return;
         }
         takeOutCredentialAndRepairList(credentialToMove);
