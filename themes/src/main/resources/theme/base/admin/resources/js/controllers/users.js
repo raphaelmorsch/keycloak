@@ -514,6 +514,8 @@ module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, R
 
     $scope.hasPassword = false;
 
+    $scope.showData = {};
+
     loadCredentials();
 
     $scope.keys = function(object) {
