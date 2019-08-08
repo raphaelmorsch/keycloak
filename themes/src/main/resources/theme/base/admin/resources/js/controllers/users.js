@@ -512,7 +512,9 @@ module.controller('UserDetailCtrl', function($scope, realm, user, BruteForceUser
 module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, RequiredActions, User, UserExecuteActionsEmail, UserCredentials, Notifications, Dialog, TimeUnit2) {
     console.log('UserCredentialsCtrl');
 
-    $scope.addingPassword = false;
+    $scope.hasPassword = false;
+
+    $scope.showData = {};
 
     loadCredentials();
 
@@ -546,12 +548,62 @@ module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, R
         });
     }
 
-    $scope.addCredential = function(type) {
-        if (type == 'password') {
-            $scope.addingPassword = true;
+    $scope.moveUp = function(credentials, index) {
+        // Safety first
+        if (index == 0) {
+            return;
+        } else if (index == 1) {
+            UserCredentials.moveToFirst(
+                {
+                    realm: realm.realm,
+                    userId: user.id,
+                    credentialId: credentials[index].id
+                },
+                function () {
+                    $route.reload();
+                },
+                function (err) {
+                    Notifications.error("Error while moving the credential to top. See console for more information.");
+                    console.log(err);
+                });
+
         } else {
-            alert('Not implemented yet! (type=' + type + ')');
+            UserCredentials.moveCredentialAfter(
+                {
+                    realm: realm.realm,
+                    userId: user.id,
+                    credentialId: credentials[index].id,
+                    newPreviousCredentialId: credentials[index - 2].id
+                },
+                function () {
+                    $route.reload();
+                },
+                function (err) {
+                    Notifications.error("Error while moving the credential up. See console for more information.");
+                    console.log(err);
+                });
         }
+    }
+
+    $scope.moveDown = function(credentials, index) {
+        // Safety first
+        if (index == credentials.length - 1) {
+            return;
+        }
+        UserCredentials.moveCredentialAfter(
+            {
+                realm: realm.realm,
+                userId: user.id,
+                credentialId: credentials[index].id,
+                newPreviousCredentialId: credentials[index + 1].id
+            },
+            function() {
+                $route.reload();
+            },
+            function(err) {
+                Notifications.error("Error while moving the credential down. See console for more information.");
+                console.log(err);
+            });
     }
 
     $scope.realm = realm;
@@ -575,33 +627,18 @@ module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, R
 
     });
 
-    function buildTable(credentials) {
-        var table = credentials.reduce(function(table, cred) {
-            if (!table.hasOwnProperty(cred.type)) {
-                table[cred.type] = [];
-            }
-            table[cred.type].push(cred);
-            return table;
-        }, {});
-
-        // If there are no passwords, we add a dummy password section
-        if (!table.hasOwnProperty('password')) {
-            table['password'] = [ null ];
-        }
-
-        return table;
-    }
-
     function loadCredentials() {
         UserCredentials.getCredentials({ realm: realm.realm, userId: user.id }, null, function(credentials) {
-            credentials = credentials.map(function(c) {
+            $scope.credentials = credentials.map(function(c) {
                 // We de-JSONify the credential data
                 if (c.credentialData) {
                     c.credentialData = JSON.parse(c.credentialData);
                 }
+                if (c.type == 'password') {
+                    $scope.hasPassword = true;
+                }
                 return c;
             });
-            $scope.credentialsTable = buildTable(credentials);
         }, function(err) {
             Notifications.error("Error while loading user credentials. See console for more information.");
             console.log(err);
@@ -619,12 +656,12 @@ module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, R
             }
         }
 
-        var msgTitle = 'Change password';
-        var msg = 'Are you sure you want to change the users password?';
+        var msgTitle = 'Set password';
+        var msg = 'Are you sure you want to set a password for the user?';
 
         Dialog.confirm(msgTitle, msg, function() {
             UserCredentials.resetPassword({ realm: realm.realm, userId: user.id }, { type : "password", value : $scope.password, temporary: $scope.temporaryPassword }, function() {
-                Notifications.success("The password has been reset");
+                Notifications.success("The password has been set");
                 $scope.password = null;
                 $scope.confirmPassword = null;
                 $route.reload();
