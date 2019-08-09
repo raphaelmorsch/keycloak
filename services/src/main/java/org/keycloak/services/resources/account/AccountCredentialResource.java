@@ -7,32 +7,28 @@ import org.keycloak.credential.PasswordCredentialProvider;
 import org.keycloak.credential.PasswordCredentialProviderFactory;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.events.EventType;
-import org.keycloak.events.admin.OperationType;
+import org.keycloak.models.AccountRoles;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.ModelException;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.services.ErrorResponse;
-import org.keycloak.services.ForbiddenException;
+import org.keycloak.services.managers.Auth;
+import org.keycloak.services.messages.Messages;
 import org.keycloak.utils.MediaType;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
-import org.keycloak.models.AccountRoles;
-import org.keycloak.models.ModelException;
-import org.keycloak.services.managers.Auth;
-import org.keycloak.services.messages.Messages;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -63,6 +59,15 @@ public class AccountCredentialResource {
         return models.stream().map(ModelToRepresentation::toRepresentation).collect(Collectors.toList());
     }
 
+    @GET
+    @Path("types")
+    @NoCache
+    @Produces(javax.ws.rs.core.MediaType.APPLICATION_JSON)
+    public List<String> getCredentialTypes(){
+        auth.requireOneOf(AccountRoles.MANAGE_ACCOUNT, AccountRoles.VIEW_PROFILE);
+        return session.getAllProviders(CredentialProvider.class).stream().map(CredentialProvider::getType).collect(Collectors.toList());
+    }
+
     /**
      * Remove a credential for a user
      *
@@ -79,9 +84,9 @@ public class AccountCredentialResource {
      * Update a credential label for a user
      */
     @PUT
-    @Consumes(javax.ws.rs.core.MediaType.APPLICATION_JSON)
-    @Path("{credentialId}/label/{userLabel}")
-    public void setLabel(final @PathParam("credentialId") String credentialId, @PathParam("userLabel") String userLabel) {
+    @Consumes(javax.ws.rs.core.MediaType.TEXT_PLAIN)
+    @Path("{credentialId}/label")
+    public void setLabel(final @PathParam("credentialId") String credentialId, String userLabel) {
         auth.require(AccountRoles.MANAGE_ACCOUNT);
         // We update the existing credential representation and persist it
         CredentialModel credential = session.userCredentialManager().getStoredCredentialById(realm, user, credentialId);

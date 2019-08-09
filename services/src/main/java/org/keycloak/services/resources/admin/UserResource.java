@@ -620,6 +620,7 @@ public class UserResource {
         return models.stream().map(ModelToRepresentation::toRepresentation).collect(Collectors.toList());
     }
 
+
     /**
      * Remove a credential for a user
      *
