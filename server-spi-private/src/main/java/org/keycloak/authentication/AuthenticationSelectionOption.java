@@ -7,6 +7,7 @@ public class AuthenticationSelectionOption {
     private final AuthenticationExecutionModel authExec;
     private final CredentialModel credential;
     private boolean showCredentialName = true;
+    private boolean showCredentialType = true;
 
     public AuthenticationSelectionOption(AuthenticationExecutionModel authExec) {
         this.authExec = authExec;
@@ -18,9 +19,11 @@ public class AuthenticationSelectionOption {
         this.credential = credential;
     }
 
-    public AuthenticationSelectionOption setShowCredentialName(boolean showCredentialName) {
+    public void setShowCredentialName(boolean showCredentialName) {
         this.showCredentialName = showCredentialName;
-        return this;
+    }
+    public void setShowCredentialType(boolean showCredentialType) {
+        this.showCredentialType = showCredentialType;
     }
 
     public boolean showCredentialName(){
@@ -28,6 +31,10 @@ public class AuthenticationSelectionOption {
             return false;
         }
         return showCredentialName;
+    }
+
+    public boolean showCredentialType(){
+        return showCredentialType;
     }
 
     public AuthenticationExecutionModel getAuthenticationExecution() {
@@ -43,7 +50,18 @@ public class AuthenticationSelectionOption {
     }
 
     public String getCredentialName() {
-        return credential.getUserLabel();
+        StringBuilder sb = new StringBuilder();
+        if (showCredentialName()) {
+            if (showCredentialType()) {
+                sb.append(" - ");
+            }
+            if (credential.getUserLabel() == null || credential.getUserLabel().isEmpty()) {
+                sb.append(credential.getId());
+            } else {
+                sb.append(credential.getUserLabel());
+            }
+        }
+        return sb.toString();
     }
 
     public String getAuthExecName() {

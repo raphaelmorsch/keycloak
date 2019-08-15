@@ -1572,6 +1572,16 @@ public class RealmAdapter implements RealmModel, JpaModel<RealmEntity> {
         return entityToModel(entity);
     }
 
+    public AuthenticationExecutionModel getAuthenticationExecutionByFlowId(String flowId) {
+        TypedQuery<AuthenticationExecutionEntity> query = em.createNamedQuery("authenticationFlowExecution", AuthenticationExecutionEntity.class)
+                .setParameter("flowId", flowId);
+        if (query.getResultList().isEmpty()) {
+            return null;
+        }
+        AuthenticationExecutionEntity authenticationFlowExecution = query.getResultList().get(0);
+        return entityToModel(authenticationFlowExecution);
+    }
+
     @Override
     public AuthenticationExecutionModel addAuthenticatorExecution(AuthenticationExecutionModel model) {
         AuthenticationExecutionEntity entity = new AuthenticationExecutionEntity();

@@ -75,12 +75,10 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             processor.getAuthenticationSession().removeAuthNote(OAuth2Constants.DISPLAY);
             throw new AuthenticationFlowException(AuthenticationFlowError.DISPLAY_NOT_SUPPORTED,
                     ConsoleDisplayMode.browserContinue(processor.getSession(), processor.getRefreshUrl(true).toString()));
-
         } else {
             return factory.create(processor.getSession());
         }
     }
-
 
     @Override
     public Response processAction(String actionExecution) {
@@ -93,12 +91,44 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             throw new AuthenticationFlowException("action is not in current execution", AuthenticationFlowError.INTERNAL_ERROR);
         }
 
-        //TODO check that execution is in current flow tree for security reasons? Would be far less expensive then the old "go through all" approach,
+        //TODO check that execution is in current flow tree for security reasons?
 
-        // check if the user has switched to a new authentication execution, and if so switch to it.
         MultivaluedMap<String, String> inputData = processor.getRequest().getDecodedFormParameters();
         String authExecId = inputData.getFirst("authenticationExecution");
         String selectedCredentialId = inputData.getFirst("credentialId");
+
+
+        //check if the user has selected the "back" option
+        if (inputData.containsKey("back")) {
+            //If current execution is required, get other required executions in flow, and see if we can return to previous
+            if (model.isRequired()) {
+                List<AuthenticationExecutionModel> executionsInCurrentFlow = processor.getRealm().getAuthenticationExecutions(model.getParentFlow());
+
+                List<AuthenticationExecutionModel> requiredExecutions = executionsInCurrentFlow.stream().filter(AuthenticationExecutionModel::isRequired).collect(Collectors.toList());
+                int index = requiredExecutions.indexOf(model);
+                //if in a list of required executions, move back to previous if not the first
+                if (index > 0) {
+                    processor.getAuthenticationSession().getExecutionStatus().remove(requiredExecutions.get(index - 1).getId());
+                    Response response = processSingleFlowExecutionModel(requiredExecutions.get(index - 1), null, false);
+                    if (response == null) {
+                        processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
+                        return processFlow();
+                    } else return response;
+                }
+            }
+            //Otherwise, go up to the parent of the current flow, if one exists
+            if (!processor.getRealm().getAuthenticationFlowById(model.getParentFlow()).isTopLevel()) {
+                AuthenticationExecutionModel currentFlow = processor.getRealm().getAuthenticationExecutionByFlowId(model.getParentFlow());
+                List<AuthenticationExecutionModel> parentFlowExecutions = processor.getRealm().getAuthenticationExecutions(currentFlow.getParentFlow());
+                //Clear all execution statuses of executions in parent flow
+                for (AuthenticationExecutionModel execution : parentFlowExecutions) {
+                    processor.getAuthenticationSession().getExecutionStatus().remove(execution.getId());
+                }
+                return processFlow();
+            }
+        }
+
+        // check if the user has switched to a new authentication execution, and if so switch to it.
         if (authExecId != null && !authExecId.isEmpty()) {
             model = processor.getRealm().getAuthenticationExecutionById(authExecId);
             Response response = processSingleFlowExecutionModel(model, selectedCredentialId, false);
@@ -222,8 +252,8 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
 
         //If executions are alternative, get the actual execution to show based on user preference
         List<AuthenticationSelectionOption> selectionOptions = createAuthenticationSelectionList(model);
-        if (!selectionOptions.isEmpty() && calledFromFlow){
-            model = selectionOptions.stream().findFirst().get().getAuthenticationExecution();
+        if (!selectionOptions.isEmpty() && calledFromFlow) {
+            model = selectionOptions.stream().filter(aso -> !aso.getAuthenticationExecution().isAuthenticatorFlow()).findFirst().get().getAuthenticationExecution();
             factory = (AuthenticatorFactory) processor.getSession().getKeycloakSessionFactory().getProviderFactory(Authenticator.class, model.getAuthenticator());
             if (factory == null) {
                 throw new RuntimeException("Unable to find factory for AuthenticatorFactory: " + model.getAuthenticator() + " did you forget to declare it in a META-INF/services file?");
@@ -259,42 +289,58 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
 
     private List<AuthenticationSelectionOption> createAuthenticationSelectionList(AuthenticationExecutionModel model) {
         List<AuthenticationSelectionOption> authenticationSelectionList = new ArrayList<>();
-        if (model.isAlternative() && processor.getAuthenticationSession() != null && processor.getAuthenticationSession().getAuthenticatedUser() != null) {
-            List<AuthenticationExecutionModel> alternativeExecutions = processor.getRealm().getAuthenticationExecutions(model.getParentFlow())
-                    .stream().filter(AuthenticationExecutionModel::isAlternative).collect(Collectors.toList());
-
-            List<AuthenticationExecutionModel> nonCredentialExecutions = new ArrayList<>();
+        if (processor.getAuthenticationSession() != null) {
             Map<String, AuthenticationExecutionModel> typeAuthExecMap = new HashMap<>();
-
-            for (AuthenticationExecutionModel execution : alternativeExecutions) {
-                Authenticator localAuthenticator = processor.getSession().getProvider(Authenticator.class, execution.getAuthenticator());
-                if (!(localAuthenticator instanceof CredentialValidator)){
-                    nonCredentialExecutions.add(execution);
-                    continue;
+            List<AuthenticationExecutionModel> nonCredentialExecutions = new ArrayList<>();
+            if (model.isAlternative()) {
+                //get all alternative executions to be able to list their credentials
+                List<AuthenticationExecutionModel> alternativeExecutions = processor.getRealm().getAuthenticationExecutions(model.getParentFlow())
+                        .stream().filter(AuthenticationExecutionModel::isAlternative).collect(Collectors.toList());
+                for (AuthenticationExecutionModel execution : alternativeExecutions) {
+                    if (!execution.isAuthenticatorFlow()) {
+                        Authenticator localAuthenticator = processor.getSession().getProvider(Authenticator.class, execution.getAuthenticator());
+                        if (!(localAuthenticator instanceof CredentialValidator)) {
+                            nonCredentialExecutions.add(execution);
+                            continue;
+                        }
+                        CredentialValidator cv = (CredentialValidator) localAuthenticator;
+                        typeAuthExecMap.put(cv.getType(processor.getSession()), execution);
+                    }
                 }
-                CredentialValidator cv = (CredentialValidator)localAuthenticator;
-                typeAuthExecMap.put(cv.getType(processor.getSession()), execution);
-            }
-
-            List<CredentialModel> credentials = processor.getSession().userCredentialManager()
-                    .getStoredCredentials(processor.getRealm(), processor.getAuthenticationSession().getAuthenticatedUser())
-                    .stream()
-                    .filter(credential -> typeAuthExecMap.containsKey(credential.getType()))
-                    .collect(Collectors.toList());
-
-            MultivaluedMap<String, AuthenticationSelectionOption> countAuthSelections = new MultivaluedHashMap<>();
-
-            for (CredentialModel credential : credentials) {
-                AuthenticationSelectionOption authSel = new AuthenticationSelectionOption(typeAuthExecMap.get(credential.getType()), credential);
-                authenticationSelectionList.add(authSel);
-                countAuthSelections.add(credential.getType(), authSel);
-            }
-            for (String type : countAuthSelections.keySet()) {
-                if (countAuthSelections.get(type).size() == 1) {
-                    countAuthSelections.get(type).get(0).setShowCredentialName(false);
+            } else if (model.isRequired() && ! model.isAuthenticatorFlow()) {
+                //only get current credentials
+                Authenticator authenticator = processor.getSession().getProvider(Authenticator.class, model.getAuthenticator());
+                if (authenticator instanceof CredentialValidator) {
+                    typeAuthExecMap.put(((CredentialValidator) authenticator).getType(processor.getSession()), model);
                 }
             }
 
+            if (processor.getAuthenticationSession().getAuthenticatedUser() != null) {
+                List<CredentialModel> credentials = processor.getSession().userCredentialManager()
+                        .getStoredCredentials(processor.getRealm(), processor.getAuthenticationSession().getAuthenticatedUser())
+                        .stream()
+                        .filter(credential -> typeAuthExecMap.containsKey(credential.getType()))
+                        .collect(Collectors.toList());
+
+                MultivaluedMap<String, AuthenticationSelectionOption> countAuthSelections = new MultivaluedHashMap<>();
+
+                for (CredentialModel credential : credentials) {
+                    AuthenticationSelectionOption authSel = new AuthenticationSelectionOption(typeAuthExecMap.get(credential.getType()), credential);
+                    authenticationSelectionList.add(authSel);
+                    countAuthSelections.add(credential.getType(), authSel);
+                }
+                for (String type : countAuthSelections.keySet()) {
+                    if (countAuthSelections.get(type).size() == 1) {
+                        countAuthSelections.get(type).get(0).setShowCredentialName(false);
+                    }
+                }
+                //don't show credential type if there's only a single type in the list
+                if (countAuthSelections.keySet().size() == 1 && nonCredentialExecutions.isEmpty()) {
+                    for (AuthenticationSelectionOption so : authenticationSelectionList) {
+                        so.setShowCredentialType(false);
+                    }
+                }
+            }
             for (AuthenticationExecutionModel exec : nonCredentialExecutions) {
                 authenticationSelectionList.add(new AuthenticationSelectionOption(exec));
             }
