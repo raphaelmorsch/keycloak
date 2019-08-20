@@ -23,10 +23,14 @@
         <groupId>org.keycloak.bom</groupId>
         <artifactId>keycloak-bom-parent</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
         <version>6.0.1</version>
 =======
         <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+        <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
     </parent>
 
     <groupId>org.keycloak.bom</groupId>
@@ -42,55 +46,79 @@
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-core</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-adapter-core</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-adapter-spi</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-wildfly-adapter-dist</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-saml-adapter-core</artifactId>
 <<<<<<< HEAD
-                <version>6.0.1</version>
-=======
-                <version>8.0.0-SNAPSHOT</version>
->>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
-            </dependency>
-            <dependency>
-                <groupId>org.keycloak</groupId>
-                <artifactId>keycloak-saml-adapter-api-public</artifactId>
 <<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
+            </dependency>
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-saml-adapter-api-public</artifactId>
+<<<<<<< HEAD
+<<<<<<< HEAD
+                <version>6.0.1</version>
+=======
+                <version>8.0.0-SNAPSHOT</version>
+>>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
@@ -100,15 +128,20 @@
 =======
                 <artifactId>keycloak-tomcat-adapter</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>7.0.0-SNAPSHOT</version>
 >>>>>>> d245287320... KEYCLOAK-9598 Apache Tomcat adapter
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-tomcat7-adapter</artifactId>
+<<<<<<< HEAD
 <<<<<<< HEAD
                 <version>6.0.1</version>
             </dependency>
@@ -120,6 +153,9 @@
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
@@ -127,91 +163,131 @@
 >>>>>>> 3bbab225c8... KEYCLOAK-9596 Remove Apache Tomcat 6.0.x adapter
                 <artifactId>keycloak-jetty92-adapter</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-jetty93-adapter</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-undertow-adapter</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-spring-boot-adapter</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-spring-boot-2-adapter</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>spring-boot-container-bundle</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-spring-security-adapter</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-spring-boot-starter</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-legacy-spring-boot-starter</artifactId>
 <<<<<<< HEAD
-                <version>6.0.1</version>
-=======
-                <version>8.0.0-SNAPSHOT</version>
->>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
-            </dependency>
-            <dependency>
-                <groupId>org.keycloak</groupId>
-                <artifactId>keycloak-authz-client</artifactId>
 <<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
+            </dependency>
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-authz-client</artifactId>
+<<<<<<< HEAD
+<<<<<<< HEAD
+                <version>6.0.1</version>
+=======
+                <version>8.0.0-SNAPSHOT</version>
+>>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
         </dependencies>
     </dependencyManagement>

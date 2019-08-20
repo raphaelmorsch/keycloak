@@ -24,10 +24,14 @@
         <groupId>org.keycloak.bom</groupId>
         <artifactId>keycloak-bom-parent</artifactId>
 <<<<<<< HEAD
+<<<<<<< HEAD
         <version>6.0.1</version>
 =======
         <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+        <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
     </parent>
 
     <groupId>org.keycloak.bom</groupId>
@@ -43,19 +47,27 @@
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-core</artifactId>
 <<<<<<< HEAD
-                <version>6.0.1</version>
-=======
-                <version>8.0.0-SNAPSHOT</version>
->>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
-            </dependency>
-            <dependency>
-                <groupId>org.keycloak</groupId>
-                <artifactId>keycloak-server-spi</artifactId>
 <<<<<<< HEAD
                 <version>6.0.1</version>
 =======
                 <version>8.0.0-SNAPSHOT</version>
 >>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
+            </dependency>
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-server-spi</artifactId>
+<<<<<<< HEAD
+<<<<<<< HEAD
+                <version>6.0.1</version>
+=======
+                <version>8.0.0-SNAPSHOT</version>
+>>>>>>> 17e9832dc6... Set version to 8.0.0-SNAPSHOT
+=======
+                <version>7.0.0</version>
+>>>>>>> 4193ff25d6... Set version to 7.0.0
             </dependency>
         </dependencies>
     </dependencyManagement>

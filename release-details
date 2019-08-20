@@ -1,3 +1,9 @@
+<<<<<<< HEAD
 VERSION=6.0.1
 SHORT_VERSION=6.0
 NPM_VERSION=6.0.1
+=======
+VERSION=7.0.0
+SHORT_VERSION=7.0
+NPM_VERSION=7.0.0
+>>>>>>> 4193ff25d6... Set version to 7.0.0
