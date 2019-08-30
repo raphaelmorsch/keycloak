@@ -1,6 +1,7 @@
 package org.keycloak.authentication.authenticators.conditional;
 
 import org.keycloak.authentication.AuthenticationFlowContext;
+import org.keycloak.models.AuthenticatorConfigModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
@@ -19,9 +20,10 @@ public class ConditionalBlockRoleAuthenticator implements ConditionalBlockAuthen
     @Override
     public boolean matchCondition(AuthenticationFlowContext context) {
         UserModel user = context.getUser();
-        if (user != null) {
+        AuthenticatorConfigModel authConfig = context.getAuthenticatorConfig();
+        if (user != null && authConfig!=null && authConfig.getConfig()!=null) {
             Set<RoleModel> roles = user.getRoleMappings();
-            String requiredRole = context.getAuthenticatorConfig().getConfig().get(ConditionalBlockRoleAuthenticatorFactory.CONDITIONAL_USER_ROLE);
+            String requiredRole = authConfig.getConfig().get(ConditionalBlockRoleAuthenticatorFactory.CONDITIONAL_USER_ROLE);
             return roles.stream().anyMatch(r -> r.getName().equals(requiredRole));
         }
         return false;
@@ -35,11 +37,6 @@ public class ConditionalBlockRoleAuthenticator implements ConditionalBlockAuthen
     @Override
     public boolean requiresUser() {
         return true;
-    }
-
-    @Override
-    public boolean configuredFor(KeycloakSession session, RealmModel realm, UserModel user) {
-        return false;
     }
 
     @Override
