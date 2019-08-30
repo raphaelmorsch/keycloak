@@ -189,10 +189,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         for (AuthenticationExecutionModel required : requiredList) {
             Response response = processSingleFlowExecutionModel(required, null, true);
             requiredElementsSuccessful &= processor.isSuccessful(required);
-            if (response == null) {
-                continue;
+            if (response != null) {
+                return response;
             }
-            return response;
         }
 
         //Evaluate alternative elements only if there are no required elements

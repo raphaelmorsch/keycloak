@@ -9,6 +9,10 @@ import org.keycloak.authentication.AuthenticationFlowContext;
 public interface ConditionalBlockAuthenticator extends Authenticator {
     boolean matchCondition(AuthenticationFlowContext context);
 
+    default void authenticate(AuthenticationFlowContext context) {
+        // authenticate is not called for ConditionalBlockAuthenticators
+    }
+
     default boolean configuredFor(KeycloakSession session, RealmModel realm, UserModel user) {
         return true;
     }

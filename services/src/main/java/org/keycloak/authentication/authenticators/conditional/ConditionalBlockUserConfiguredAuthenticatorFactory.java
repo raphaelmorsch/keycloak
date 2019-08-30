@@ -1,24 +1,23 @@
 package org.keycloak.authentication.authenticators.conditional;
 
+import java.util.List;
+
 import org.keycloak.Config.Scope;
 import org.keycloak.authentication.Authenticator;
 import org.keycloak.authentication.AuthenticatorFactory;
-import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationExecutionModel.Requirement;
+import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.ProviderConfigProperty;
 
-import java.util.Arrays;
-import java.util.List;
-
-public class ConditionalBlockRoleAuthenticatorFactory implements AuthenticatorFactory {
-    private static final String PROVIDER_ID = "conditional-user-role";
-    protected static final String CONDITIONAL_USER_ROLE = "condUserRole";
+public class ConditionalBlockUserConfiguredAuthenticatorFactory implements AuthenticatorFactory {
+    private static final String PROVIDER_ID = "conditional-user-configured";
+    protected static final String CONDITIONAL_USER_ROLE = "condUserConfigured";
 
     @Override
     public Authenticator create(KeycloakSession session) {
-        return ConditionalBlockRoleAuthenticator.SINGLETON;
+        return ConditionalBlockUserConfiguredAuthenticator.SINGLETON;
     }
 
     @Override
@@ -43,7 +42,7 @@ public class ConditionalBlockRoleAuthenticatorFactory implements AuthenticatorFa
 
     @Override
     public String getDisplayType() {
-        return "Conditional block - user role";
+        return "Conditional block - user configured";
     }
 
     @Override
@@ -53,7 +52,7 @@ public class ConditionalBlockRoleAuthenticatorFactory implements AuthenticatorFa
 
     @Override
     public boolean isConfigurable() {
-        return true;
+        return false;
     }
 
     private static final Requirement[] REQUIREMENT_CHOICES = {
@@ -72,13 +71,11 @@ public class ConditionalBlockRoleAuthenticatorFactory implements AuthenticatorFa
 
     @Override
     public String getHelpText() {
-        return "Flow is executed only if user has the given role.";
+        return "Executes the current flow only if authenticators are configured";
     }
 
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
-        return Arrays.asList(new ProviderConfigProperty(
-            CONDITIONAL_USER_ROLE, "User role", "Role the user should have to execute this flow", ProviderConfigProperty.STRING_TYPE, null
-        ));
+        return null;
     }
 }

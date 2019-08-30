@@ -13,11 +13,6 @@ public class ConditionalBlockRoleAuthenticator implements ConditionalBlockAuthen
     public static final ConditionalBlockRoleAuthenticator SINGLETON = new ConditionalBlockRoleAuthenticator();
 
     @Override
-    public void authenticate(AuthenticationFlowContext context) {
-        // authenticate is not called for ConditionalBlockAuthenticators
-    }
-
-    @Override
     public boolean matchCondition(AuthenticationFlowContext context) {
         UserModel user = context.getUser();
         AuthenticatorConfigModel authConfig = context.getAuthenticatorConfig();
