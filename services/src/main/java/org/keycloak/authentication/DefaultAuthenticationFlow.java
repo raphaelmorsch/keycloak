@@ -224,7 +224,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     }
 
     private boolean flowIsOptional() {
-        AuthenticationExecutionModel flowModel = processor.getRealm().getAuthenticationExecutionById(flow.getId());
+        AuthenticationExecutionModel flowModel = processor.getRealm().getAuthenticationExecutionByFlowId(flow.getId());
         return flowModel!=null && flowModel.isOptional();
     }
 
