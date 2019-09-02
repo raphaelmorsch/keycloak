@@ -1169,7 +1169,6 @@ public class AuthenticationManagementResource {
             throw new NotFoundException("Could not find authenticator config");
 
         }
-        List<AuthenticationFlowModel> flows = new LinkedList<>();
         for (AuthenticationFlowModel flow : realm.getAuthenticationFlows()) {
             for (AuthenticationExecutionModel exe : realm.getAuthenticationExecutions(flow.getId())) {
                 if (id.equals(exe.getAuthenticatorConfig())) {

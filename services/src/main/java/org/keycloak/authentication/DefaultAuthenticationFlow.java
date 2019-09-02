@@ -177,8 +177,8 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         }
 
         // Conditionals should be executed without considering SUCCESS/FAILED status
-        // If condition is matched, nothing happens and the execution of the flow goes on
-        // If condition is not matched, an exception is thrown to stop this flow's execution
+        // If condition is matched, the execution of the flow goes on
+        // If condition is not matched, simply stop processing this flow and go on processing parent flow
         if (flowIsOptional() && (conditionalList.isEmpty() || conditionalList.stream().anyMatch(this::conditionalNotMatched))) {
             successful = true;
             return null;
@@ -207,13 +207,12 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             for (AuthenticationExecutionModel alternative : alternativeList) {
                 try {
                     Response response = processSingleFlowExecutionModel(alternative, null, true);
-                    if (response == null) {
-                        if (processor.isSuccessful(alternative)) {
-                            successful = true;
-                            return null;
-                        }
-                    } else {
+                    if (response != null) {
                         return response;
+                    }
+                    if (processor.isSuccessful(alternative)) {
+                        successful = true;
+                        return null;
                     }
                 } catch (AuthenticationFlowException afe) {
                     processor.getAuthenticationSession().setExecutionStatus(alternative.getId(), AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);

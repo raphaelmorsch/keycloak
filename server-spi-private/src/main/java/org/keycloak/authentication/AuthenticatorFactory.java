@@ -17,7 +17,6 @@
 
 package org.keycloak.authentication;
 
-import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.provider.ProviderFactory;
 
 /**
