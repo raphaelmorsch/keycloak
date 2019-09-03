@@ -312,10 +312,9 @@ public class DefaultAuthenticationFlows {
         // otp processing
         execution = new AuthenticationExecutionModel();
         execution.setParentFlow(forms.getId());
-        execution.setRequirement(AuthenticationExecutionModel.Requirement.OPTIONAL);
+        execution.setRequirement(AuthenticationExecutionModel.Requirement.ALTERNATIVE);
         if (migrate && hasCredentialType(realm, RequiredCredentialModel.TOTP.getType())) {
             execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED);
-
         }
 
         execution.setAuthenticator("auth-otp-form");
