@@ -46,7 +46,7 @@ public class ValidateOTP extends AbstractDirectGrantAuthenticator implements Cre
 
     @Override
     public void authenticate(AuthenticationFlowContext context) {
-        if (!isConfigured(context.getSession(), context.getRealm(), context.getUser())) {
+        if (!configuredFor(context.getSession(), context.getRealm(), context.getUser())) {
             if (context.getExecution().isOptional()) {
                 context.attempted();
             } else if (context.getExecution().isRequired()) {
@@ -91,10 +91,6 @@ public class ValidateOTP extends AbstractDirectGrantAuthenticator implements Cre
 
     @Override
     public boolean configuredFor(KeycloakSession session, RealmModel realm, UserModel user) {
-        return true;
-    }
-
-    private boolean isConfigured(KeycloakSession session, RealmModel realm, UserModel user) {
         return getCredentialProvider(session).isConfiguredFor(realm, user);
     }
 
