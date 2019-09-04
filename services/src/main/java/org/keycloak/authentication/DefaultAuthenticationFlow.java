@@ -166,17 +166,14 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     private void recursiveClearExecutionStatus(AuthenticationExecutionModel execution) {
         processor.getAuthenticationSession().getExecutionStatus().remove(execution.getId());
         if (execution.isAuthenticatorFlow()) {
-            List<AuthenticationExecutionModel> flowExecutions = processor.getRealm().getAuthenticationExecutions(execution.getFlowId());
-            for (AuthenticationExecutionModel flowExecution: flowExecutions) {
-                recursiveClearExecutionStatus(flowExecution);
-            }
+            processor.getRealm().getAuthenticationExecutions(execution.getFlowId()).forEach(this::recursiveClearExecutionStatus);
         }
     }
 
     /**
      * This method makes sure that the parent flow's corresponding execution is considered successful if its contained
      * executions are successful.
-     * The purpose is for when an execution is validated through an action, to make sure it's parent flow can be successful
+     * The purpose is for when an execution is validated through an action, to make sure its parent flow can be successful
      * when re-evaluation the flow tree.
      *
      * @param model An execution model.
@@ -184,8 +181,8 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     private void checkAndValidateParentFlow(AuthenticationExecutionModel model) {
         List<AuthenticationExecutionModel> localExecutions = processor.getRealm().getAuthenticationExecutions(model.getParentFlow());
         AuthenticationExecutionModel parentFlowModel = processor.getRealm().getAuthenticationExecutionByFlowId(model.getParentFlow());
-        if ((model.isRequired() && localExecutions.stream().allMatch(m -> processor.isSuccessful(m))) ||
-                (model.isAlternative() && localExecutions.stream().anyMatch(m -> processor.isSuccessful(m)))) {
+        if ((model.isRequired() && localExecutions.stream().allMatch(processor::isSuccessful)) ||
+                (model.isAlternative() && localExecutions.stream().anyMatch(processor::isSuccessful))) {
                 processor.getAuthenticationSession().setExecutionStatus(parentFlowModel.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
         }
     }
@@ -348,7 +345,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     }
 
     /**
-     * This method creates the the list of authenticators that is presented to the user. For a required execution, this is
+     * This method creates the list of authenticators that is presented to the user. For a required execution, this is
      * only the credentials associated to the authenticator, and for an alternative execution, this is all other alternative
      * executions in the flow, including the credentials.
      *
