@@ -67,7 +67,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         String display = processor.getAuthenticationSession().getAuthNote(OAuth2Constants.DISPLAY);
         if (display == null) return factory.create(processor.getSession());
 
-
         if (factory instanceof DisplayTypeAuthenticatorFactory) {
             Authenticator authenticator = ((DisplayTypeAuthenticatorFactory) factory).createDisplay(processor.getSession(), display);
             if (authenticator != null) return authenticator;
@@ -99,7 +98,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         String authExecId = inputData.getFirst("authenticationExecution");
         String selectedCredentialId = inputData.getFirst("credentialId");
 
-
         //check if the user has selected the "back" option
         if (inputData.containsKey("back")) {
             //If current execution is required, get other required executions in flow, and see if we can return to previous
@@ -121,12 +119,14 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             }
             //Otherwise, go up to the parent of the current flow, if one exists
             if (!processor.getRealm().getAuthenticationFlowById(model.getParentFlow()).isTopLevel()) {
+                //Clear all execution statuses of executions in parent flow and for each sub-tree. This is necessary to remove any
+                //status that may have been set by an automatic authenticator, but which would not be cleared otherwise.
                 AuthenticationExecutionModel currentFlow = processor.getRealm().getAuthenticationExecutionByFlowId(model.getParentFlow());
                 List<AuthenticationExecutionModel> parentFlowExecutions = processor.getRealm().getAuthenticationExecutions(currentFlow.getParentFlow());
-                //Clear all execution statuses of executions in parent flow
                 for (AuthenticationExecutionModel execution : parentFlowExecutions) {
-                    processor.getAuthenticationSession().getExecutionStatus().remove(execution.getId());
+                    recursiveClearExecutionStatus(execution);
                 }
+                processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
                 return processFlow();
             }
         }
@@ -137,6 +137,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             Response response = processSingleFlowExecutionModel(model, selectedCredentialId, false);
             if (response == null) {
                 processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
+                checkAndValidateParentFlow(model);
                 return processFlow();
             } else return response;
         }
@@ -153,8 +154,37 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         Response response = processResult(result, true);
         if (response == null) {
             processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
+            checkAndValidateParentFlow(model);
             return processFlow();
         } else return response;
+    }
+
+    /**
+     * Removes the execution status for an execution. If it is a flow, do the same for all sub-executions.
+     * @param execution the execution for which the status must be cleared
+     */
+    private void recursiveClearExecutionStatus(AuthenticationExecutionModel execution) {
+        processor.getAuthenticationSession().getExecutionStatus().remove(execution.getId());
+        if (execution.isAuthenticatorFlow()) {
+            processor.getRealm().getAuthenticationExecutions(execution.getFlowId()).forEach(this::recursiveClearExecutionStatus);
+        }
+    }
+
+    /**
+     * This method makes sure that the parent flow's corresponding execution is considered successful if its contained
+     * executions are successful.
+     * The purpose is for when an execution is validated through an action, to make sure its parent flow can be successful
+     * when re-evaluation the flow tree.
+     *
+     * @param model An execution model.
+     */
+    private void checkAndValidateParentFlow(AuthenticationExecutionModel model) {
+        List<AuthenticationExecutionModel> localExecutions = processor.getRealm().getAuthenticationExecutions(model.getParentFlow());
+        AuthenticationExecutionModel parentFlowModel = processor.getRealm().getAuthenticationExecutionByFlowId(model.getParentFlow());
+        if ((model.isRequired() && localExecutions.stream().allMatch(processor::isSuccessful)) ||
+                (model.isAlternative() && localExecutions.stream().anyMatch(processor::isSuccessful))) {
+                processor.getAuthenticationSession().setExecutionStatus(parentFlowModel.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
+        }
     }
 
     @Override
@@ -314,6 +344,15 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         return processResult(context, false);
     }
 
+    /**
+     * This method creates the list of authenticators that is presented to the user. For a required execution, this is
+     * only the credentials associated to the authenticator, and for an alternative execution, this is all other alternative
+     * executions in the flow, including the credentials.
+     *
+     * In both cases, the credentials take precedence, with the order selected by the user (or his administrator).
+     * @param model The current execution model
+     * @return an ordered list of the authentication selection options to present the user.
+     */
     private List<AuthenticationSelectionOption> createAuthenticationSelectionList(AuthenticationExecutionModel model) {
         List<AuthenticationSelectionOption> authenticationSelectionList = new ArrayList<>();
         if (processor.getAuthenticationSession() != null) {
@@ -332,6 +371,8 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                         }
                         CredentialValidator<?> cv = (CredentialValidator<?>) localAuthenticator;
                         typeAuthExecMap.put(cv.getType(processor.getSession()), execution);
+                    } else {
+                        nonCredentialExecutions.add(execution);
                     }
                 }
             } else if (model.isRequired() && ! model.isAuthenticatorFlow()) {
@@ -341,7 +382,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                     typeAuthExecMap.put(((CredentialValidator<?>) authenticator).getType(processor.getSession()), model);
                 }
             }
-
+            //add credential authenticators in order
             if (processor.getAuthenticationSession().getAuthenticatedUser() != null) {
                 List<CredentialModel> credentials = processor.getSession().userCredentialManager()
                         .getStoredCredentials(processor.getRealm(), processor.getAuthenticationSession().getAuthenticatedUser())
@@ -368,8 +409,14 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                     }
                 }
             }
+            //add all other authenticators (including flows)
             for (AuthenticationExecutionModel exec : nonCredentialExecutions) {
-                authenticationSelectionList.add(new AuthenticationSelectionOption(exec));
+                if (exec.isAuthenticatorFlow()) {
+                    authenticationSelectionList.add(new AuthenticationSelectionOption(exec,
+                            processor.getRealm().getAuthenticationFlowById(exec.getFlowId())));
+                } else {
+                    authenticationSelectionList.add(new AuthenticationSelectionOption(exec));
+                }
             }
         }
         return authenticationSelectionList;

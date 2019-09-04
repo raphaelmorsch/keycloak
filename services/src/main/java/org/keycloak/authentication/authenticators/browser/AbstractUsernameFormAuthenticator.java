@@ -132,6 +132,7 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
 
 
     public UserModel validateUser(AuthenticationFlowContext context, MultivaluedMap<String, String> inputData) {
+        context.clearUser();
         String username = inputData.getFirst(AuthenticationManager.FORM_USERNAME);
         if (username == null) {
             context.getEvent().error(Errors.USER_NOT_FOUND);

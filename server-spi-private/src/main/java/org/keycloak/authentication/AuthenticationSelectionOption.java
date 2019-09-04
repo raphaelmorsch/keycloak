@@ -2,21 +2,31 @@ package org.keycloak.authentication;
 
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.AuthenticationExecutionModel;
+import org.keycloak.models.AuthenticationFlowModel;
 
 public class AuthenticationSelectionOption {
     private final AuthenticationExecutionModel authExec;
     private final CredentialModel credential;
+    private final AuthenticationFlowModel authFlow;
     private boolean showCredentialName = true;
     private boolean showCredentialType = true;
 
     public AuthenticationSelectionOption(AuthenticationExecutionModel authExec) {
         this.authExec = authExec;
         this.credential = new CredentialModel();
+        this.authFlow = null;
     }
 
     public AuthenticationSelectionOption(AuthenticationExecutionModel authExec, CredentialModel credential) {
         this.authExec = authExec;
         this.credential = credential;
+        this.authFlow = null;
+    }
+
+    public AuthenticationSelectionOption(AuthenticationExecutionModel authExec, AuthenticationFlowModel authFlow) {
+        this.authExec = authExec;
+        this.credential = new CredentialModel();
+        this.authFlow = authFlow;
     }
 
     public void setShowCredentialName(boolean showCredentialName) {
@@ -65,6 +75,13 @@ public class AuthenticationSelectionOption {
     }
 
     public String getAuthExecName() {
+        if (authFlow != null) {
+            String authFlowLabel = authFlow.getAlias();
+            if (authFlowLabel == null || authFlowLabel.isEmpty()) {
+                authFlowLabel = authFlow.getId();
+            }
+            return authFlowLabel;
+        }
         return authExec.getAuthenticator();
     }
 

@@ -1634,7 +1634,8 @@ public class RepresentationToModel {
                         PasswordHashProvider hash = session.getProvider(PasswordHashProvider.class, policy.getHashAlgorithm());
                         if (hash == null) {
                             logger.warnv("Realm PasswordPolicy PasswordHashProvider {0} not found", policy.getHashAlgorithm());
-                            throw new ModelException(error.getMessage(), error.getParameters());
+                            throw new ModelException(String.format("Realm PasswordPolicy PasswordHashProvider %1$s not found",
+                                    policy.getHashAlgorithm()));
                         }
                         PasswordCredentialModel credentialModel = hash.encodedCredential(cred.getValue(), policy.getHashIterations());
                         credentialModel.setCreatedDate(Time.currentTimeMillis());

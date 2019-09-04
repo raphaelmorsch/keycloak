@@ -68,15 +68,16 @@
           </#if>
 
           <#nested "form">
-
-            <form id="kc-select-back-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
-                <div id="kc-form-buttons" class="${properties.kcFormButtonsClass!}">
-                    <div class="${properties.kcFormButtonsWrapperClass!}">
-                        <input class="${properties.kcButtonClass!} ${properties.kcButtonLargeClass!}"
-                               name="back" id="kc-back" type="submit" value="${msg("doBack")}"/>
+            <#if url.hasAction() >
+                <form id="kc-select-back-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
+                    <div id="kc-form-buttons" class="${properties.kcFormButtonsClass!}">
+                        <div class="${properties.kcFormButtonsWrapperClass!}">
+                            <input class="${properties.kcButtonClass!} ${properties.kcButtonLargeClass!}"
+                                   name="back" id="kc-back" type="submit" value="${msg("doBack")}"/>
+                        </div>
                     </div>
-                </div>
-          </form>
+                </form>
+            </#if>
 
           <#if displayInfo>
               <div id="kc-info" class="${properties.kcSignUpClass!}">
