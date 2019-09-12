@@ -35,6 +35,7 @@ import org.keycloak.representations.idm.SynchronizationResultRepresentation;
 import org.keycloak.storage.ldap.LDAPStorageProvider;
 import org.keycloak.storage.ldap.LDAPUtils;
 import org.keycloak.storage.ldap.idm.model.LDAPObject;
+import org.keycloak.storage.ldap.idm.store.ldap.LDAPOperationManager;
 import org.keycloak.storage.ldap.mappers.membership.LDAPGroupMapperMode;
 import org.keycloak.storage.ldap.mappers.membership.MembershipType;
 import org.keycloak.storage.ldap.mappers.membership.group.GroupLDAPStorageMapper;
@@ -52,6 +53,7 @@ import org.keycloak.testsuite.util.LDAPRule;
 import org.keycloak.testsuite.util.LDAPTestUtils;
 
 import javax.ws.rs.BadRequestException;
+
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -65,10 +67,7 @@ import static org.keycloak.testsuite.util.LDAPTestUtils.getGroupDescriptionLDAPA
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class LDAPGroupMapperSyncTest extends AbstractLDAPTest {
 
-    private static Logger logger = Logger.getLogger(LDAPGroupMapperSyncTest.class);
-
-    public static final String TEST_LDAP_GROUPS_SYNC_LINEAR_TIME_GROUPS_COUNT = "test.ldap.groups.sync.linear.time.groups.count";
-    public static final String TEST_LDAP_GROUPS_SYNC_LINEAR_TIME_TEST_PERIOD = "test.ldap.groups.sync.linear.time.test.period";
+    private static final Logger logger = Logger.getLogger(LDAPGroupMapperSyncTest.class);
 
     @ClassRule
     public static LDAPRule ldapRule = new LDAPRule();
@@ -98,17 +97,17 @@ public class LDAPGroupMapperSyncTest extends AbstractLDAPTest {
 
             // Add group mapper
             LDAPTestUtils.addOrUpdateGroupMapper(appRealm, ctx.getLdapModel(), LDAPGroupMapperMode.LDAP_ONLY, descriptionAttrName);
-
-            // Remove all LDAP groups
-            LDAPTestUtils.removeAllLDAPGroups(session, appRealm, ctx.getLdapModel(), "groupsMapper");
-
-            // Add some groups for testing
-            LDAPObject group1 = LDAPTestUtils.createLDAPGroup(session, appRealm, ctx.getLdapModel(), "group1", descriptionAttrName, "group1 - description");
-            LDAPObject group11 = LDAPTestUtils.createLDAPGroup(session, appRealm, ctx.getLdapModel(), "group11");
-            LDAPObject group12 = LDAPTestUtils.createLDAPGroup(session, appRealm, ctx.getLdapModel(), "group12", descriptionAttrName, "group12 - description");
-
-            LDAPUtils.addMember(ctx.getLdapProvider(), MembershipType.DN, LDAPConstants.MEMBER, "not-used", group1, group11);
-            LDAPUtils.addMember(ctx.getLdapProvider(), MembershipType.DN, LDAPConstants.MEMBER, "not-used", group1, group12);
+//
+//            // Remove all LDAP groups
+//            LDAPTestUtils.removeAllLDAPGroups(session, appRealm, ctx.getLdapModel(), "groupsMapper");
+//
+//            // Add some groups for testing
+//            LDAPObject group1 = LDAPTestUtils.createLDAPGroup(session, appRealm, ctx.getLdapModel(), "group1", descriptionAttrName, "group1 - description");
+//            LDAPObject group11 = LDAPTestUtils.createLDAPGroup(session, appRealm, ctx.getLdapModel(), "group11");
+//            LDAPObject group12 = LDAPTestUtils.createLDAPGroup(session, appRealm, ctx.getLdapModel(), "group12", descriptionAttrName, "group12 - description");
+//
+//            LDAPUtils.addMember(ctx.getLdapProvider(), MembershipType.DN, LDAPConstants.MEMBER, "not-used", group1, group11);
+//            LDAPUtils.addMember(ctx.getLdapProvider(), MembershipType.DN, LDAPConstants.MEMBER, "not-used", group1, group12);
 
         });
     }
@@ -347,17 +346,16 @@ public class LDAPGroupMapperSyncTest extends AbstractLDAPTest {
         }
     }
 
+
     // KEYCLOAK-8253 - Test if synchronization of large number of LDAP groups takes linear time
-    @Ignore("This test is not suitable for regular CI testing due to higher time / performance demand")
+    //@Ignore("This test is not suitable for regular CI testing due to higher time / performance demand")
     @Test
     public void test06_ldapGroupsSyncHasLinearTimeComplexity() throws Exception {
         // Count of LDAP groups to test the duration of the sync operation. Defaults to 30k unless overridden via system property
-        final int GROUPS_COUNT = (System.getProperties().containsKey(TEST_LDAP_GROUPS_SYNC_LINEAR_TIME_GROUPS_COUNT)) ?
-                Integer.valueOf(System.getProperty(TEST_LDAP_GROUPS_SYNC_LINEAR_TIME_GROUPS_COUNT)) : 30000;
+        final int GROUPS_COUNT = 10000;
         // Period on how often (per how many groups) to perform the LDAP groups sync test & report the results back.
         // Defaults to 1k unless overridden via system property
-        final int TEST_PERIOD = (System.getProperties().containsKey(TEST_LDAP_GROUPS_SYNC_LINEAR_TIME_TEST_PERIOD)) ?
-                Integer.valueOf(System.getProperty(TEST_LDAP_GROUPS_SYNC_LINEAR_TIME_TEST_PERIOD)) : 1000;
+        final int TEST_PERIOD = 1000;
 
         // Reset 'batchSizeForSync' configuration option to the default value of 'LDAPConstants.BATCH_SIZE_FOR_SYNC'
         testingClient.server().run(session -> {
@@ -372,7 +370,11 @@ public class LDAPGroupMapperSyncTest extends AbstractLDAPTest {
 
         });
 
+        logger.errorf("I am here 1");
+
         testingClient.server().run(session -> {
+            logger.errorf("I am here 2");
+
             LDAPTestContext ctx = LDAPTestContext.init(session);
             RealmModel appRealm = ctx.getRealm();
 
@@ -382,7 +384,7 @@ public class LDAPGroupMapperSyncTest extends AbstractLDAPTest {
             GroupLDAPStorageMapper groupMapper = LDAPTestUtils.getGroupMapper(mapperModel, ldapProvider, appRealm);
 
             // Remove all LDAP groups
-            LDAPTestUtils.removeAllLDAPGroups(session, appRealm, ctx.getLdapModel(), "groupsMapper");
+            //LDAPTestUtils.removeAllLDAPGroups(session, appRealm, ctx.getLdapModel(), "groupsMapper");
 
             /* The following for loop doesn't really test true time it took to synchronize N * TEST_PERIOD LDAP groups.
              * Instead of that, in this test only time of syncing last TEST_PERIOD groups is reported. The previously
@@ -390,22 +392,34 @@ public class LDAPGroupMapperSyncTest extends AbstractLDAPTest {
              *  Also see NOTE: and the subsequent for loop, commented out, below for details.
              */
             Long elapsedTime = new Long(0);
-            for (int i = 1; i <= GROUPS_COUNT; i++) {
-                LDAPTestUtils.createLDAPGroup(session,
-                                              appRealm,
-                                              ctx.getLdapModel(),
-                                              String.format("group-%s", i),
-                                              descriptionAttrName,
-                                              String.format("Testing group-%s, created at: %s", i, new Date().toString())
-                );
-                if (i != 0 && i % TEST_PERIOD == 0) {
-                    // Start the timer
-                    elapsedTime = new Date().getTime();
-                    // Sync the LDAP groups
-                    groupMapper.syncDataFromFederationProviderToKeycloak(appRealm);
-                    elapsedTime = new Date().getTime() - elapsedTime;
-                    logger.debugf("Synced %s LDAP groups in %s ms", Long.valueOf(i), elapsedTime);
-                }
+//            for (int i = 1; i <= GROUPS_COUNT; i++) {
+//                LDAPTestUtils.createLDAPGroup(session,
+//                        appRealm,
+//                        ctx.getLdapModel(),
+//                        String.format("group-%s", i),
+//                        descriptionAttrName,
+//                        String.format("Testing group-%s, created at: %s", i, new Date().toString())
+//                );
+//                if (i != 0 && i % TEST_PERIOD == 0) {
+//                    // Start the timer
+//                    elapsedTime = new Date().getTime();
+//                    // Sync the LDAP groups
+//                    //groupMapper.syncDataFromFederationProviderToKeycloak(appRealm);
+//                    elapsedTime = new Date().getTime() - elapsedTime;
+//                    logger.debugf("Created %s LDAP groups in %s ms", Long.valueOf(i), elapsedTime);
+//                }
+//            }
+
+            logger.errorf("Will sync LDAP groups now");
+
+            elapsedTime = new Date().getTime();
+            // Sync the LDAP groups
+            try {
+                SynchronizationResult sr = groupMapper.syncDataFromFederationProviderToKeycloak(appRealm);
+                elapsedTime = new Date().getTime() - elapsedTime;
+                logger.errorf("Synced LDAP groups: %s in time %d ms", sr, elapsedTime);
+            } catch (Exception e) {
+                logger.error("EXCEPTION", e);
             }
 
             /* NOTE: The nested for loop below would be better test to check duration of groups syncing,

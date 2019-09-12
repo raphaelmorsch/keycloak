@@ -157,10 +157,12 @@ public class GroupLDAPStorageMapper extends AbstractLDAPStorageMapper implements
 
         };
 
-        logger.debugf("Syncing groups from LDAP into Keycloak DB. Mapper is [%s], LDAP provider is [%s]", mapperModel.getName(), ldapProvider.getModel().getName());
+        logger.infof("Syncing groups from LDAP into Keycloak DB. Mapper is [%s], LDAP provider is [%s]", mapperModel.getName(), ldapProvider.getModel().getName());
 
         // Get all LDAP groups
         List<LDAPObject> ldapGroups = getAllLDAPGroups(config.isPreserveGroupsInheritance());
+
+        logger.infof("Retrieved all LDAP groups");
 
         // Convert to internal format
         Map<String, LDAPObject> ldapGroupsMap = new HashMap<>();
@@ -199,6 +201,8 @@ public class GroupLDAPStorageMapper extends AbstractLDAPStorageMapper implements
             final int GROUPS_PER_TRANSACTION = ldapConfig.getBatchSizeForSync();
             for (int processedGroups = 0; processedGroups < ldapGroupsMap.size(); processedGroups += GROUPS_PER_TRANSACTION) {
 
+                logger.infof("Starting iteration %d", processedGroups);
+
                 Map<String, LDAPObject> groupsInTransaction = new HashMap<>();
                 ldapGroupsMap.entrySet().stream().skip(processedGroups).limit(GROUPS_PER_TRANSACTION).forEach(entry -> groupsInTransaction.put(entry.getKey(), entry.getValue()));
 
@@ -232,6 +236,8 @@ public class GroupLDAPStorageMapper extends AbstractLDAPStorageMapper implements
                         }
                     }
                 });
+
+                logger.infof("Finished iteration %d", processedGroups);
             }
 
             // Possibly remove keycloak groups, which doesn't exists in LDAP

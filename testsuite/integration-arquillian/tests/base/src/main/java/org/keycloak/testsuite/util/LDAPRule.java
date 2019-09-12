@@ -57,21 +57,21 @@ public class LDAPRule extends ExternalResource {
 
         Assume.assumeTrue("Assumption in LDAPRule is false. Skiping the test", assume==null || assume.assumeTrue(ldapTestConfiguration));
 
-        if (ldapTestConfiguration.isStartEmbeddedLdapServer()) {
-            ldapEmbeddedServer = createServer();
-            ldapEmbeddedServer.init();
-            ldapEmbeddedServer.start();
-        }
+//        if (ldapTestConfiguration.isStartEmbeddedLdapServer()) {
+//            ldapEmbeddedServer = createServer();
+//            ldapEmbeddedServer.init();
+//            ldapEmbeddedServer.start();
+//        }
     }
 
     @Override
     protected void after() {
         try {
-            if (ldapEmbeddedServer != null) {
-                ldapEmbeddedServer.stop();
-                ldapEmbeddedServer = null;
-                ldapTestConfiguration = null;
-            }
+//            if (ldapEmbeddedServer != null) {
+//                ldapEmbeddedServer.stop();
+//                ldapEmbeddedServer = null;
+//                ldapTestConfiguration = null;
+//            }
         } catch (Exception e) {
             throw new RuntimeException("Error tearDown Embedded LDAP server.", e);
         }
