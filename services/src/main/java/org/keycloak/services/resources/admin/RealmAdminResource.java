@@ -1151,7 +1151,7 @@ public class RealmAdminResource {
     @Path("credential-registrators")
     @NoCache
     @Produces(javax.ws.rs.core.MediaType.APPLICATION_JSON)
-    public List<String> getCredentialTypes(){
+    public List<String> getCredentialRegistrators(){
         auth.realm().requireViewRealm();
         return session.getContext().getRealm().getRequiredActionProviders().stream()
                 .map(RequiredActionProviderModel::getProviderId)
