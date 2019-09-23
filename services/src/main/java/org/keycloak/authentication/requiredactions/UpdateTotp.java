@@ -43,7 +43,7 @@ import javax.ws.rs.core.Response;
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
  */
-public class UpdateTotp implements RequiredActionProvider, RequiredActionFactory, DisplayTypeRequiredActionFactory {
+public class UpdateTotp implements RequiredActionProvider, RequiredActionFactory, DisplayTypeRequiredActionFactory, CredentialRegistrator {
     @Override
     public void evaluateTriggers(RequiredActionContext context) {
     }

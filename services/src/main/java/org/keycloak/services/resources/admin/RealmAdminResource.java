@@ -24,6 +24,9 @@ import org.jboss.resteasy.spi.NotFoundException;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
 import org.keycloak.Config;
 import org.keycloak.KeyPairVerifier;
+import org.keycloak.authentication.CredentialRegistrator;
+import org.keycloak.authentication.RequiredActionFactory;
+import org.keycloak.authentication.RequiredActionProvider;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.PemUtils;
@@ -42,17 +45,7 @@ import org.keycloak.exportimport.ClientDescriptionConverterFactory;
 import org.keycloak.exportimport.util.ExportOptions;
 import org.keycloak.exportimport.util.ExportUtils;
 import org.keycloak.keys.PublicKeyStorageProvider;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.ClientScopeModel;
-import org.keycloak.models.Constants;
-import org.keycloak.models.GroupModel;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.LDAPConstants;
-import org.keycloak.models.ModelDuplicateException;
-import org.keycloak.models.ModelException;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserModel;
-import org.keycloak.models.UserSessionModel;
+import org.keycloak.models.*;
 import org.keycloak.models.cache.CacheRealmProvider;
 import org.keycloak.models.cache.UserCache;
 import org.keycloak.models.utils.KeycloakModelUtils;
@@ -1155,12 +1148,15 @@ public class RealmAdminResource {
     }
 
     @GET
-    @Path("credentialTypes")
+    @Path("credential-registrators")
     @NoCache
     @Produces(javax.ws.rs.core.MediaType.APPLICATION_JSON)
     public List<String> getCredentialTypes(){
         auth.realm().requireViewRealm();
-        return session.getAllProviders(CredentialProvider.class).stream().map(CredentialProvider::getType).collect(Collectors.toList());
+        return session.getContext().getRealm().getRequiredActionProviders().stream()
+                .map(RequiredActionProviderModel::getProviderId)
+                .filter(providerId ->  session.getProvider(RequiredActionProvider.class, providerId) instanceof CredentialRegistrator)
+                .collect(Collectors.toList());
     }
 
 }
