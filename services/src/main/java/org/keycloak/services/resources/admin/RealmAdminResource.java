@@ -1148,7 +1148,7 @@ public class RealmAdminResource {
     }
 
     @GET
-    @Path("registrators")
+    @Path("credential-registrators")
     @NoCache
     @Produces(javax.ws.rs.core.MediaType.APPLICATION_JSON)
     public List<String> getCredentialRegistrators(){

@@ -58,7 +58,7 @@ public class AccountCredentialResource {
 
 
     @GET
-    @Path("credential-registrators")
+    @Path("registrators")
     @NoCache
     @Produces(javax.ws.rs.core.MediaType.APPLICATION_JSON)
     public List<String> getCredentialRegistrators(){
