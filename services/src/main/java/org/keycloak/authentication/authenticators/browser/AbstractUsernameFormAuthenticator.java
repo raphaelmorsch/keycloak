@@ -126,8 +126,8 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
     }
 
     public boolean validateUserAndPassword(AuthenticationFlowContext context, MultivaluedMap<String, String> inputData)  {
-        UserModel user  = validateUser(context, inputData);
-        return user != null && validatePassword(context, user, inputData);
+        UserModel user = validateUser(context, inputData);
+        return user != null && validatePassword(context, user, inputData) && context.getUser() != null;
     }
 
 
@@ -160,15 +160,11 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
                 setDuplicateUserChallenge(context, Errors.USERNAME_IN_USE, Messages.USERNAME_EXISTS, AuthenticationFlowError.INVALID_USER);
             }
 
-            return null;
+            return user;
         }
 
-        if (invalidUser(context, user)) {
-            return null;
-        }
-
-        if (!enabledUser(context, user)) {
-            return null;
+        if (invalidUser(context, user) || !enabledUser(context, user)) {
+            return user;
         }
 
         String rememberMe = inputData.getFirst("rememberMe");

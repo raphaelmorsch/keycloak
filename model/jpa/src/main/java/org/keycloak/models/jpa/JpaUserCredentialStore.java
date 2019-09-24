@@ -82,6 +82,7 @@ public class JpaUserCredentialStore implements UserCredentialStore {
         CredentialModel model = new CredentialModel();
         model.setId(entity.getId());
         model.setType(entity.getType());
+        model.setCreatedDate(entity.getCreatedDate());
         model.setUserLabel(entity.getUserLabel());
         model.setSecretData(entity.getSecretData());
         model.setCredentialData(entity.getCredentialData());

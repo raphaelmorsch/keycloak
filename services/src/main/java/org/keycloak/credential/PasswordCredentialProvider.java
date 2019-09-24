@@ -94,6 +94,9 @@ public class PasswordCredentialProvider implements CredentialProvider<PasswordCr
         PasswordPolicy policy = realm.getPasswordPolicy();
         try {
             expirePassword(realm, user, policy);
+            if (credentialModel.getCreatedDate() == null) {
+                credentialModel.setCreatedDate(Time.currentTimeMillis());
+            }
             CredentialModel createdCredential = getCredentialStore().createCredential(realm, user, credentialModel);
             UserCache userCache = session.userCache();
             if (userCache != null) {

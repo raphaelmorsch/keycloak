@@ -141,7 +141,20 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 return processFlow();
             } else return response;
         }
-
+        //handle case where execution is a flow
+        if (model.isAuthenticatorFlow()) {
+            logger.debug("execution is flow");
+            AuthenticationFlow authenticationFlow = processor.createFlowExecution(model.getFlowId(), model);
+            Response flowChallenge = authenticationFlow.processAction(actionExecution);
+            if (flowChallenge == null) {
+                checkAndValidateParentFlow(model);
+                return processFlow();
+            } else {
+                processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
+                return flowChallenge;
+            }
+        }
+        //handle normal execution case
         AuthenticatorFactory factory = getAuthenticatorFactory(model);
         Authenticator authenticator = createAuthenticator(factory);
         AuthenticationProcessor.Result result = processor.createAuthenticatorContext(model, authenticator, executions);
@@ -181,9 +194,10 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     private void checkAndValidateParentFlow(AuthenticationExecutionModel model) {
         List<AuthenticationExecutionModel> localExecutions = processor.getRealm().getAuthenticationExecutions(model.getParentFlow());
         AuthenticationExecutionModel parentFlowModel = processor.getRealm().getAuthenticationExecutionByFlowId(model.getParentFlow());
-        if ((model.isRequired() && localExecutions.stream().allMatch(processor::isSuccessful)) ||
-                (model.isAlternative() && localExecutions.stream().anyMatch(processor::isSuccessful))) {
-                processor.getAuthenticationSession().setExecutionStatus(parentFlowModel.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
+        if (parentFlowModel != null &&
+                ((model.isRequired() && localExecutions.stream().allMatch(processor::isSuccessful)) ||
+                        (model.isAlternative() && localExecutions.stream().anyMatch(processor::isSuccessful)))) {
+            processor.getAuthenticationSession().setExecutionStatus(parentFlowModel.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
         }
     }
 
@@ -302,6 +316,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 return flowChallenge;
             }
         }
+
         //handle normal execution case
         AuthenticatorFactory factory = getAuthenticatorFactory(model);
         Authenticator authenticator = createAuthenticator(factory);
@@ -311,7 +326,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         //If executions are alternative, get the actual execution to show based on user preference
         List<AuthenticationSelectionOption> selectionOptions = createAuthenticationSelectionList(model);
         if (!selectionOptions.isEmpty() && calledFromFlow) {
-            model = selectionOptions.stream().filter(aso -> !aso.getAuthenticationExecution().isAuthenticatorFlow()).findFirst().get().getAuthenticationExecution();
+            model = selectionOptions.stream().filter(aso -> !aso.getAuthenticationExecution().isAuthenticatorFlow() && !isProcessed(aso.getAuthenticationExecution())).findFirst().get().getAuthenticationExecution();
             factory = (AuthenticatorFactory) processor.getSession().getKeycloakSessionFactory().getProviderFactory(Authenticator.class, model.getAuthenticator());
             if (factory == null) {
                 throw new RuntimeException("Unable to find factory for AuthenticatorFactory: " + model.getAuthenticator() + " did you forget to declare it in a META-INF/services file?");

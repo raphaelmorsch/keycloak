@@ -32,6 +32,7 @@ import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.models.utils.HmacOTP;
 import org.keycloak.models.utils.TimeBasedOTP;
 import org.keycloak.representations.idm.AuthenticationExecutionInfoRepresentation;
+import org.keycloak.representations.idm.AuthenticationFlowRepresentation;
 import org.keycloak.representations.idm.EventRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.RequiredActionProviderRepresentation;
@@ -83,13 +84,12 @@ public class RequiredActionTotpSetupTest extends AbstractTestRealmKeycloakTest {
 
     @Before
     public void setOTPAuthRequired() {
-        for (AuthenticationExecutionInfoRepresentation execution : adminClient.realm("test").flows().getExecutions("browser")) {
-            String providerId = execution.getProviderId();
-            if ("auth-otp-form".equals(providerId)) {
-                execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED.name());
-                adminClient.realm("test").flows().updateExecutions("browser", execution);
-            }
-        }
+
+        adminClient.realm("test").flows().getExecutions("browser").
+                stream().filter(execution -> execution.getDisplayName().equals("Browser - Conditional OTP"))
+                .forEach(execution ->
+                {execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED.name());
+                adminClient.realm("test").flows().updateExecutions("browser", execution);});
 
         ApiUtil.removeUserByUsername(testRealm(), "test-user@localhost");
         UserRepresentation user = UserBuilder.create().enabled(true)
