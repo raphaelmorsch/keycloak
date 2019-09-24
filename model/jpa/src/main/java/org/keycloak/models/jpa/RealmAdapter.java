@@ -586,6 +586,9 @@ public class RealmAdapter implements RealmModel, JpaModel<RealmEntity> {
 
     @Override
     public int getActionTokenGeneratedByUserLifespan(String actionTokenId) {
+        if (actionTokenId == null || getAttribute(RealmAttributes.ACTION_TOKEN_GENERATED_BY_USER_LIFESPAN + "." + actionTokenId) == null) {
+            return getActionTokenGeneratedByUserLifespan();
+        }
         return getAttribute(RealmAttributes.ACTION_TOKEN_GENERATED_BY_USER_LIFESPAN + "." + actionTokenId, getAccessCodeLifespanUserAction());
     }
 

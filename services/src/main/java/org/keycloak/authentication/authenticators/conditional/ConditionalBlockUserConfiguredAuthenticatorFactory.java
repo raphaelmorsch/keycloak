@@ -11,14 +11,9 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.ProviderConfigProperty;
 
-public class ConditionalBlockUserConfiguredAuthenticatorFactory implements AuthenticatorFactory {
+public class ConditionalBlockUserConfiguredAuthenticatorFactory implements ConditionalBlockAuthenticatorFactory {
     private static final String PROVIDER_ID = "conditional-user-configured";
     protected static final String CONDITIONAL_USER_ROLE = "condUserConfigured";
-
-    @Override
-    public Authenticator create(KeycloakSession session) {
-        return ConditionalBlockUserConfiguredAuthenticator.SINGLETON;
-    }
 
     @Override
     public void init(Scope config) {
@@ -77,5 +72,10 @@ public class ConditionalBlockUserConfiguredAuthenticatorFactory implements Authe
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
         return null;
+    }
+
+    @Override
+    public ConditionalBlockAuthenticator getSingleton() {
+        return ConditionalBlockUserConfiguredAuthenticator.SINGLETON;
     }
 }

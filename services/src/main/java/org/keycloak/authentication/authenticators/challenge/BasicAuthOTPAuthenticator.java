@@ -71,8 +71,7 @@ public class BasicAuthOTPAuthenticator extends BasicAuthAuthenticator implements
 
         if (!valid) {
             context.getEvent().user(context.getUser()).error(Errors.INVALID_USER_CREDENTIALS);
-            Response challengeResponse = challenge(context, Messages.INVALID_TOTP);
-            context.failureChallenge(AuthenticationFlowError.INVALID_CREDENTIALS, challengeResponse);
+            context.attempted();
             return false;
         }
 

@@ -13,11 +13,12 @@
                     document.getElementById('kc-select-credential-form').submit();
                 }
             }
-
-            // We bind the action to the select
-            window.addEventListener('load', function() {
-                document.getElementById('authenticators-choice').addEventListener('change', fillAndSubmit);
-            });
+            <#if authenticationSelections?size gt 1>
+                // We bind the action to the select
+                window.addEventListener('load', function() {
+                    document.getElementById('authenticators-choice').addEventListener('change', fillAndSubmit);
+                });
+            </#if>
         </script>
         <#nested "header">
     <#elseif section = "form">

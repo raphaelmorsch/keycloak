@@ -705,27 +705,42 @@ public class DefaultAuthenticationFlows {
         execution.setAuthenticatorFlow(false);
         realm.addAuthenticatorExecution(execution);
 
+        AuthenticationFlowModel authType = new AuthenticationFlowModel();
+        authType.setTopLevel(false);
+        authType.setBuiltIn(true);
+        authType.setAlias("Authentication Options");
+        authType.setDescription("Authentication options.");
+        authType.setProviderId("basic-flow");
+        authType = realm.addAuthenticationFlow(authType);
         execution = new AuthenticationExecutionModel();
         execution.setParentFlow(challengeFlow.getId());
         execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED);
+        execution.setFlowId(authType.getId());
+        execution.setPriority(20);
+        execution.setAuthenticatorFlow(true);
+        realm.addAuthenticatorExecution(execution);
+
+        execution = new AuthenticationExecutionModel();
+        execution.setParentFlow(authType.getId());
+        execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED);
         execution.setAuthenticator("basic-auth");
+        execution.setPriority(10);
+        execution.setAuthenticatorFlow(false);
+        realm.addAuthenticatorExecution(execution);
+
+        execution = new AuthenticationExecutionModel();
+        execution.setParentFlow(authType.getId());
+        execution.setRequirement(AuthenticationExecutionModel.Requirement.DISABLED);
+        execution.setAuthenticator("basic-auth-otp");
         execution.setPriority(20);
         execution.setAuthenticatorFlow(false);
         realm.addAuthenticatorExecution(execution);
 
         execution = new AuthenticationExecutionModel();
-        execution.setParentFlow(challengeFlow.getId());
-        execution.setRequirement(AuthenticationExecutionModel.Requirement.DISABLED);
-        execution.setAuthenticator("basic-auth-otp");
-        execution.setPriority(30);
-        execution.setAuthenticatorFlow(false);
-        realm.addAuthenticatorExecution(execution);
-
-        execution = new AuthenticationExecutionModel();
-        execution.setParentFlow(challengeFlow.getId());
+        execution.setParentFlow(authType.getId());
         execution.setRequirement(AuthenticationExecutionModel.Requirement.DISABLED);
         execution.setAuthenticator("auth-spnego");
-        execution.setPriority(40);
+        execution.setPriority(30);
         execution.setAuthenticatorFlow(false);
         realm.addAuthenticatorExecution(execution);
     }

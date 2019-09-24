@@ -17,6 +17,7 @@
 package org.keycloak.credential;
 
 import org.jboss.logging.Logger;
+import org.keycloak.common.util.Time;
 import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.models.credential.dto.OTPCredentialData;
 import org.keycloak.models.credential.dto.OTPSecretData;
@@ -65,6 +66,9 @@ public class OTPCredentialProvider implements CredentialProvider<OTPCredentialMo
 
     @Override
     public CredentialModel createCredential(RealmModel realm, UserModel user, OTPCredentialModel credentialModel) {
+        if (credentialModel.getCreatedDate() == null) {
+            credentialModel.setCreatedDate(Time.currentTimeMillis());
+        }
         return getCredentialStore().createCredential(realm, user, credentialModel);
     }
 

@@ -13,7 +13,7 @@ import org.keycloak.provider.ProviderConfigurationBuilder;
 import java.util.Collections;
 import java.util.List;
 
-public class ConditionalBlockRoleAuthenticatorFactory implements AuthenticatorFactory {
+public class ConditionalBlockRoleAuthenticatorFactory implements ConditionalBlockAuthenticatorFactory {
     private static final String PROVIDER_ID = "conditional-user-role";
     protected static final String CONDITIONAL_USER_ROLE = "condUserRole";
 
@@ -24,11 +24,6 @@ public class ConditionalBlockRoleAuthenticatorFactory implements AuthenticatorFa
             .property().name(CONDITIONAL_USER_ROLE).label("User role").helpText("Role the user should have to execute this flow").type(ProviderConfigProperty.STRING_TYPE).add()
             .build()
         );
-    }
-
-    @Override
-    public Authenticator create(KeycloakSession session) {
-        return ConditionalBlockRoleAuthenticator.SINGLETON;
     }
 
     @Override
@@ -88,5 +83,10 @@ public class ConditionalBlockRoleAuthenticatorFactory implements AuthenticatorFa
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
         return commonConfig;
+    }
+
+    @Override
+    public ConditionalBlockAuthenticator getSingleton() {
+        return ConditionalBlockRoleAuthenticator.SINGLETON;
     }
 }

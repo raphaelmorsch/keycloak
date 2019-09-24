@@ -177,7 +177,7 @@ public class KcinitTest extends AbstractTestRealmKeycloakTest {
             realm.updateAuthenticationFlow(copy);
             execution = new AuthenticationExecutionModel();
             execution.setParentFlow(browser.getId());
-            execution.setRequirement(AuthenticationExecutionModel.Requirement.ALTERNATIVE);
+            execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED);
             execution.setFlowId(copy.getId());
             execution.setPriority(30);
             execution.setAuthenticatorFlow(true);
