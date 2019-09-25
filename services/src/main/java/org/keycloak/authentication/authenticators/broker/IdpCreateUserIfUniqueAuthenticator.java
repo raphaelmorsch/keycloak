@@ -99,23 +99,21 @@ public class IdpCreateUserIfUniqueAuthenticator extends AbstractIdpAuthenticator
 
             // Set duplicated user, so next authenticators can deal with it
             context.getAuthenticationSession().setAuthNote(EXISTING_USER_INFO, duplication.serialize());
-            context.attempted();
-
-            //Returning a challenge doesn't make much sense with the new rules. There is no reason for this authenticator to be selectable,
-            //and the flow should proceed to an other authenticator if this one is not valid.
-            /*Response challengeResponse = context.form()
-                    .setError(Messages.FEDERATED_IDENTITY_EXISTS, duplication.getDuplicateAttributeName(), duplication.getDuplicateAttributeValue())
-                    .createErrorPage(Response.Status.CONFLICT);
-            context.challenge(challengeResponse);
-
+            //Only show error message if the authenticator was required
             if (context.getExecution().isRequired()) {
+                Response challengeResponse = context.form()
+                        .setError(Messages.FEDERATED_IDENTITY_EXISTS, duplication.getDuplicateAttributeName(), duplication.getDuplicateAttributeValue())
+                        .createErrorPage(Response.Status.CONFLICT);
+                context.challenge(challengeResponse);
                 context.getEvent()
                         .user(duplication.getExistingUserId())
                         .detail("existing_" + duplication.getDuplicateAttributeName(), duplication.getDuplicateAttributeValue())
                         .removeDetail(Details.AUTH_METHOD)
                         .removeDetail(Details.AUTH_TYPE)
                         .error(Errors.FEDERATED_IDENTITY_EXISTS);
-            }*/
+            } else {
+                context.attempted();
+            }
         }
     }
 

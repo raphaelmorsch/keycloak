@@ -32,6 +32,9 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
+
+import static org.hamcrest.Matchers.is;
 
 /**
  * @author <a href="mailto:mstrukel@redhat.com">Marko Strukelj</a>
@@ -129,11 +132,10 @@ public class ProvidersTest extends AbstractAuthenticationTest {
 
     @Test
     public void testInitialAuthenticationProviders() {
-
         List<Map<String, Object>> providers = authMgmtResource.getAuthenticatorProviders();
         providers = sortProviders(providers);
 
-        compareProviders(expectedAuthProviders(), providers);
+        compareProviders(sortProviders(expectedAuthProviders()), providers);
     }
 
     private List<Map<String, Object>> expectedAuthProviders() {
@@ -182,8 +184,7 @@ public class ProvidersTest extends AbstractAuthenticationTest {
                 "Just press the button to login.");
         addProviderInfo(result, "reset-credential-email", "Send Reset Email", "Send email to user and wait for response.");
         addProviderInfo(result, "reset-credentials-choose-user", "Choose User", "Choose a user to reset credentials for");
-        addProviderInfo(result, "reset-otp", "Reset OTP", "Sets the Configure OTP required action if execution is REQUIRED.  " +
-                "Will also set it if execution is OPTIONAL and the OTP is currently configured for it.");
+        addProviderInfo(result, "reset-otp", "Reset OTP", "Sets the Configure OTP required action.");
         addProviderInfo(result, "reset-password", "Reset Password", "Sets the Update Password required action if execution is REQUIRED.  " +
                 "Will also set it if execution is OPTIONAL and the password is currently configured for it.");
         addProviderInfo(result, "testsuite-dummy-click-through", "Testsuite Dummy Click Thru",
@@ -194,6 +195,15 @@ public class ProvidersTest extends AbstractAuthenticationTest {
                 "Testsuite Dummy authenticator.  Just passes through and is hardcoded to a specific user");
         addProviderInfo(result, "testsuite-username", "Testsuite Username Only",
                 "Testsuite Username authenticator.  Username parameter sets username");
+
+        addProviderInfo(result, "auth-username-form", "Username Form",
+                "Selects a user from his username.");
+        addProviderInfo(result, "auth-password-form", "Password Form",
+                "Validates a password from login form.");
+        addProviderInfo(result, "conditional-user-role", "Conditional block - user role",
+                "Flow is executed only if user has the given role.");
+        addProviderInfo(result, "conditional-user-configured", "Conditional block - user configured",
+                "Executes the current flow only if authenticators are configured");
 
         return result;
     }
@@ -207,7 +217,7 @@ public class ProvidersTest extends AbstractAuthenticationTest {
     private void compareProviders(List<Map<String, Object>> expected, List<Map<String, Object>> actual) {
         Assert.assertEquals("Providers count", expected.size(), actual.size());
         // compare ignoring list and map impl types
-        Assert.assertEquals(normalizeResults(expected), normalizeResults(actual));
+        Assert.assertThat(normalizeResults(actual), is(normalizeResults(expected)));
     }
 
     private List<Map<String, Object>> normalizeResults(List<Map<String, Object>> list) {
@@ -232,4 +242,6 @@ public class ProvidersTest extends AbstractAuthenticationTest {
             return String.valueOf(o1.get("id")).compareTo(String.valueOf(o2.get("id")));
         }
     }
+
+
 }

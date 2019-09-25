@@ -808,10 +808,11 @@ public class AuthenticationProcessor {
         AuthenticationFlow authenticationFlow = createFlowExecution(this.flowId, null);
         try {
             Response challenge = authenticationFlow.processFlow();
+            if (challenge != null) return challenge;
             if (!authenticationFlow.isSuccessful()) {
                 throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS);
             }
-            return challenge;
+            return null;
         } catch (Exception e) {
             return handleClientAuthException(e);
         }
@@ -940,7 +941,7 @@ public class AuthenticationProcessor {
         if (!authenticationFlow.isSuccessful()) {
             throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS);
         }
-        return challenge;
+        return null;
     }
 
     // May create userSession too

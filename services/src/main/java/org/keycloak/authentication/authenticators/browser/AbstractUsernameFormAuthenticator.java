@@ -101,17 +101,14 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
 
     }
 
-    public boolean invalidUser(AuthenticationFlowContext context, UserModel user) {
+    public void testInvalidUser(AuthenticationFlowContext context, UserModel user) {
         if (user == null) {
             dummyHash(context);
             context.getEvent().error(Errors.USER_NOT_FOUND);
             Response challengeResponse = challenge(context, Messages.INVALID_USER);
             context.failureChallenge(AuthenticationFlowError.INVALID_USER, challengeResponse);
-            return true;
         }
-        return false;
     }
-
 
     public boolean enabledUser(AuthenticationFlowContext context, UserModel user) {
         if (!user.isEnabled()) {
@@ -125,14 +122,20 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
         return true;
     }
 
+
     public boolean validateUserAndPassword(AuthenticationFlowContext context, MultivaluedMap<String, String> inputData)  {
-        UserModel user = validateUser(context, inputData);
-        return user != null && validatePassword(context, user, inputData) && context.getUser() != null;
+        context.clearUser();
+        UserModel user = getUser(context, inputData);
+        return user != null && validatePassword(context, user, inputData) && validateUser(context, user, inputData);
     }
 
-
-    public UserModel validateUser(AuthenticationFlowContext context, MultivaluedMap<String, String> inputData) {
+    public boolean validateUser(AuthenticationFlowContext context, MultivaluedMap<String, String> inputData) {
         context.clearUser();
+        UserModel user = getUser(context, inputData);
+        return user != null && validateUser(context, user, inputData);
+    }
+
+    private UserModel getUser(AuthenticationFlowContext context, MultivaluedMap<String, String> inputData) {
         String username = inputData.getFirst(AuthenticationManager.FORM_USERNAME);
         if (username == null) {
             context.getEvent().error(Errors.USER_NOT_FOUND);
@@ -159,14 +162,17 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
             } else {
                 setDuplicateUserChallenge(context, Errors.USERNAME_IN_USE, Messages.USERNAME_EXISTS, AuthenticationFlowError.INVALID_USER);
             }
-
             return user;
         }
 
-        if (invalidUser(context, user) || !enabledUser(context, user)) {
-            return user;
-        }
+        testInvalidUser(context, user);
+        return user;
+    }
 
+    private boolean validateUser(AuthenticationFlowContext context, UserModel user, MultivaluedMap<String, String> inputData) {
+        if (!enabledUser(context, user)) {
+            return false;
+        }
         String rememberMe = inputData.getFirst("rememberMe");
         boolean remember = rememberMe != null && rememberMe.equalsIgnoreCase("on");
         if (remember) {
@@ -176,9 +182,8 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
             context.getAuthenticationSession().removeAuthNote(Details.REMEMBER_ME);
         }
         context.setUser(user);
-        return user;
+        return true;
     }
-
 
     public boolean validatePassword(AuthenticationFlowContext context, UserModel user, MultivaluedMap<String, String> inputData) {
         return validatePassword(context, user, inputData, true);

@@ -232,7 +232,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         boolean requiredElementsSuccessful = true;
         for (AuthenticationExecutionModel required : requiredList) {
             Response response = processSingleFlowExecutionModel(required, null, true);
-            requiredElementsSuccessful &= processor.isSuccessful(required);
+            requiredElementsSuccessful &= processor.isSuccessful(required) || isSetupRequired(required);
             if (response != null) {
                 return response;
             }
@@ -241,7 +241,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         //Evaluate alternative elements only if there are no required elements
         if (requiredList.isEmpty()) {
             //check if an alternative is already successful, in case we are returning in the flow after an action
-            if (alternativeList.stream().anyMatch(processor::isSuccessful)) {
+            if (alternativeList.stream().anyMatch(alternative -> processor.isSuccessful(alternative) || isSetupRequired(alternative))) {
                 successful = true;
                 return null;
             }
@@ -253,7 +253,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                     if (response != null) {
                         return response;
                     }
-                    if (processor.isSuccessful(alternative)) {
+                    if (processor.isSuccessful(alternative) || isSetupRequired(alternative)) {
                         successful = true;
                         return null;
                     }
@@ -290,6 +290,10 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         AuthenticationProcessor.Result context = processor.createAuthenticatorContext(model, authenticator, executions);
 
         return !authenticator.matchCondition(context);
+    }
+
+    private boolean isSetupRequired(AuthenticationExecutionModel model){
+        return AuthenticationSessionModel.ExecutionStatus.SETUP_REQUIRED.equals(processor.getAuthenticationSession().getExecutionStatus().get(model.getId()));
     }
 
     private Response processSingleFlowExecutionModel(AuthenticationExecutionModel model, String selectedCredentialId, boolean calledFromFlow) {
@@ -345,6 +349,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             }
             if (!authenticator.configuredFor(processor.getSession(), processor.getRealm(), authUser)) {
                 if (factory.isUserSetupAllowed()) {
+                    //This means that having even though the user didn't validate the
                     logger.debugv("authenticator SETUP_REQUIRED: {0}", factory.getId());
                     processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SETUP_REQUIRED);
                     authenticator.setRequiredActions(processor.getSession(), processor.getRealm(), processor.getAuthenticationSession().getAuthenticatedUser());

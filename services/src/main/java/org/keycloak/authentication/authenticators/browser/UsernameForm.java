@@ -27,7 +27,7 @@ public final class UsernameForm extends UsernamePasswordForm {
 
     @Override
     protected boolean validateForm(AuthenticationFlowContext context, MultivaluedMap<String, String> formData) {
-        return validateUser(context, formData) != null;
+        return validateUser(context, formData);
     }
 
     @Override

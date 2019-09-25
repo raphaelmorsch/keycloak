@@ -21,7 +21,7 @@ public final class ConsoleUsernameAuthenticator extends ConsoleUsernamePasswordA
     @Override
     public void action(AuthenticationFlowContext context) {
         MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
-        if (validateUser(context, formData) == null) {
+        if (!validateUser(context, formData)) {
             return;
         }
         context.success();
