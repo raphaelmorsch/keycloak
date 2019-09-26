@@ -22,13 +22,11 @@
                 </div>
 
                 <div id="kc-form-buttons" class="${properties.kcFormButtonsClass!}">
-                    <div class="${properties.kcFormButtonsWrapperClass!}">
-                        <input type="hidden" id="id-hidden-input" name="credentialId" <#if selectedCredential?has_content>value="${selectedCredential}"</#if>/>
-                        <input class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!} ${properties.kcButtonLargeClass!}"
-                               name="login" id="kc-login" type="submit" value="${msg("doLogIn")}"/>
-                        <input class="${properties.kcButtonClass!} ${properties.kcButtonDefaultClass!} ${properties.kcButtonLargeClass!}"
-                               name="cancel" id="kc-cancel" type="submit" value="${msg("doCancel")}"/>
-                    </div>
+                    <input type="hidden" id="id-hidden-input" name="credentialId" <#if auth.selectedCredential?has_content>value="${auth.selectedCredential}"</#if>/>
+                    <input class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!} ${properties.kcButtonBlockClass!} ${properties.kcButtonLargeClass!}"
+                           name="login" id="kc-login" type="submit" value="${msg("doLogIn")}"/>
+                    <input class="${properties.kcButtonClass!} ${properties.kcButtonDefaultClass!} ${properties.kcButtonBlockClass!} ${properties.kcButtonLargeClass!}"
+                           name="cancel" id="kc-cancel" type="submit" value="${msg("doCancel")}"/>
                 </div>
             </div>
         </form>

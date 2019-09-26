@@ -65,7 +65,7 @@ public class BasicAuthOTPAuthenticator extends BasicAuthAuthenticator implements
 
     private boolean checkOtp(AuthenticationFlowContext context, String otp) {
         OTPCredentialModel preferredCredential = getCredentialProvider(context.getSession())
-                .getPreferredCredential(context.getRealm(), context.getUser());
+                .getDefaultCredential(context.getSession(), context.getRealm(), context.getUser());
         boolean valid = getCredentialProvider(context.getSession()).isValid(context.getRealm(), context.getUser(),
                 new UserCredentialModel(preferredCredential.getId(), getCredentialProvider(context.getSession()).getType(), otp));
 

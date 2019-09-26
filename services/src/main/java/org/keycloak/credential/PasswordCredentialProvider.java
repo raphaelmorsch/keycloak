@@ -69,7 +69,6 @@ public class PasswordCredentialProvider implements CredentialProvider<PasswordCr
         }
         if (passwords == null || passwords.isEmpty()) return null;
 
-
         return PasswordCredentialModel.createFromCredentialModel(passwords.get(0));
     }
 
@@ -113,6 +112,10 @@ public class PasswordCredentialProvider implements CredentialProvider<PasswordCr
         getCredentialStore().removeStoredCredential(realm, user, credentialId);
     }
 
+    @Override
+    public PasswordCredentialModel getCredentialFromModel(CredentialModel model) {
+        return PasswordCredentialModel.createFromCredentialModel(model);
+    }
 
 
     protected void expirePassword(RealmModel realm, UserModel user, PasswordPolicy policy) throws IOException {

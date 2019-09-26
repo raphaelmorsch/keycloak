@@ -506,6 +506,7 @@ public class AuthenticationProcessor {
             String accessCode = generateAccessCode();
             URI action = getActionUrl(accessCode);
             LoginFormsProvider provider = getSession().getProvider(LoginFormsProvider.class)
+                    .setAuthContext(this)
                     .setAuthenticationSession(getAuthenticationSession())
                     .setUser(getUser())
                     .setActionUri(action)
@@ -676,9 +677,52 @@ public class AuthenticationProcessor {
         return status == AuthenticationSessionModel.ExecutionStatus.SUCCESS;
     }
 
+    public Response handleBrowserExceptionList(AuthenticationFlowException e) {
+        LoginFormsProvider forms = session.getProvider(LoginFormsProvider.class).setAuthenticationSession(authenticationSession);
+        ServicesLogger.LOGGER.failedAuthentication(e);
+        forms.addError(new FormMessage(Messages.UNEXPECTED_ERROR_HANDLING_REQUEST));
+        for (AuthenticationFlowException afe : e.getAfeList()) {
+            ServicesLogger.LOGGER.failedAuthentication(afe);
+            switch (afe.getError()){
+                case INVALID_USER:
+                    event.error(Errors.USER_NOT_FOUND);
+                    forms.addError(new FormMessage(Messages.INVALID_USER));
+                    break;
+                case USER_DISABLED:
+                    event.error(Errors.USER_DISABLED);
+                    forms.addError(new FormMessage(Messages.ACCOUNT_DISABLED));
+                    break;
+                case USER_TEMPORARILY_DISABLED:
+                    event.error(Errors.USER_TEMPORARILY_DISABLED);
+                    forms.addError(new FormMessage(Messages.INVALID_USER));
+                    break;
+                case INVALID_CLIENT_SESSION:
+                    event.error(Errors.INVALID_CODE);
+                    forms.addError(new FormMessage(Messages.INVALID_CODE));
+                    break;
+                case EXPIRED_CODE:
+                    event.error(Errors.EXPIRED_CODE);
+                    forms.addError(new FormMessage(Messages.EXPIRED_CODE));
+                    break;
+                case DISPLAY_NOT_SUPPORTED:
+                    event.error(Errors.DISPLAY_UNSUPPORTED);
+                    forms.addError(new FormMessage(Messages.DISPLAY_UNSUPPORTED));
+                    break;
+                case CREDENTIAL_SETUP_REQUIRED:
+                    event.error(Errors.INVALID_USER_CREDENTIALS);
+                    forms.addError(new FormMessage(Messages.CREDENTIAL_SETUP_REQUIRED));
+                    break;
+            }
+        }
+        return forms.createErrorPage(Response.Status.BAD_REQUEST);
+    }
+
     public Response handleBrowserException(Exception failure) {
         if (failure instanceof AuthenticationFlowException) {
             AuthenticationFlowException e = (AuthenticationFlowException) failure;
+            if (e.getAfeList() != null && !e.getAfeList().isEmpty()){
+                return handleBrowserExceptionList(e);
+            }
 
             if (e.getError() == AuthenticationFlowError.INVALID_USER) {
                 ServicesLogger.LOGGER.failedAuthentication(e);
@@ -738,6 +782,11 @@ public class AuthenticationProcessor {
                 event.error(Errors.DISPLAY_UNSUPPORTED);
                 if (e.getResponse() != null) return e.getResponse();
                 return ErrorPage.error(session, authenticationSession, Response.Status.BAD_REQUEST, Messages.DISPLAY_UNSUPPORTED);
+            } else if (e.getError() == AuthenticationFlowError.CREDENTIAL_SETUP_REQUIRED){
+                ServicesLogger.LOGGER.failedAuthentication(e);
+                event.error(Errors.INVALID_USER_CREDENTIALS);
+                if (e.getResponse() != null) return e.getResponse();
+                return ErrorPage.error(session, authenticationSession, Response.Status.BAD_REQUEST, Messages.CREDENTIAL_SETUP_REQUIRED);
             } else {
                 ServicesLogger.LOGGER.failedAuthentication(e);
                 event.error(Errors.INVALID_USER_CREDENTIALS);
@@ -811,7 +860,7 @@ public class AuthenticationProcessor {
             Response challenge = authenticationFlow.processFlow();
             if (challenge != null) return challenge;
             if (!authenticationFlow.isSuccessful()) {
-                throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS);
+                throw new AuthenticationFlowException(AuthenticationFlowError.INTERNAL_ERROR);
             }
             return null;
         } catch (Exception e) {
@@ -902,6 +951,9 @@ public class AuthenticationProcessor {
         if (authenticationSession.getAuthenticatedUser() == null) {
             throw new AuthenticationFlowException(AuthenticationFlowError.UNKNOWN_USER);
         }
+        if (!authenticationFlow.isSuccessful()) {
+            throw new AuthenticationFlowException(authenticationFlow.getFlowExceptions());
+        }
         return authenticationComplete();
     }
 
@@ -940,7 +992,7 @@ public class AuthenticationProcessor {
             throw new AuthenticationFlowException(AuthenticationFlowError.UNKNOWN_USER);
         }
         if (!authenticationFlow.isSuccessful()) {
-            throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS);
+            throw new AuthenticationFlowException(authenticationFlow.getFlowExceptions());
         }
         return null;
     }

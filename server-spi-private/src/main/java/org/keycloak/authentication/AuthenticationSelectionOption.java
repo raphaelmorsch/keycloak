@@ -19,7 +19,9 @@ public class AuthenticationSelectionOption {
 
     public AuthenticationSelectionOption(AuthenticationExecutionModel authExec, CredentialModel credential) {
         this.authExec = authExec;
-        this.credential = credential;
+        //Allow themes to get all credential information, but not secret data
+        this.credential = credential.shallowClone();
+        this.credential.setSecretData("");
         this.authFlow = null;
     }
 
@@ -90,5 +92,9 @@ public class AuthenticationSelectionOption {
             return getAuthExecId() + "|";
         }
         return getAuthExecId() + "|" + getCredentialId();
+    }
+
+    public CredentialModel getCredential(){
+        return credential;
     }
 }

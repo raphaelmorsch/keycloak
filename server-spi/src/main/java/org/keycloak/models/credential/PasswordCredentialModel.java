@@ -11,7 +11,7 @@ import java.io.IOException;
 public class PasswordCredentialModel extends CredentialModel {
 
     public final static String TYPE = "password";
-    public final static String PASSWORD_HISTORY = "password_history";
+    public final static String PASSWORD_HISTORY = "password-history";
 
     private final PasswordCredentialData credentialData;
     private final PasswordSecretData secretData;
@@ -51,7 +51,7 @@ public class PasswordCredentialModel extends CredentialModel {
             passwordCredentialModel.setCredentialData(credentialModel.getCredentialData());
             passwordCredentialModel.setId(credentialModel.getId());
             passwordCredentialModel.setSecretData(credentialModel.getSecretData());
-            passwordCredentialModel.setType(TYPE);
+            passwordCredentialModel.setType(credentialModel.getType());
             passwordCredentialModel.setUserLabel(credentialModel.getUserLabel());
 
             return passwordCredentialModel;
