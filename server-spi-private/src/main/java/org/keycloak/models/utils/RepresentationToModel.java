@@ -49,15 +49,17 @@ import org.keycloak.authorization.store.ResourceServerStore;
 import org.keycloak.authorization.store.ResourceStore;
 import org.keycloak.authorization.store.ScopeStore;
 import org.keycloak.authorization.store.StoreFactory;
-import org.keycloak.common.Profile;
 import org.keycloak.common.enums.SslRequired;
-import org.keycloak.common.util.Base64;
 import org.keycloak.common.util.MultivaluedHashMap;
+import org.keycloak.common.util.Time;
 import org.keycloak.common.util.UriUtils;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialModel;
+import org.keycloak.credential.hash.PasswordHashProvider;
 import org.keycloak.keys.KeyProvider;
 import org.keycloak.migration.MigrationProvider;
+import org.keycloak.migration.migrators.MigrateTo8_0_0;
 import org.keycloak.migration.migrators.MigrationUtils;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
@@ -82,13 +84,34 @@ import org.keycloak.models.RequiredActionProviderModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.ScopeContainerModel;
 import org.keycloak.models.UserConsentModel;
-import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.UserProvider;
+<<<<<<< HEAD
+<<<<<<< HEAD
 import org.keycloak.models.WebAuthnPolicy;
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+import org.keycloak.models.cache.UserCache;
+import org.keycloak.models.credential.OTPCredentialModel;
+>>>>>>> ef4ac1f402... Cherry- pick 2r
+import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.models.credential.dto.OTPCredentialData;
+import org.keycloak.models.credential.dto.OTPSecretData;
+import org.keycloak.models.credential.dto.PasswordCredentialData;
+import org.keycloak.models.credential.dto.PasswordSecretData;
+import org.keycloak.policy.PasswordPolicyManagerProvider;
+=======
+>>>>>>> c7232e6947... Cherry- pick 2r
 import org.keycloak.models.cache.UserCache;
 import org.keycloak.models.credential.PasswordUserCredentialModel;
+=======
+import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.policy.PasswordPolicyManagerProvider;
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
 import org.keycloak.policy.PasswordPolicyNotMetException;
+import org.keycloak.policy.PolicyError;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.idm.ApplicationRepresentation;
 import org.keycloak.representations.idm.AuthenticationExecutionExportRepresentation;
@@ -660,8 +683,7 @@ public class RepresentationToModel {
             for (AuthenticationFlowRepresentation flowRep : rep.getAuthenticationFlows()) {
                 AuthenticationFlowModel model = newRealm.getFlowByAlias(flowRep.getAlias());
                 for (AuthenticationExecutionExportRepresentation exeRep : flowRep.getAuthenticationExecutions()) {
-                    AuthenticationExecutionModel execution = toModel(newRealm, exeRep);
-                    execution.setParentFlow(model.getId());
+                    AuthenticationExecutionModel execution = toModel(newRealm, model, exeRep);
                     newRealm.addAuthenticatorExecution(execution);
                 }
             }
@@ -876,6 +898,33 @@ public class RepresentationToModel {
             }
 
             realm.setClientScopes(clientScopes);
+        }
+    }
+
+    private static void convertDeprecatedCredentialsFormat(UserRepresentation user) {
+        if (user.getCredentials() != null) {
+            for (CredentialRepresentation cred : user.getCredentials()) {
+                try {
+                    if ((cred.getCredentialData() == null || cred.getSecretData() == null) && cred.getValue() == null) {
+                        if (PasswordCredentialModel.TYPE.equals(cred.getType()) || PasswordCredentialModel.PASSWORD_HISTORY.equals(cred.getType())) {
+                            PasswordCredentialData credentialData = new PasswordCredentialData(cred.getHashIterations(), cred.getAlgorithm());
+                            cred.setCredentialData(JsonSerialization.writeValueAsString(credentialData));
+                            // Created this manually to avoid conversion from Base64 and back
+                            cred.setSecretData("{\"value\":\"" + cred.getHashedSaltedValue() + "\",\"salt\":\"" + cred.getSalt() + "\"}");
+                            cred.setPriority(10);
+                        } else if (OTPCredentialModel.TOTP.equals(cred.getType()) || OTPCredentialModel.HOTP.equals(cred.getType())) {
+                            OTPCredentialData credentialData = new OTPCredentialData(cred.getType(), cred.getDigits(), cred.getCounter(), cred.getPeriod(), cred.getAlgorithm());
+                            OTPSecretData secretData = new OTPSecretData(cred.getHashedSaltedValue());
+                            cred.setCredentialData(JsonSerialization.writeValueAsString(credentialData));
+                            cred.setSecretData(JsonSerialization.writeValueAsString(secretData));
+                            cred.setPriority(20);
+                            cred.setType(OTPCredentialModel.TYPE);
+                        }
+                    }
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            }
         }
     }
 
@@ -1657,6 +1706,7 @@ public class RepresentationToModel {
 
     public static UserModel createUser(KeycloakSession session, RealmModel newRealm, UserRepresentation userRep) {
         convertDeprecatedSocialProviders(userRep);
+        convertDeprecatedCredentialsFormat(userRep);
 
         // Import users just to user storage. Don't federate
         UserModel user = session.userLocalStorage().addUser(newRealm, userRep.getId(), userRep.getUsername(), false, false);
@@ -1724,6 +1774,8 @@ public class RepresentationToModel {
     public static void createCredentials(UserRepresentation userRep, KeycloakSession session, RealmModel realm, UserModel user, boolean adminRequest) {
         if (userRep.getCredentials() != null) {
             for (CredentialRepresentation cred : userRep.getCredentials()) {
+<<<<<<< HEAD
+<<<<<<< HEAD
                 updateCredential(session, realm, user, cred, adminRequest);
             }
         }
@@ -1774,6 +1826,46 @@ public class RepresentationToModel {
                     hashedCred.setAlgorithm("pbkdf2");
                 } else if (UserCredentialModel.isOtp(cred.getType())) {
                     hashedCred.setAlgorithm(HmacOTP.HMAC_SHA1);
+=======
+                if (cred.getId() != null && session.userCredentialManager().getStoredCredentialById(realm, user, cred.getId()) != null) {
+                    continue;
+                }
+                if (cred.getValue() != null && !cred.getValue().isEmpty()) {
+                    RealmModel origRealm = session.getContext().getRealm();
+                    try {
+                        session.getContext().setRealm(realm);
+                        session.userCredentialManager().updateCredential(realm, user, UserCredentialModel.password(cred.getValue(), false));
+=======
+                if (cred.getId() != null && session.userCredentialManager().getStoredCredentialById(realm, user, cred.getId()) != null) {
+                    continue;
+                }
+                if (cred.getValue() != null && !cred.getValue().isEmpty()) {
+                    PasswordPolicy policy = realm.getPasswordPolicy();
+                    RealmModel origRealm = session.getContext().getRealm();
+                    try {
+                        session.getContext().setRealm(realm);
+                        PolicyError error = session.getProvider(PasswordPolicyManagerProvider.class).validate(realm, user, cred.getValue());
+                        if (error != null) throw new ModelException(error.getMessage(), error.getParameters());
+
+                        PasswordHashProvider hash = session.getProvider(PasswordHashProvider.class, policy.getHashAlgorithm());
+                        if (hash == null) {
+                            logger.warnv("Realm PasswordPolicy PasswordHashProvider {0} not found", policy.getHashAlgorithm());
+                            throw new ModelException(String.format("Realm PasswordPolicy PasswordHashProvider %1$s not found",
+                                    policy.getHashAlgorithm()));
+                        }
+                        PasswordCredentialModel credentialModel = hash.encodedCredential(cred.getValue(), policy.getHashIterations());
+                        credentialModel.setCreatedDate(Time.currentTimeMillis());
+                        session.userCredentialManager().createCredential(realm, user, credentialModel);
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
+                    } catch (ModelException ex) {
+                        throw new PasswordPolicyNotMetException(ex.getMessage(), user.getUsername(), ex);
+                    } finally {
+                        session.getContext().setRealm(origRealm);
+                    }
+                } else {
+<<<<<<< HEAD
+                    session.userCredentialManager().createCredentialThroughProvider(realm, user, toModel(cred));
+>>>>>>> c7232e6947... Cherry- pick 2r
                 }
             }
 
@@ -1790,40 +1882,23 @@ public class RepresentationToModel {
             if (userCache != null) {
                 userCache.evict(realm, user);
             }
+=======
+                    session.userCredentialManager().createCredential(realm, user, toModel(cred));
+                }
+            }
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
         }
-    }
-
-    public static PasswordUserCredentialModel convertCredential(CredentialRepresentation cred) {
-        PasswordUserCredentialModel credential = new PasswordUserCredentialModel();
-        credential.setType(cred.getType());
-        credential.setValue(cred.getValue());
-        return credential;
     }
 
     public static CredentialModel toModel(CredentialRepresentation cred) {
         CredentialModel model = new CredentialModel();
-        model.setHashIterations(cred.getHashIterations());
         model.setCreatedDate(cred.getCreatedDate());
         model.setType(cred.getType());
-        model.setDigits(cred.getDigits());
-        model.setConfig(cred.getConfig());
-        model.setDevice(cred.getDevice());
-        model.setAlgorithm(cred.getAlgorithm());
-        model.setCounter(cred.getCounter());
-        model.setPeriod(cred.getPeriod());
-        if (cred.getSalt() != null) {
-            try {
-                model.setSalt(Base64.decode(cred.getSalt()));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        model.setValue(cred.getValue());
-        if (cred.getHashedSaltedValue() != null) {
-            model.setValue(cred.getHashedSaltedValue());
-        }
+        model.setUserLabel(cred.getUserLabel());
+        model.setSecretData(cred.getSecretData());
+        model.setCredentialData(cred.getCredentialData());
+        model.setId(cred.getId());
         return model;
-
     }
 
     // Role mappings
@@ -1986,7 +2061,7 @@ public class RepresentationToModel {
 
     }
 
-    public static AuthenticationExecutionModel toModel(RealmModel realm, AuthenticationExecutionExportRepresentation rep) {
+    private static AuthenticationExecutionModel toModel(RealmModel realm, AuthenticationFlowModel parentFlow, AuthenticationExecutionExportRepresentation rep) {
         AuthenticationExecutionModel model = new AuthenticationExecutionModel();
         if (rep.getAuthenticatorConfig() != null) {
             AuthenticatorConfigModel config = realm.getAuthenticatorConfigByAlias(rep.getAuthenticatorConfig());
@@ -1999,7 +2074,30 @@ public class RepresentationToModel {
             model.setFlowId(flow.getId());
         }
         model.setPriority(rep.getPriority());
+<<<<<<< HEAD
+<<<<<<< HEAD
         model.setRequirement(AuthenticationExecutionModel.Requirement.valueOf(rep.getRequirement()));
+=======
+        try {
+            model.setRequirement(AuthenticationExecutionModel.Requirement.valueOf(rep.getRequirement()));
+            model.setParentFlow(parentFlow.getId());
+        } catch (IllegalArgumentException iae) {
+            //retro-compatible for previous OPTIONAL being changed to CONDITIONAL
+            if ("OPTIONAL".equals(rep.getRequirement())){
+                MigrateTo8_0_0.migrateOptionalAuthenticationExecution(realm, parentFlow, model, false);
+            }
+        }
+>>>>>>> c7232e6947... Cherry- pick 2r
+=======
+        try {
+            model.setRequirement(AuthenticationExecutionModel.Requirement.valueOf(rep.getRequirement()));
+        } catch (IllegalArgumentException iae) {
+            //retro-compatible for previous OPTIONAL being changed to CONDITIONAL
+            if ("OPTIONAL".equals(rep.getRequirement())){
+                model.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
+            }
+        }
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
         return model;
     }
 

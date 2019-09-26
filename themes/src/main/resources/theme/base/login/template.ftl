@@ -70,6 +70,33 @@
           </#if>
 
           <#nested "form">
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+          <#if auth?has_content && auth.showBackButton() >
+          <form id="kc-select-back-form" action="${url.loginAction}" method="post" <#if displayWide>class="${properties.kcContentWrapperClass!}"</#if>>
+              <div <#if displayWide>class="${properties.kcFormSocialAccountContentClass!} ${properties.kcFormSocialAccountClass!}"</#if>>
+                  <div class="${properties.kcFormGroupClass!}">
+                    <input class="${properties.kcButtonClass!} ${properties.kcButtonDefaultClass!} ${properties.kcButtonBlockClass!} ${properties.kcButtonLargeClass!}"
+                           name="back" id="kc-back" type="submit" value="${msg("doBack")}"/>
+                  </div>
+              </div>
+          </form>
+          </#if>
+>>>>>>> c7232e6947... Cherry- pick 2r
+=======
+            <#if url.hasAction() >
+                <form id="kc-select-back-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
+                    <div id="kc-form-buttons" class="${properties.kcFormButtonsClass!}">
+                        <div class="${properties.kcFormButtonsWrapperClass!}">
+                            <input class="${properties.kcButtonClass!} ${properties.kcButtonLargeClass!}"
+                                   name="back" id="kc-back" type="submit" value="${msg("doBack")}"/>
+                        </div>
+                    </div>
+                </form>
+            </#if>
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
 
           <#if displayInfo>
               <div id="kc-info" class="${properties.kcSignUpClass!}">

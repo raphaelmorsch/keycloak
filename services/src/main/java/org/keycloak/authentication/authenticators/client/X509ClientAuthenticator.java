@@ -1,16 +1,12 @@
 package org.keycloak.authentication.authenticators.client;
 
-import org.apache.commons.codec.binary.StringUtils;
-import org.keycloak.Config;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.ClientAuthenticationFlowContext;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.ClientModel;
-import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.provider.ProviderConfigProperty;
-import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.services.ServicesLogger;
 import org.keycloak.services.x509.X509ClientCertificateLookup;
 
@@ -22,7 +18,6 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class X509ClientAuthenticator extends AbstractClientAuthenticator {
 
@@ -32,10 +27,6 @@ public class X509ClientAuthenticator extends AbstractClientAuthenticator {
 
     protected static ServicesLogger logger = ServicesLogger.LOGGER;
 
-    public static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
-            AuthenticationExecutionModel.Requirement.ALTERNATIVE,
-            AuthenticationExecutionModel.Requirement.DISABLED
-    };
 
     @Override
     public void authenticateClient(ClientAuthenticationFlowContext context) {
@@ -160,9 +151,13 @@ public class X509ClientAuthenticator extends AbstractClientAuthenticator {
    @Override
     public Set<String> getProtocolAuthenticatorMethods(String loginProtocol) {
         if (loginProtocol.equals(OIDCLoginProtocol.LOGIN_PROTOCOL)) {
+<<<<<<< HEAD
             Set<String> results = new HashSet<>();
             results.add(OIDCLoginProtocol.TLS_CLIENT_AUTH);
             return results;
+=======
+            return new HashSet<>();
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
         } else {
             return Collections.emptySet();
         }

@@ -642,6 +642,50 @@ module.factory('UserImpersonation', function($resource) {
 module.factory('UserCredentials', function($resource) {
     var credentials = {};
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
+    credentials.getCredentials = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials', {
+        realm : '@realm',
+        userId : '@userId'
+    }).query;
+
+    credentials.deleteCredential = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials/:credentialId', {
+        realm : '@realm',
+        userId : '@userId',
+        credentialId : '@credentialId'
+    }).delete;
+
+<<<<<<< HEAD
+    credentials.updateCredentialLabel = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials/:credentialId/label', {
+=======
+    credentials.updateCredential = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials/:credentialId', {
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
+        realm : '@realm',
+        userId : '@userId',
+        credentialId : '@credentialId'
+    }, {
+        update : {
+<<<<<<< HEAD
+            method : 'PUT',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8'
+            },
+            transformRequest: function(credential, getHeaders) {
+                return credential.userLabel;
+            }
+        }
+    }).update;
+
+>>>>>>> c7232e6947... Cherry- pick 2r
+=======
+            method : 'PUT'
+        }
+    }).update;
+
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
     credentials.resetPassword = $resource(authUrl + '/admin/realms/:realm/users/:userId/reset-password', {
         realm : '@realm',
         userId : '@userId'
@@ -666,6 +710,27 @@ module.factory('UserCredentials', function($resource) {
     }, {
         update : {
             method : 'PUT'
+        }
+    }).update;
+
+    credentials.moveCredentialAfter = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials/:credentialId/moveAfter/:newPreviousCredentialId', {
+        realm : '@realm',
+        userId : '@userId',
+        credentialId : '@credentialId',
+        newPreviousCredentialId : '@newPreviousCredentialId'
+    }, {
+        update : {
+            method : 'POST'
+        }
+    }).update;
+
+    credentials.moveToFirst = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials/:credentialId/moveToFirst', {
+        realm : '@realm',
+        userId : '@userId',
+        credentialId : '@credentialId'
+    }, {
+        update : {
+            method : 'POST'
         }
     }).update;
 

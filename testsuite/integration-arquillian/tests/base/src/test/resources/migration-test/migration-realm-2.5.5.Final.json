@@ -484,15 +484,9 @@
     "emailVerified" : false,
     "credentials" : [ {
       "type" : "password",
-      "hashedSaltedValue" : "UahGF6QpiHbshvw6GmaLR+cgM7v6ZxNKd3mPywudvAz3KWOhv0sMvespERCykvSC2xP4OBMzbwwxBACRSmGE0w==",
-      "salt" : "mnR0QbmURHVkSej+2eG9ng==",
-      "hashIterations" : 20000,
-      "counter" : 0,
-      "algorithm" : "pbkdf2",
-      "digits" : 0,
-      "period" : 0,
-      "createdDate" : 1489756582960,
-      "config" : { }
+      "secretData" : "{\"value\", : \"UahGF6QpiHbshvw6GmaLR+cgM7v6ZxNKd3mPywudvAz3KWOhv0sMvespERCykvSC2xP4OBMzbwwxBACRSmGE0w==\",\"salt\" : \"mnR0QbmURHVkSej+2eG9ng==\"}",
+      "credentialData" : "{\"hashIterations\" : 20000,\"algorithm\" : \"pbkdf2\"}",
+      "createdDate" : 1489756582960
     } ],
     "disableableCredentialTypes" : [ "password" ],
     "requiredActions" : [ ],
@@ -2092,7 +2086,28 @@
     "enabled" : true,
     "totp" : false,
     "emailVerified" : false,
-    "credentials" : [ ],
+    "credentials" : [ {
+      "type" : "totp",
+      "hashedSaltedValue" : "dSdmuHLQhkm54oIm0A0S",
+      "hashIterations" : 0,
+      "counter" : 0,
+      "algorithm" : "HmacSHA1",
+      "digits" : 8,
+      "period" : 40,
+      "createdDate" : 1570002889420,
+      "config" : { }
+    }, {
+      "type" : "password",
+      "hashedSaltedValue" : "kNwotFPNeuwelpT1HWt+E4ONXFK6wjd+h0zbzNBRGwOqacAjeY7vYN9QZQ46DlEKSdn04cEU/3RvX8WPcRegxg==",
+      "salt" : "rEIJDbs+BQqpx31v8mONWA==",
+      "hashIterations" : 27500,
+      "counter" : 0,
+      "algorithm" : "pbkdf2-sha256",
+      "digits" : 0,
+      "period" : 0,
+      "createdDate" : 1570002786025,
+      "config" : { }
+    } ],
     "disableableCredentialTypes" : [ ],
     "requiredActions" : [ ],
     "realmRoles" : [ "uma_authorization", "offline_access" ],

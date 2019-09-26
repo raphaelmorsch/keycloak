@@ -342,12 +342,8 @@
     "emailVerified" : false,
     "credentials" : [ {
       "type" : "password",
-      "hashedSaltedValue" : "Y71bKP3V5cvqiPGxPspDCQRraGbJD4IGxjYOez4QdubTYpoFjYb2wdC+pRoXskBvOaCYQcGzMa3SatDrFlBm9Q==",
-      "salt" : "o6D0KTKeFVejy00RhKZxvQ==",
-      "hashIterations" : 20000,
-      "counter" : 0,
-      "algorithm" : "pbkdf2",
-      "digits" : 0,
+      "credentialData" : "{\"hashIterations\" : 20000, \"algorithm\" : \"pbkdf2\"}",
+      "secretData" : "{\"value\":\"Y71bKP3V5cvqiPGxPspDCQRraGbJD4IGxjYOez4QdubTYpoFjYb2wdC+pRoXskBvOaCYQcGzMa3SatDrFlBm9Q==\",\"salt\":\"o6D0KTKeFVejy00RhKZxvQ==\"}",
       "createdDate" : 1476260086000
     } ],
     "requiredActions" : [ ],
@@ -1744,14 +1740,39 @@
     "totp" : false,
     "emailVerified" : false,
     "credentials" : [ {
+      "type" : "totp",
+      "hashedSaltedValue" : "dSdmuHLQhkm54oIm0A0S",
+      "hashIterations" : 0,
+      "counter" : 0,
+      "algorithm" : "HmacSHA1",
+      "digits" : 8,
+      "period" : 40,
+      "createdDate" : 1570002889420
+    }, {
       "type" : "password",
+<<<<<<< HEAD
+<<<<<<< HEAD
       "hashedSaltedValue" : "Y71bKP3V5cvqiPGxPspDCQRraGbJD4IGxjYOez4QdubTYpoFjYb2wdC+pRoXskBvOaCYQcGzMa3SatDrFlBm9Q==",
       "salt" : "o6D0KTKeFVejy00RhKZxvQ==",
       "hashIterations" : 20000,
       "counter" : 0,
       "algorithm" : "pbkdf2",
       "digits" : 0,
+=======
+      "secretData" : "{\"value\" : \"Y71bKP3V5cvqiPGxPspDCQRraGbJD4IGxjYOez4QdubTYpoFjYb2wdC+pRoXskBvOaCYQcGzMa3SatDrFlBm9Q==\",\"salt\" : \"o6D0KTKeFVejy00RhKZxvQ==\"}",
+      "credentialData" : "{\"hashIterations\" : 20000,\"algorithm\" : \"pbkdf2\"}",
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
       "createdDate" : 1476260086000
+=======
+      "hashedSaltedValue" : "kNwotFPNeuwelpT1HWt+E4ONXFK6wjd+h0zbzNBRGwOqacAjeY7vYN9QZQ46DlEKSdn04cEU/3RvX8WPcRegxg==",
+      "salt" : "rEIJDbs+BQqpx31v8mONWA==",
+      "hashIterations" : 27500,
+      "counter" : 0,
+      "algorithm" : "pbkdf2-sha256",
+      "digits" : 0,
+      "period" : 0,
+      "createdDate" : 1570002786025
+>>>>>>> c7232e6947... Cherry- pick 2r
     } ],
     "requiredActions" : [ ],
     "realmRoles" : [ "offline_access" ],

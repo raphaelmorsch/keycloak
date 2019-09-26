@@ -63,8 +63,6 @@ import org.keycloak.testsuite.util.OAuthClient;
 import org.keycloak.testsuite.util.RealmBuilder;
 import org.keycloak.testsuite.util.UIUtils;
 import org.keycloak.testsuite.util.UserBuilder;
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.Collections;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -465,23 +463,23 @@ public class AccountFormServiceTest extends AbstractTestRealmKeycloakTest {
         assertChangePasswordSucceeds("password",  "password3"); // current: password
         assertNumberOfStoredCredentials(2);
 
-        assertChangePasswordFails   ("password3", "password");  // current: password1, history: password
+        assertChangePasswordFails   ("password3", "password");  // current: password3, history: password
         assertNumberOfStoredCredentials(2);
         assertChangePasswordFails   ("password3", "password3"); // current: password1, history: password
         assertNumberOfStoredCredentials(2);
         assertChangePasswordSucceeds("password3", "password4"); // current: password1, history: password
         assertNumberOfStoredCredentials(3);
 
-        assertChangePasswordFails   ("password4", "password");  // current: password2, history: password, password1
+        assertChangePasswordFails   ("password4", "password");  // current: password4, history: password3, password
         assertNumberOfStoredCredentials(3);
-        assertChangePasswordFails   ("password4", "password3"); // current: password2, history: password, password1
+        assertChangePasswordFails   ("password4", "password3"); // current: password4, history: password3, password
         assertNumberOfStoredCredentials(3);
-        assertChangePasswordFails   ("password4", "password4"); // current: password2, history: password, password1
+        assertChangePasswordFails   ("password4", "password4"); // current: password4, history: password3, password
         assertNumberOfStoredCredentials(3);
-        assertChangePasswordSucceeds("password4", "password5"); // current: password2, history: password, password1
+        assertChangePasswordSucceeds("password4", "password5"); // current: password4, history: password3, password
         assertNumberOfStoredCredentials(3);
 
-        assertChangePasswordSucceeds("password5", "password");  // current: password3, history: password1, password2
+        assertChangePasswordSucceeds("password5", "password");  // current: password5, history: password4, password3
         assertNumberOfStoredCredentials(3);
     }
 

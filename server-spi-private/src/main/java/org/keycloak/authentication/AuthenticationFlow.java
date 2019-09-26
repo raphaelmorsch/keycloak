@@ -18,6 +18,8 @@
 package org.keycloak.authentication;
 
 import javax.ws.rs.core.Response;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
@@ -30,4 +32,15 @@ public interface AuthenticationFlow {
 
     Response processAction(String actionExecution);
     Response processFlow();
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    boolean isSuccessful();
+    default List<AuthenticationFlowException> getFlowExceptions(){
+        return Collections.emptyList();
+    }
+>>>>>>> c7232e6947... Cherry- pick 2r
+=======
+    boolean isSuccessful();
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
 }

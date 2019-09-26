@@ -16,16 +16,56 @@
  */
 package org.keycloak.credential;
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
+>>>>>>> c7232e6947... Cherry- pick 2r
+=======
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
 import org.keycloak.provider.Provider;
+
+import java.util.List;
 
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
  */
-public interface CredentialProvider extends Provider {
+public interface CredentialProvider<T extends CredentialModel> extends Provider {
+
     @Override
-    default
-    void close() {
+    default void close() {
 
     }
+<<<<<<< HEAD
+=======
+
+    String getType();
+
+    CredentialModel createCredential(RealmModel realm, UserModel user, T credentialModel);
+
+    void deleteCredential(RealmModel realm, UserModel user, String credentialId);
+
+    T getCredentialFromModel(CredentialModel model);
+
+    default T getDefaultCredential(KeycloakSession session, RealmModel realm, UserModel user) {
+        List<CredentialModel> models = session.userCredentialManager().getStoredCredentialsByType(realm, user, getType());
+        if (models.isEmpty()) {
+            return null;
+        }
+        return getCredentialFromModel(models.get(0));
+    }
+<<<<<<< HEAD
+>>>>>>> c7232e6947... Cherry- pick 2r
+=======
+
+    String getType();
+
+    CredentialModel createCredential(RealmModel realm, UserModel user, T credentialModel);
+    void deleteCredential(RealmModel realm, UserModel user, String credentialId);
+>>>>>>> db8e53edc5... multi-factor cherry-pick2
 }
