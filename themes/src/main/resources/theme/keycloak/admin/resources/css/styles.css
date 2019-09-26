@@ -481,14 +481,17 @@ table.credential-data-table td:first-child {
 
 table.credential-data-table td.key {
     text-align: right;
-    padding-top: 8px;
+    font-weight: bold;
 }
 
+<<<<<<< HEAD
 table.credential-data-table td.value {
     text-align: right;
     padding: 5px;
 }
 =======
+=======
+>>>>>>> ef4ac1f402... Cherry- pick 2r
 /* search highlighting */
 
 div[tree-model] li .highlight {

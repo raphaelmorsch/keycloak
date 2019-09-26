@@ -1,18 +1,15 @@
 package org.keycloak.services.resources.account;
 
 import org.jboss.resteasy.annotations.cache.NoCache;
+import org.keycloak.authentication.CredentialRegistrator;
+import org.keycloak.authentication.RequiredActionProvider;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.CredentialProvider;
 import org.keycloak.credential.PasswordCredentialProvider;
 import org.keycloak.credential.PasswordCredentialProviderFactory;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.events.EventType;
-import org.keycloak.models.AccountRoles;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.ModelException;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserCredentialModel;
-import org.keycloak.models.UserModel;
+import org.keycloak.models.*;
 import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.services.ErrorResponse;
@@ -59,13 +56,18 @@ public class AccountCredentialResource {
         return models.stream().map(ModelToRepresentation::toRepresentation).collect(Collectors.toList());
     }
 
+
     @GET
-    @Path("types")
+    @Path("registrators")
     @NoCache
     @Produces(javax.ws.rs.core.MediaType.APPLICATION_JSON)
-    public List<String> getCredentialTypes(){
+    public List<String> getCredentialRegistrators(){
         auth.requireOneOf(AccountRoles.MANAGE_ACCOUNT, AccountRoles.VIEW_PROFILE);
-        return session.getAllProviders(CredentialProvider.class).stream().map(CredentialProvider::getType).collect(Collectors.toList());
+
+        return session.getContext().getRealm().getRequiredActionProviders().stream()
+                .map(RequiredActionProviderModel::getProviderId)
+                .filter(providerId ->  session.getProvider(RequiredActionProvider.class, providerId) instanceof CredentialRegistrator)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -88,10 +90,7 @@ public class AccountCredentialResource {
     @Path("{credentialId}/label")
     public void setLabel(final @PathParam("credentialId") String credentialId, String userLabel) {
         auth.require(AccountRoles.MANAGE_ACCOUNT);
-        // We update the existing credential representation and persist it
-        CredentialModel credential = session.userCredentialManager().getStoredCredentialById(realm, user, credentialId);
-        credential.setUserLabel(userLabel);
-        session.userCredentialManager().updateCredential(realm, user, credential);
+        session.userCredentialManager().updateCredentialLabel(realm, user, credentialId, userLabel);
     }
 
     /**

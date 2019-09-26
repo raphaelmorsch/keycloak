@@ -63,8 +63,13 @@
     <include file="META-INF/jpa-changelog-4.7.0.xml"/>
     <include file="META-INF/jpa-changelog-4.8.0.xml"/>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <include file="META-INF/jpa-changelog-7.0.0.xml"/>
 =======
     <include file="META-INF/jpa-changelog-authz-7.0.0.xml"/>
 >>>>>>> 0cdd23763c... [KEYCLOAK-10443] - Define a global decision strategy for resource servers
+=======
+    <include file="META-INF/jpa-changelog-authz-7.0.0.xml"/>
+    <include file="META-INF/jpa-changelog-8.0.0.xml"/>
+>>>>>>> ef4ac1f402... Cherry- pick 2r
 </databaseChangeLog>

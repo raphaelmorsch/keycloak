@@ -39,9 +39,9 @@ import java.util.Collection;
  * @version $Revision: 1 $
  */
 @NamedQueries({
-        @NamedQuery(name="federatedUserCredentialByUser", query="select cred from FederatedUserCredentialEntity cred where cred.userId = :userId"),
-        @NamedQuery(name="federatedUserCredentialByUserAndType", query="select cred from FederatedUserCredentialEntity cred where cred.userId = :userId and cred.type = :type"),
-        @NamedQuery(name="federatedUserCredentialByNameAndType", query="select cred from FederatedUserCredentialEntity cred where cred.userId = :userId and cred.type = :type and cred.userLabel = :userLabel"),
+        @NamedQuery(name="federatedUserCredentialByUser", query="select cred from FederatedUserCredentialEntity cred where cred.userId = :userId order by cred.priority"),
+        @NamedQuery(name="federatedUserCredentialByUserAndType", query="select cred from FederatedUserCredentialEntity cred where cred.userId = :userId and cred.type = :type order by cred.priority"),
+        @NamedQuery(name="federatedUserCredentialByNameAndType", query="select cred from FederatedUserCredentialEntity cred where cred.userId = :userId and cred.type = :type and cred.userLabel = :userLabel order by cred.priority"),
         @NamedQuery(name="deleteFederatedUserCredentialByUser", query="delete from FederatedUserCredentialEntity cred where cred.userId = :userId and cred.realmId = :realmId"),
         @NamedQuery(name="deleteFederatedUserCredentialByUserAndType", query="delete from FederatedUserCredentialEntity cred where cred.userId = :userId and cred.type = :type"),
         @NamedQuery(name="deleteFederatedUserCredentialByUserAndTypeAndUserLabel", query="delete from FederatedUserCredentialEntity cred where cred.userId = :userId and cred.type = :type and cred.userLabel = :userLabel"),
@@ -81,6 +81,13 @@ public class FederatedUserCredentialEntity {
 
     @Column(name = "STORAGE_PROVIDER_ID")
     protected String storageProviderId;
+
+    @Column(name="PRIORITY")
+    protected int priority;
+
+    @Deprecated // Needed just for backwards compatibility when migrating old credentials
+    @Column(name="SALT")
+    protected byte[] salt;
 
 
     public String getId() {
@@ -149,6 +156,23 @@ public class FederatedUserCredentialEntity {
         this.storageProviderId = storageProviderId;
     }
 
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
+
+    @Deprecated
+    public byte[] getSalt() {
+        return salt;
+    }
+
+    @Deprecated
+    public void setSalt(byte[] salt) {
+        this.salt = salt;
+    }
 
     @Override
     public boolean equals(Object o) {

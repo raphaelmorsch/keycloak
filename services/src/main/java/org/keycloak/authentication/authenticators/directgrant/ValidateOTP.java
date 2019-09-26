@@ -61,7 +61,9 @@ public class ValidateOTP extends AbstractDirectGrantAuthenticator implements Cre
         String otp = inputData.getFirst("otp");
         String credentialId = context.getSelectedCredentialId();
         if (credentialId == null || credentialId.isEmpty()) {
-            credentialId = getCredentialProvider(context.getSession()).getPreferredCredential(context.getRealm(), context.getUser()).getId();
+            credentialId = getCredentialProvider(context.getSession())
+                    .getDefaultCredential(context.getSession(), context.getRealm(), context.getUser()).getId();
+            context.setSelectedCredentialId(credentialId);
         }
         if (otp == null) {
             if (context.getUser() != null) {
