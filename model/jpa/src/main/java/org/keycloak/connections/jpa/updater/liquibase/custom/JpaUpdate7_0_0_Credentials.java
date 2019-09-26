@@ -14,7 +14,7 @@ public class JpaUpdate7_0_0_Credentials extends CustomKeycloakTask {
     @Override
     protected void generateStatementsImpl() throws CustomChangeException {
         String credentialTableName = database.correctObjectName("CREDENTIAL", Table.class);
-        try (PreparedStatement statement = jdbcConnection.prepareStatement("SELECT HASH_ITERATIONS, SALT, TYPE, VALUE, COUNTER, DIGITS, PERIOD, ALGORITHM FROM " + credentialTableName);
+        try (PreparedStatement statement = jdbcConnection.prepareStatement("SELECT ID, HASH_ITERATIONS, SALT, TYPE, VALUE, COUNTER, DIGITS, PERIOD, ALGORITHM FROM " + credentialTableName);
              ResultSet rs = statement.executeQuery()) {
             String previousId = null;
             while (rs.next()) {
