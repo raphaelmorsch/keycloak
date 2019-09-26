@@ -487,3 +487,8 @@ table.credential-data-table td.value {
     text-align: right;
     padding: 5px;
 }
+/* search highlighting */
+
+div[tree-model] li .highlight {
+    background-color: #aaddff;
+}

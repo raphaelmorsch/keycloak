@@ -1045,7 +1045,7 @@ function removeGroupMember(groups, member) {
     }
 }
 
-module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, UserGroupMembership, UserGroupMembershipCount, UserGroupMapping, Notifications, Groups, GroupsCount) {
+module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, UserGroupMembership, UserGroupMembershipCount, UserGroupMapping, Notifications, Groups, GroupsCount, ComponentUtils) {
     $scope.realm = realm;
     $scope.user = user;
     $scope.groupList = [];
@@ -1087,6 +1087,7 @@ module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, U
     };
 
     var refreshUserGroupMembership = function (search) {
+        $scope.currentMembershipPageInput = $scope.currentMembershipPage;
         var first = ($scope.currentMembershipPage * $scope.pageSize) - $scope.pageSize;
         var queryParams = {
             realm : realm.realm,
@@ -1133,12 +1134,16 @@ module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, U
             } else {
                 $scope.numberOfMembershipPages = 1;
             }
+            if (parseInt($scope.currentMembershipPage, 10) > $scope.numberOfMembershipPages) {
+                $scope.currentMembershipPage = $scope.numberOfMembershipPages;
+            }
         }, function (failed) {
             Notifications.error(failed);
         });
     };
 
     var refreshAvailableGroups = function (search) {
+        $scope.currentPageInput = $scope.currentPage;
         var first = ($scope.currentPage * $scope.pageSize) - $scope.pageSize;
         var queryParams = {
             realm : realm.realm,
@@ -1164,7 +1169,7 @@ module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, U
         });
 
         promiseGetGroups.promise.then(function(groups) {
-            $scope.groupList = groups;
+            $scope.groupList = ComponentUtils.sortGroups('name', groups);
         }, function (failed) {
             Notifications.error(failed);
         });
@@ -1189,14 +1194,19 @@ module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, U
 
     $scope.clearSearchMembership = function() {
         $scope.searchCriteriaMembership = '';
-        $scope.currentMembershipPage = 1;
-        $scope.currentMembershipPageInput = 1;
-        refreshUserGroupMembership();
+        if (parseInt($scope.currentMembershipPage, 10) === 1) {
+            refreshUserGroupMembership();
+        } else {
+            $scope.currentMembershipPage = 1;
+        }
     };
 
     $scope.searchGroupMembership = function() {
-        $scope.currentMembershipPage = 1;
-        refreshUserGroupMembership($scope.searchCriteriaMembership);
+        if (parseInt($scope.currentMembershipPage, 10) === 1) {
+            refreshUserGroupMembership($scope.searchCriteriaMembership);
+        } else {
+            $scope.currentMembershipPage = 1;
+        }
     };
 
     refreshAvailableGroups();
@@ -1204,30 +1214,32 @@ module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, U
     refreshCompleteUserGroupMembership();
 
     $scope.$watch('currentPage', function(newValue, oldValue) {
-        if(newValue !== oldValue) {
-            refreshAvailableGroups($scope.searchCriteria)
-            .then(function(){
-                refreshUserGroupMembership($scope.searchCriteriaMembership);
-            });
+        if(parseInt(newValue, 10) !== parseInt(oldValue, 10)) {
+            refreshAvailableGroups($scope.searchCriteria);
         }
     });
 
     $scope.$watch('currentMembershipPage', function(newValue, oldValue) {
-        if(newValue !== oldValue) {
+        if(parseInt(newValue, 10) !== parseInt(oldValue, 10)) {
             refreshUserGroupMembership($scope.searchCriteriaMembership);
         }
     });
 
     $scope.clearSearch = function() {
         $scope.searchCriteria = '';
-        $scope.currentPage = 1;
-        $scope.currentPageInput = 1;
-        refreshAvailableGroups();
+        if (parseInt($scope.currentPage, 10) === 1) {
+            refreshAvailableGroups();
+        } else {
+            $scope.currentPage = 1;
+        }
     };
 
     $scope.searchGroup = function() {
-        $scope.currentPage = 1;
-        refreshAvailableGroups($scope.searchCriteria);
+        if (parseInt($scope.currentPage, 10) === 1) {
+            refreshAvailableGroups($scope.searchCriteria);
+        } else {
+            $scope.currentPage = 1;
+        }
     };
 
     $scope.joinGroup = function() {
@@ -1241,7 +1253,7 @@ module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, U
         }
         UserGroupMapping.update({realm: realm.realm, userId: user.id, groupId: $scope.tree.currentNode.id}, function() {
             $scope.allGroupMemberships.push($scope.tree.currentNode);
-            refreshUserGroupMembership();
+            refreshUserGroupMembership($scope.searchCriteriaMembership);
             Notifications.success('Added group membership');
         });
 
@@ -1254,8 +1266,7 @@ module.controller('UserGroupMembershipCtrl', function($scope, $q, realm, user, U
         }
         UserGroupMapping.remove({realm: realm.realm, userId: user.id, groupId: $scope.membershipTree.currentNode.id}, function () {
             removeGroupMember($scope.allGroupMemberships, $scope.membershipTree.currentNode);
-            refreshAvailableGroups();
-            refreshUserGroupMembership();
+            refreshUserGroupMembership($scope.searchCriteriaMembership);
             Notifications.success('Removed group membership');
         });
 
@@ -1624,6 +1635,7 @@ module.controller('LDAPUserStorageCtrl', function($scope, $location, Notificatio
             bindCredential: ldapConfig.bindCredential,
             useTruststoreSpi: ldapConfig.useTruststoreSpi,
             connectionTimeout: ldapConfig.connectionTimeout,
+            startTls: ldapConfig.startTls,
             componentId: instance.id
         };
     };
@@ -1821,8 +1833,3 @@ module.controller('LDAPMapperCreateCtrl', function($scope, realm, provider, mapp
 
 
 });
-
-
-
-
-

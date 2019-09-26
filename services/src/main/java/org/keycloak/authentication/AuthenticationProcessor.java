@@ -77,6 +77,7 @@ public class AuthenticationProcessor {
 
     public static final String BROKER_SESSION_ID = "broker.session.id";
     public static final String BROKER_USER_ID = "broker.user.id";
+    public static final String FORWARDED_PASSIVE_LOGIN = "forwarded.passive.login";
 
     protected static final Logger logger = Logger.getLogger(AuthenticationProcessor.class);
     protected RealmModel realm;
@@ -1022,7 +1023,7 @@ public class AuthenticationProcessor {
             }
         }
     }
-
+    
     protected Response authenticationComplete() {
         // attachSession(); // Session will be attached after requiredActions + consents are finished.
         AuthenticationManager.setClientScopesInSession(authenticationSession);
