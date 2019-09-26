@@ -1836,7 +1836,14 @@ public class RepresentationToModel {
             model.setFlowId(flow.getId());
         }
         model.setPriority(rep.getPriority());
-        model.setRequirement(AuthenticationExecutionModel.Requirement.valueOf(rep.getRequirement()));
+        try {
+            model.setRequirement(AuthenticationExecutionModel.Requirement.valueOf(rep.getRequirement()));
+        } catch (IllegalArgumentException iae) {
+            //retro-compatible for previous OPTIONAL being changed to CONDITIONAL
+            if ("OPTIONAL".equals(rep.getRequirement())){
+                model.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
+            }
+        }
         return model;
     }
 

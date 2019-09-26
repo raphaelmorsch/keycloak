@@ -47,7 +47,7 @@ public class ValidateOTP extends AbstractDirectGrantAuthenticator implements Cre
     @Override
     public void authenticate(AuthenticationFlowContext context) {
         if (!configuredFor(context.getSession(), context.getRealm(), context.getUser())) {
-            if (context.getExecution().isOptional()) {
+            if (context.getExecution().isConditional()) {
                 context.attempted();
             } else if (context.getExecution().isRequired()) {
                 context.getEvent().error(Errors.INVALID_USER_CREDENTIALS);

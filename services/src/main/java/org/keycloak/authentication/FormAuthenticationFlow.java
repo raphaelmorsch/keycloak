@@ -202,7 +202,7 @@ public class FormAuthenticationFlow implements AuthenticationFlow {
                         } else {
                             throw new AuthenticationFlowException(AuthenticationFlowError.CREDENTIAL_SETUP_REQUIRED);
                         }
-                    } else if (formActionExecution.isOptional()) {
+                    } else if (formActionExecution.isConditional()) {
                         executionStatus.put(formActionExecution.getId(), AuthenticationSessionModel.ExecutionStatus.SKIPPED);
                         continue;
                     }

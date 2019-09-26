@@ -28,7 +28,7 @@ public class ConditionalBlockUserConfiguredAuthenticator implements ConditionalB
         List<AuthenticationExecutionModel> alternativeExecutions = new ArrayList<>();
         executions.forEach(e -> {
             if (!context.getExecution().getId().equals(e.getId())) {
-                if (e.isRequired() || e.isOptional()) {
+                if (e.isRequired() || e.isConditional()) {
                     requiredExecutions.add(e);
                 } else if (e.isAlternative()) {
                     alternativeExecutions.add(e);

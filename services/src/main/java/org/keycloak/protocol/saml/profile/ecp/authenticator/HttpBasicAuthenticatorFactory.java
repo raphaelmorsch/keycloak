@@ -53,7 +53,7 @@ public class HttpBasicAuthenticatorFactory implements AuthenticatorFactory {
     private static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
             AuthenticationExecutionModel.Requirement.REQUIRED,
             Requirement.ALTERNATIVE,
-            Requirement.OPTIONAL,
+            Requirement.CONDITIONAL,
             AuthenticationExecutionModel.Requirement.DISABLED
     };
 

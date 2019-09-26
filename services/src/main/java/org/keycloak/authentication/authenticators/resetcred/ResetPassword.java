@@ -32,7 +32,7 @@ public class ResetPassword extends AbstractSetRequiredActionAuthenticator {
     @Override
     public void authenticate(AuthenticationFlowContext context) {
         if (context.getExecution().isRequired() ||
-                (context.getExecution().isOptional() &&
+                (context.getExecution().isConditional() &&
                         configuredFor(context))) {
             context.getAuthenticationSession().addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
         }

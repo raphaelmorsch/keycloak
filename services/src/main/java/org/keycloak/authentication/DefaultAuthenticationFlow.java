@@ -213,7 +213,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         for (AuthenticationExecutionModel execution : executions) {
             if (isConditionalAuthenticator(execution)) {
                 conditionalList.add(execution);
-            } else if (execution.isRequired() || execution.isOptional()) {
+            } else if (execution.isRequired() || execution.isConditional()) {
                 requiredList.add(execution);
             } else if (execution.isAlternative()) {
                 alternativeList.add(execution);
@@ -223,7 +223,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         // Conditionals should be executed without considering SUCCESS/FAILED status
         // If condition is matched, the execution of the flow goes on
         // If condition is not matched, simply stop processing this flow and go on processing parent flow
-        if (flowIsOptional() && (conditionalList.isEmpty() || conditionalList.stream().anyMatch(this::conditionalNotMatched))) {
+        if (flowIsConditional() && (conditionalList.isEmpty() || conditionalList.stream().anyMatch(this::conditionalNotMatched))) {
             successful = true;
             return null;
         }
@@ -267,9 +267,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         return null;
     }
 
-    private boolean flowIsOptional() {
+    private boolean flowIsConditional() {
         AuthenticationExecutionModel flowModel = processor.getRealm().getAuthenticationExecutionByFlowId(flow.getId());
-        return flowModel!=null && flowModel.isOptional();
+        return flowModel!=null && flowModel.isConditional();
     }
 
     private boolean isConditionalAuthenticator(AuthenticationExecutionModel model) {

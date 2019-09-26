@@ -169,7 +169,7 @@ public class ExecutionTest extends AbstractAuthenticationTest {
         AuthenticationExecutionRepresentation rep = new AuthenticationExecutionRepresentation();
         rep.setPriority(10);
         rep.setAuthenticator("auth-cookie");
-        rep.setRequirement(OPTIONAL);
+        rep.setRequirement(CONDITIONAL);
 
         // Should fail - missing parent flow
         response = authMgmtResource.addExecution(rep);
@@ -219,7 +219,7 @@ public class ExecutionTest extends AbstractAuthenticationTest {
 
         // Note: there is no checking in addExecution if requirement is one of requirementChoices
         // Thus we can have OPTIONAL which is neither ALTERNATIVE, nor DISABLED
-        compareExecution(newExecInfo("Cookie", "auth-cookie", false, 0, 3, OPTIONAL, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED}), exec);
+        compareExecution(newExecInfo("Cookie", "auth-cookie", false, 0, 3, CONDITIONAL, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED}), exec);
     }
 
     @Test

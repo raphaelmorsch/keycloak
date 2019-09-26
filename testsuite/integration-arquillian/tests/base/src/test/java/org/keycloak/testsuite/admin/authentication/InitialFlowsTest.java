@@ -19,8 +19,6 @@ package org.keycloak.testsuite.admin.authentication;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.keycloak.models.utils.DefaultAuthenticationFlows;
-import org.keycloak.protocol.docker.DockerAuthenticator;
 import org.keycloak.representations.idm.AuthenticationExecutionExportRepresentation;
 import org.keycloak.representations.idm.AuthenticationExecutionInfoRepresentation;
 import org.keycloak.representations.idm.AuthenticationFlowRepresentation;
@@ -132,9 +130,9 @@ public class InitialFlowsTest extends AbstractAuthenticationTest {
         addExecInfo(execs, "Cookie", "auth-cookie", false, 0, 0, ALTERNATIVE, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
         addExecInfo(execs, "Kerberos", "auth-spnego", false, 0, 1, DISABLED, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
         addExecInfo(execs, "Identity Provider Redirector", "identity-provider-redirector", true, 0, 2, ALTERNATIVE, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
-        addExecInfo(execs, "forms", null, false, 0, 3, ALTERNATIVE, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, OPTIONAL});
+        addExecInfo(execs, "forms", null, false, 0, 3, ALTERNATIVE, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, CONDITIONAL});
         addExecInfo(execs, "Username Password Form", "auth-username-password-form", false, 1, 0, REQUIRED, null, new String[]{REQUIRED});
-        addExecInfo(execs, "Browser - Conditional OTP", null, false, 1, 1, OPTIONAL, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, OPTIONAL});
+        addExecInfo(execs, "Browser - Conditional OTP", null, false, 1, 1, CONDITIONAL, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, CONDITIONAL});
         addExecInfo(execs, "Conditional block - user configured", "conditional-user-configured", false, 2, 0, REQUIRED, null, new String[]{REQUIRED, DISABLED});
         addExecInfo(execs, "OTP Form", "auth-otp-form", false, 2, 1, REQUIRED, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
         expected.add(new FlowExecutions(flow, execs));
@@ -155,12 +153,12 @@ public class InitialFlowsTest extends AbstractAuthenticationTest {
         flow = newFlow("direct grant", "OpenID Connect Resource Owner Grant", "basic-flow", true, true);
         addExecExport(flow, null, false, "direct-grant-validate-username", false, null, REQUIRED, 10);
         addExecExport(flow, null, false, "direct-grant-validate-password", false, null, REQUIRED, 20);
-        addExecExport(flow, "Direct Grant - Conditional OTP", false, null, true, null, OPTIONAL, 30);
+        addExecExport(flow, "Direct Grant - Conditional OTP", false, null, true, null, CONDITIONAL, 30);
 
         execs = new LinkedList<>();
         addExecInfo(execs, "Username Validation", "direct-grant-validate-username", false, 0, 0, REQUIRED, null, new String[]{REQUIRED});
         addExecInfo(execs, "Password", "direct-grant-validate-password", false, 0, 1, REQUIRED, null, new String[]{REQUIRED, ALTERNATIVE,DISABLED});
-        addExecInfo(execs, "Direct Grant - Conditional OTP", null, false, 0, 2, OPTIONAL, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, OPTIONAL});
+        addExecInfo(execs, "Direct Grant - Conditional OTP", null, false, 0, 2, CONDITIONAL, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, CONDITIONAL});
         addExecInfo(execs, "Conditional block - user configured", "conditional-user-configured", false, 1, 0, REQUIRED, null, new String[]{REQUIRED, DISABLED});
         addExecInfo(execs, "OTP", "direct-grant-validate-otp", false, 1, 1, REQUIRED, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
         expected.add(new FlowExecutions(flow, execs));
@@ -179,15 +177,15 @@ public class InitialFlowsTest extends AbstractAuthenticationTest {
 
         execs = new LinkedList<>();
         addExecInfo(execs, "Review Profile", "idp-review-profile", true, 0, 0, REQUIRED, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
-        addExecInfo(execs, "User creation or linking", null, false, 0, 1, REQUIRED, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, OPTIONAL});
+        addExecInfo(execs, "User creation or linking", null, false, 0, 1, REQUIRED, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, CONDITIONAL});
         addExecInfo(execs, "Create User If Unique", "idp-create-user-if-unique", true, 1, 0, ALTERNATIVE, null, new String[]{REQUIRED, ALTERNATIVE,  DISABLED});
-        addExecInfo(execs, "Handle Existing Account", null, false, 1, 1, ALTERNATIVE, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, OPTIONAL});
+        addExecInfo(execs, "Handle Existing Account", null, false, 1, 1, ALTERNATIVE, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, CONDITIONAL});
         addExecInfo(execs, "Confirm link existing account", "idp-confirm-link", false, 2, 0, REQUIRED, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
-        addExecInfo(execs, "Account verification options", null, false, 2, 1, REQUIRED, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, OPTIONAL});
+        addExecInfo(execs, "Account verification options", null, false, 2, 1, REQUIRED, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, CONDITIONAL});
         addExecInfo(execs, "Verify existing account by Email", "idp-email-verification", false, 3, 0, ALTERNATIVE, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
-        addExecInfo(execs, "Verify Existing Account by Re-authentication", null, false, 3, 1, ALTERNATIVE, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, OPTIONAL});
+        addExecInfo(execs, "Verify Existing Account by Re-authentication", null, false, 3, 1, ALTERNATIVE, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, CONDITIONAL});
         addExecInfo(execs, "Username Password Form for identity provider reauthentication", "idp-username-password-form", false, 4, 0, REQUIRED, null, new String[]{REQUIRED});
-        addExecInfo(execs, "First broker login - Conditional OTP", null, false, 4, 1, OPTIONAL, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, OPTIONAL});
+        addExecInfo(execs, "First broker login - Conditional OTP", null, false, 4, 1, CONDITIONAL, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, CONDITIONAL});
         addExecInfo(execs, "Conditional block - user configured", "conditional-user-configured", false, 5, 0, REQUIRED, null, new String[]{REQUIRED, DISABLED});
         addExecInfo(execs, "OTP Form", "auth-otp-form", false, 5, 1, REQUIRED, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
         expected.add(new FlowExecutions(flow, execs));
@@ -198,7 +196,7 @@ public class InitialFlowsTest extends AbstractAuthenticationTest {
 
         execs = new LinkedList<>();
         addExecInfo(execs, "Browser Redirect/Refresh", "no-cookie-redirect", false, 0, 0, REQUIRED, null, new String[]{REQUIRED});
-        addExecInfo(execs, "Authentication Options", null, false, 0, 1, REQUIRED, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, OPTIONAL});
+        addExecInfo(execs, "Authentication Options", null, false, 0, 1, REQUIRED, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, CONDITIONAL});
         addExecInfo(execs, "Basic Auth Challenge", "basic-auth", false, 1, 0, REQUIRED, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
         addExecInfo(execs, "Basic Auth Password+OTP", "basic-auth-otp", false, 1, 1, DISABLED, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
         addExecInfo(execs, "Kerberos", "auth-spnego", false, 1, 2, DISABLED, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
@@ -219,13 +217,13 @@ public class InitialFlowsTest extends AbstractAuthenticationTest {
         addExecExport(flow, null, false, "reset-credentials-choose-user", false, null, REQUIRED, 10);
         addExecExport(flow, null, false, "reset-credential-email", false, null, REQUIRED, 20);
         addExecExport(flow, null, false, "reset-password", false, null, REQUIRED, 30);
-        addExecExport(flow, "Reset - Conditional OTP", false, null, true, null, OPTIONAL, 40);
+        addExecExport(flow, "Reset - Conditional OTP", false, null, true, null, CONDITIONAL, 40);
 
         execs = new LinkedList<>();
         addExecInfo(execs, "Choose User", "reset-credentials-choose-user", false, 0, 0, REQUIRED, null, new String[]{REQUIRED});
         addExecInfo(execs, "Send Reset Email", "reset-credential-email", false, 0, 1, REQUIRED, null, new String[]{REQUIRED});
         addExecInfo(execs, "Reset Password", "reset-password", false, 0, 2, REQUIRED, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
-        addExecInfo(execs, "Reset - Conditional OTP", null, false, 0, 3, OPTIONAL, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, OPTIONAL});
+        addExecInfo(execs, "Reset - Conditional OTP", null, false, 0, 3, CONDITIONAL, true, new String[]{REQUIRED, ALTERNATIVE, DISABLED, CONDITIONAL});
         addExecInfo(execs, "Conditional block - user configured", "conditional-user-configured", false, 1, 0, REQUIRED, null, new String[]{REQUIRED, DISABLED});
         addExecInfo(execs, "Reset OTP", "reset-otp", false, 1, 1, REQUIRED, null, new String[]{REQUIRED, ALTERNATIVE, DISABLED});
         expected.add(new FlowExecutions(flow, execs));

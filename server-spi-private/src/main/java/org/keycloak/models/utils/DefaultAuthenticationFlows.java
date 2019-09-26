@@ -205,7 +205,7 @@ public class DefaultAuthenticationFlows {
         conditionalOTP = realm.addAuthenticationFlow(conditionalOTP);
         execution = new AuthenticationExecutionModel();
         execution.setParentFlow(reset.getId());
-        execution.setRequirement(AuthenticationExecutionModel.Requirement.OPTIONAL);
+        execution.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
         execution.setFlowId(conditionalOTP.getId());
         execution.setPriority(40);
         execution.setAuthenticatorFlow(true);
@@ -269,7 +269,7 @@ public class DefaultAuthenticationFlows {
         conditionalOTP = realm.addAuthenticationFlow(conditionalOTP);
         execution = new AuthenticationExecutionModel();
         execution.setParentFlow(grant.getId());
-        execution.setRequirement(AuthenticationExecutionModel.Requirement.OPTIONAL);
+        execution.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
         if (migrate && hasCredentialType(realm, RequiredCredentialModel.TOTP.getType())) {
             execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED);
         }
@@ -360,7 +360,7 @@ public class DefaultAuthenticationFlows {
         conditionalOTP = realm.addAuthenticationFlow(conditionalOTP);
         execution = new AuthenticationExecutionModel();
         execution.setParentFlow(forms.getId());
-        execution.setRequirement(AuthenticationExecutionModel.Requirement.OPTIONAL);
+        execution.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
         if (migrate && hasCredentialType(realm, RequiredCredentialModel.TOTP.getType())) {
             execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED);
         }
@@ -606,7 +606,7 @@ public class DefaultAuthenticationFlows {
         conditionalOTP = realm.addAuthenticationFlow(conditionalOTP);
         execution = new AuthenticationExecutionModel();
         execution.setParentFlow(verifyByReauthenticationAccountFlow.getId());
-        execution.setRequirement(AuthenticationExecutionModel.Requirement.OPTIONAL);
+        execution.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
         if (migrate) {
             // Try to read OTP requirement from browser flow
             AuthenticationFlowModel browserFlow = realm.getBrowserFlow();
