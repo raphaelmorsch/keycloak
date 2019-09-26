@@ -80,6 +80,7 @@ import javax.ws.rs.ClientErrorException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -226,13 +227,10 @@ public class UserTest extends AbstractAdminTest {
     public void updateUserWithHashedCredentials(){
         String userId = createUser("user_hashed_creds", "user_hashed_creds@localhost");
 
-        CredentialRepresentation hashedPassword = new CredentialRepresentation();
-        hashedPassword.setAlgorithm("pbkdf2-sha256");
-        hashedPassword.setCreatedDate(1001l);
-        hashedPassword.setHashIterations(27500);
-        hashedPassword.setHashedSaltedValue("uskEPZWMr83pl2mzNB95SFXfIabe2UH9ClENVx/rrQqOjFEjL2aAOGpWsFNNF3qoll7Qht2mY5KxIDm3Rnve2w==");
-        hashedPassword.setSalt("u1VXYxqVfWOzHpF2bGSLyA==");
-        hashedPassword.setType(CredentialRepresentation.PASSWORD);
+        PasswordCredentialModel credentialModel = PasswordCredentialModel.createFromValues("pbkdf2-sha256", "u1VXYxqVfWOzHpF2bGSLyA==".getBytes(StandardCharsets.UTF_8),
+                27500, "uskEPZWMr83pl2mzNB95SFXfIabe2UH9ClENVx/rrQqOjFEjL2aAOGpWsFNNF3qoll7Qht2mY5KxIDm3Rnve2w==");
+        credentialModel.setCreatedDate(1001l);
+        CredentialRepresentation hashedPassword = ModelToRepresentation.toRepresentation(credentialModel);
         
         UserRepresentation userRepresentation = new UserRepresentation();
         userRepresentation.setCredentials(Collections.singletonList(hashedPassword));
