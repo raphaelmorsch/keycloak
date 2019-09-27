@@ -39,9 +39,7 @@ import java.util.Collection;
  * @version $Revision: 1 $
  */
 @NamedQueries({
-        @NamedQuery(name="credentialByUser", query="select cred from CredentialEntity cred where cred.user = :user"),
-        @NamedQuery(name="firstCredentialInList", query="select cred from CredentialEntity cred where cred.user = :user and previousCredentialLink is null"),
-        @NamedQuery(name="lastCredentialInList", query="select cred from CredentialEntity cred where cred.user = :user and nextCredentialLink is null"),
+        @NamedQuery(name="credentialByUser", query="select cred from CredentialEntity cred where cred.user = :user order by cred.priority"),
         @NamedQuery(name="deleteCredentialsByRealm", query="delete from CredentialEntity cred where cred.user IN (select u from UserEntity u where u.realmId=:realmId)"),
         @NamedQuery(name="deleteCredentialsByRealmAndLink", query="delete from CredentialEntity cred where cred.user IN (select u from UserEntity u where u.realmId=:realmId and u.federationLink=:link)")
 
@@ -73,11 +71,12 @@ public class CredentialEntity {
     @Column(name="CREDENTIAL_DATA")
     protected String credentialData;
 
-    @Column(name="PREVIOUS_CREDENTIAL_LINK")
-    protected String previousCredentialLink;
+    @Column(name="PRIORITY")
+    protected int priority;
 
-    @Column(name="NEXT_CREDENTIAL_LINK")
-    protected String nextCredentialLink;
+    @Deprecated // Needed just for backwards compatibility when migrating old credentials
+    @Column(name="SALT")
+    protected byte[] salt;
 
     public String getId() {
         return id;
@@ -107,6 +106,16 @@ public class CredentialEntity {
         this.user = user;
     }
 
+    @Deprecated
+    public byte[] getSalt() {
+        return salt;
+    }
+
+    @Deprecated
+    public void setSalt(byte[] salt) {
+        this.salt = salt;
+    }
+
     public Long getCreatedDate() {
         return createdDate;
     }
@@ -128,18 +137,12 @@ public class CredentialEntity {
         this.credentialData = credentialData;
     }
 
-    public String getPreviousCredentialLink() {
-        return previousCredentialLink;
-    }
-    public void setPreviousCredentialLink(String previousCredentialLink) {
-        this.previousCredentialLink = previousCredentialLink;
+    public int getPriority() {
+        return priority;
     }
 
-    public String getNextCredentialLink() {
-        return nextCredentialLink;
-    }
-    public void setNextCredentialLink(String nextCredentialLink) {
-        this.nextCredentialLink = nextCredentialLink;
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
 
     @Override
