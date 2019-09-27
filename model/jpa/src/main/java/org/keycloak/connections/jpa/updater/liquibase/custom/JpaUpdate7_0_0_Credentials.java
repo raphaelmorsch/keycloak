@@ -3,6 +3,7 @@ package org.keycloak.connections.jpa.updater.liquibase.custom;
 import liquibase.exception.CustomChangeException;
 import liquibase.statement.core.UpdateStatement;
 import liquibase.structure.core.Table;
+import org.keycloak.common.util.Base64;
 import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
 
@@ -22,9 +23,9 @@ public class JpaUpdate7_0_0_Credentials extends CustomKeycloakTask {
                 if (rs.wasNull()) {
                     hashIterations = "";
                 }
-                String salt = rs.getString("SALT").trim();
+                byte[] salt = rs.getBytes("SALT");
                 if (rs.wasNull()) {
-                    salt = "";
+                    salt = new byte[0];
                 }
                 String type = rs.getString("TYPE").trim();
                 if (rs.wasNull()) {
@@ -53,7 +54,7 @@ public class JpaUpdate7_0_0_Credentials extends CustomKeycloakTask {
 
                 statements.add(
                         new UpdateStatement(null, null, credentialTableName)
-                                .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\",\"salt\":\"" + salt + "\"}")
+                                .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\",\"salt\":\"" + Base64.encodeBytes(salt) + "\"}")
                                 .addNewColumnValue("CREDENTIAL_DATA", "{\"hashIterations\":" + hashIterations + ",\"algorithm\":\"" + algorithm + "\"}")
                                 .addNewColumnValue("TYPE", PasswordCredentialModel.TYPE)
                                 .setWhereClause("TYPE='password'")
