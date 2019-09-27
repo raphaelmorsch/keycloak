@@ -16,9 +16,10 @@ public class JpaUpdate7_0_0_FederatedUserCredentials extends CustomKeycloakTask 
     @Override
     protected void generateStatementsImpl() throws CustomChangeException {
         String credentialTableName = database.correctObjectName("FED_USER_CREDENTIAL", Table.class);
-        try (PreparedStatement statement = jdbcConnection.prepareStatement("SELECT HASH_ITERATIONS, SALT, TYPE, VALUE, COUNTER, DIGITS, PERIOD, ALGORITHM FROM " + credentialTableName);
+        try (PreparedStatement statement = jdbcConnection.prepareStatement("SELECT ID, HASH_ITERATIONS, SALT, TYPE, VALUE, COUNTER, DIGITS, PERIOD, ALGORITHM FROM " + credentialTableName);
              ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
+                String id = rs.getString("ID").trim();
                 String hashIterations = rs.getString("HASH_ITERATIONS").trim();
                 if (rs.wasNull()) {
                     hashIterations = "";
@@ -52,37 +53,31 @@ public class JpaUpdate7_0_0_FederatedUserCredentials extends CustomKeycloakTask 
                     algorithm = "";
                 }
 
-                statements.add(
-                        new UpdateStatement(null, null, credentialTableName)
-                                .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\",\"salt\":\"" + Base64.encodeBytes(salt) + "\"}")
-                                .addNewColumnValue("CREDENTIAL_DATA", "{\"hashIterations\":\"" + hashIterations + "\",\"algorithm\":\"" + algorithm + "\"}")
-                                .addNewColumnValue("TYPE", PasswordCredentialModel.TYPE)
-                                .setWhereClause("TYPE='password'")
-                );
-                statements.add(
-                        new UpdateStatement(null, null, credentialTableName)
-                                .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\",\"salt\":\"" + Base64.encodeBytes(salt) + "\"}")
-                                .addNewColumnValue("CREDENTIAL_DATA", "{\"hashIterations\":\"" + hashIterations + "\",\"algorithm\":\"" + algorithm + "\"}")
-                                .addNewColumnValue("TYPE", PasswordCredentialModel.TYPE)
-                                .setWhereClause("TYPE='password-history'")
-                );
-                statements.add(
-                        new UpdateStatement(null, null, credentialTableName)
-                                .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\"}")
-                                .addNewColumnValue("CREDENTIAL_DATA", "{\"subType\":\"" + type + "\",\"digits\":\"" + digits + "\"},\"counter\":\"" + counter + "\",\"algorithm\":\"" + algorithm + "\"}")
-                                .addNewColumnValue("TYPE", OTPCredentialModel.TYPE)
-                                .setWhereClause("TYPE='hotp'")
-                );
-                statements.add(
-                        new UpdateStatement(null, null, credentialTableName)
-                                .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\"}")
-                                .addNewColumnValue("CREDENTIAL_DATA", "{\"subType\":\"" + type + "\",\"digits\":\"" + digits + "\"},\"period\":\"" + period + "\",\"algorithm\":\"" + algorithm + "\"}")
-                                .addNewColumnValue("TYPE", OTPCredentialModel.TYPE)
-                                .setWhereClause("TYPE='totp'")
-                );
-
-                confirmationMessage.append("Updated " + statements.size() + " records in FED_USER_CREDENTIAL table");
+                switch (type) {
+                    case "password":
+                    case "password-history":
+                        statements.add(
+                                new UpdateStatement(null, null, credentialTableName)
+                                        .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\",\"salt\":\"" + Base64.encodeBytes(salt) + "\"}")
+                                        .addNewColumnValue("CREDENTIAL_DATA", "{\"hashIterations\":" + hashIterations + ",\"algorithm\":\"" + algorithm + "\"}")
+                                        .setWhereClause("ID = '" + id + "'")
+                        );
+                        break;
+                    case "hotp":
+                    case "totp":
+                        statements.add(
+                                new UpdateStatement(null, null, credentialTableName)
+                                        .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\"}")
+                                        .addNewColumnValue("CREDENTIAL_DATA", "{\"subType\":\"" + type + "\",\"digits\":" + digits
+                                                + ",\"counter\":" + counter + ",\"period\":" + period + ",\"algorithm\":\"" + algorithm + "\"}")
+                                        .addNewColumnValue("TYPE", OTPCredentialModel.TYPE)
+                                        .setWhereClause("ID = '" + id + "'")
+                        );
+                }
             }
+
+            confirmationMessage.append("Executed " + statements.size() + " statements in FED_USER_CREDENTIAL table");
+
         } catch (Exception e) {
             throw new CustomChangeException(getTaskId() + ": Exception when updating data from previous version", e);
         }
