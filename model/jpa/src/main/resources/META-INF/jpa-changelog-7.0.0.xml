@@ -26,10 +26,10 @@
             <column name="CREDENTIAL_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
-            <column name="PREVIOUS_CREDENTIAL_LINK" type="VARCHAR">
+            <column name="PREVIOUS_CREDENTIAL_LINK" type="VARCHAR(36)">
                 <constraints nullable="true"/>
             </column>
-            <column name="NEXT_CREDENTIAL_LINK" type="VARCHAR">
+            <column name="NEXT_CREDENTIAL_LINK" type="VARCHAR(36)">
                 <constraints nullable="true"/>
             </column>
         </addColumn>
