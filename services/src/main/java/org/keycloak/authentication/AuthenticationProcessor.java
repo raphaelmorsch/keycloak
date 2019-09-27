@@ -907,6 +907,9 @@ public class AuthenticationProcessor {
         if (authenticationSession.getAuthenticatedUser() == null) {
             throw new AuthenticationFlowException(AuthenticationFlowError.UNKNOWN_USER);
         }
+        if (!authenticationFlow.isSuccessful()) {
+            throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS);
+        }
         return authenticationComplete();
     }
 
