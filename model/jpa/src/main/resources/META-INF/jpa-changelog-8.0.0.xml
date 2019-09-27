@@ -78,6 +78,9 @@
         </createTable>
 
         <addColumn tableName="CREDENTIAL">
+            <column name="USER_LABEL" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
             <column name="SECRET_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
@@ -101,29 +104,47 @@
         <!--Update format of credential to fill secret_data and credential_data-->
         <!--<customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate8_0_0_Credentials"/>-->
 
+        <!-- SALT was saved in tinyblob in previous version. -->
+        <!-- Can't be automatically updated for all users to new format in single UPDATE statement, so existing users will be updated on-the-fly -->
         <update tableName="CREDENTIAL">
-            "{\"hash\":\"" + value + "\",\"salt\":\"" + salt + "\"}"
-            <column name="SECRET_DATA" valueComputed="CONCAT({\\"hash\\":\", '@gmail.com ')"/>
-            <where>TYPE = 'password'</where>
+            <column name="PRIORITY" value="10" />
+            <column name="SECRET_DATA" valueComputed="CONCAT('{&quot;value&quot;:&quot;', VALUE, '&quot;,&quot;salt&quot;:&quot;__SALT__&quot;}')"/>
+            <column name="CREDENTIAL_DATA" valueComputed="CONCAT('{&quot;hashIterations&quot;:', HASH_ITERATIONS, ',&quot;algorithm&quot;:&quot;', ALGORITHM, '&quot;}')"/>
+            <where>TYPE = 'password' OR TYPE = 'password-history'</where>
+        </update>
+
+        <update tableName="CREDENTIAL">
+            <column name="PRIORITY" value="20" />
+            <column name="TYPE" value="otp" />
+            <column name="SECRET_DATA" valueComputed="CONCAT('{&quot;value&quot;:&quot;', VALUE, '&quot;}')"/>
+            <column name="CREDENTIAL_DATA" valueComputed="CONCAT('{&quot;subType&quot;:&quot;totp&quot;,&quot;digits&quot;:', DIGITS, ',&quot;period&quot;:', PERIOD, ',&quot;algorithm&quot;:&quot;', ALGORITHM, '&quot;}')"/>
+            <where>TYPE = 'totp'</where>
+        </update>
+
+        <update tableName="CREDENTIAL">
+            <column name="PRIORITY" value="20" />
+            <column name="TYPE" value="otp" />
+            <column name="SECRET_DATA" valueComputed="CONCAT('{&quot;value&quot;:&quot;', VALUE, '&quot;}')"/>
+            <column name="CREDENTIAL_DATA" valueComputed="CONCAT('{&quot;subType&quot;:&quot;hotp&quot;,&quot;digits&quot;:', DIGITS, ',&quot;counter&quot;:', COUNTER, ',&quot;algorithm&quot;:&quot;', ALGORITHM, '&quot;}')"/>
+            <where>TYPE = 'hotp'</where>
         </update>
 
         <!--Update format of fed_user_credential to fill secret_data and credential_data-->
         <!--<customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate8_0_0_FederatedUserCredentials"/>-->
 
-        <!--<renameColumn tableName="CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
 
+        <dropColumn tableName="CREDENTIAL" columnName="DEVICE"/>
         <dropColumn tableName="CREDENTIAL" columnName="HASH_ITERATIONS"/>
-        <dropColumn tableName="CREDENTIAL" columnName="SALT"/>
         <dropColumn tableName="CREDENTIAL" columnName="VALUE"/>
         <dropColumn tableName="CREDENTIAL" columnName="COUNTER"/>
         <dropColumn tableName="CREDENTIAL" columnName="DIGITS"/>
         <dropColumn tableName="CREDENTIAL" columnName="PERIOD"/>
-        <dropColumn tableName="CREDENTIAL" columnName="ALGORITHM"/>-->
+        <dropColumn tableName="CREDENTIAL" columnName="ALGORITHM"/>
 
         <!--credential attributes are now held within the json of secret_data and credential_data (not this it was used in any case)-->
-        <!--<dropTable tableName="CREDENTIAL_ATTRIBUTE"/>
+        <dropTable tableName="CREDENTIAL_ATTRIBUTE"/>
 
-        <renameColumn tableName="FED_USER_CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
+        <!--<renameColumn tableName="FED_USER_CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
 
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="HASH_ITERATIONS"/>
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="SALT"/>

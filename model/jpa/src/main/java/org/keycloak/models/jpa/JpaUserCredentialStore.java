@@ -17,6 +17,7 @@
 package org.keycloak.models.jpa;
 
 import org.jboss.logging.Logger;
+import org.keycloak.common.util.Base64;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.UserCredentialStore;
 import org.keycloak.models.KeycloakSession;
@@ -84,6 +85,15 @@ public class JpaUserCredentialStore implements UserCredentialStore {
         model.setId(entity.getId());
         model.setType(entity.getType());
         model.setUserLabel(entity.getUserLabel());
+
+        // Backwards compatibility - users from previous version still have "salt" in the DB filled.
+        // We migrate it to new secretData format on-the-fly
+        if (entity.getSalt() != null) {
+            String newSecretData = entity.getSecretData().replace("__SALT__", Base64.encodeBytes(entity.getSalt()));
+            entity.setSecretData(newSecretData);
+            entity.setSalt(null);
+        }
+
         model.setSecretData(entity.getSecretData());
         model.setCredentialData(entity.getCredentialData());
         return model;

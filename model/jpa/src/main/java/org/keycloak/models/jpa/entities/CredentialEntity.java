@@ -44,7 +44,7 @@ import java.util.Collection;
         @NamedQuery(name="deleteCredentialsByRealmAndLink", query="delete from CredentialEntity cred where cred.user IN (select u from UserEntity u where u.realmId=:realmId and u.federationLink=:link)")
 
 })
-@Table(name="CREDENTIAL2")
+@Table(name="CREDENTIAL")
 @Entity
 public class CredentialEntity {
     @Id
@@ -74,6 +74,10 @@ public class CredentialEntity {
     @Column(name="PRIORITY")
     protected int priority;
 
+    @Deprecated // Needed just for backwards compatibility when migrating old credentials
+    @Column(name="SALT")
+    protected byte[] salt;
+
     public String getId() {
         return id;
     }
@@ -100,6 +104,16 @@ public class CredentialEntity {
     }
     public void setUser(UserEntity user) {
         this.user = user;
+    }
+
+    @Deprecated
+    public byte[] getSalt() {
+        return salt;
+    }
+
+    @Deprecated
+    public void setSalt(byte[] salt) {
+        this.salt = salt;
     }
 
     public Long getCreatedDate() {

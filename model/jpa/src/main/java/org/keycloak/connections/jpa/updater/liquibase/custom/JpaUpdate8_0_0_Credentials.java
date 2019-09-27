@@ -13,13 +13,13 @@ public class JpaUpdate8_0_0_Credentials extends CustomKeycloakTask {
 
     @Override
     protected void generateStatementsImpl() throws CustomChangeException {
-        String credentialTableName = database.correctObjectName("CREDENTIAL", Table.class);
+        /*String credentialTableName = database.correctObjectName("CREDENTIAL", Table.class);
 
         new UpdateStatement(null, null, credentialTableName)
                 .addNewColumnValue("SECRET_DATA", "{\"hash\":\"" + value + "\",\"salt\":\"" + salt + "\"}")
                 .addNewColumnValue("CREDENTIAL_DATA", "{\"hashIterations\":" + hashIterations + ",\"algorithm\":\"" + algorithm + "\"}")
                 .addNewColumnValue("TYPE", PasswordCredentialModel.TYPE)
-                .setWhereClause("TYPE='password'")
+                .setWhereClause("TYPE='password'")*/
 
         // TODO:mposolda fix this!!!
         /*
