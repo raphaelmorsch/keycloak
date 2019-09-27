@@ -49,7 +49,7 @@
         <!--Update format of fed_user_credential to fill secret_data and credential_data-->
         <customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate7_0_0_FederatedUserCredentials"/>
 
-        <renameColumn tableName="CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
+        <renameColumn tableName="CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL" columnDataType="VARCHAR(255)"/>
 
         <dropColumn tableName="CREDENTIAL" columnName="HASH_ITERATIONS"/>
         <dropColumn tableName="CREDENTIAL" columnName="SALT"/>
@@ -62,7 +62,7 @@
         <!--credential attributes are now held within the json of secret_data and credential_data (not this it was used in any case)-->
         <dropTable tableName="CREDENTIAL_ATTRIBUTE"/>
 
-        <renameColumn tableName="FED_USER_CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
+        <renameColumn tableName="FED_USER_CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL" columnDataType="VARCHAR(255)"/>
 
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="HASH_ITERATIONS"/>
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="SALT"/>

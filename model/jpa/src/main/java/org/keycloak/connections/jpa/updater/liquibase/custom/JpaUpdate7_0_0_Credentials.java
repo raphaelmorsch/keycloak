@@ -61,6 +61,13 @@ public class JpaUpdate7_0_0_Credentials extends CustomKeycloakTask {
                 );
                 statements.add(
                         new UpdateStatement(null, null, credentialTableName)
+                                .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\",\"salt\":\"" + Base64.encodeBytes(salt) + "\"}")
+                                .addNewColumnValue("CREDENTIAL_DATA", "{\"hashIterations\":" + hashIterations + ",\"algorithm\":\"" + algorithm + "\"}")
+                                .addNewColumnValue("TYPE", PasswordCredentialModel.TYPE)
+                                .setWhereClause("TYPE='password-history'")
+                );
+                statements.add(
+                        new UpdateStatement(null, null, credentialTableName)
                                 .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\"}")
                                 .addNewColumnValue("CREDENTIAL_DATA", "{\"subType\":\"" + type + "\",\"digits\":" + digits + ",\"counter\":" + counter + ",\"algorithm\":\"" + algorithm + "\"}")
                                 .addNewColumnValue("TYPE", OTPCredentialModel.TYPE)
