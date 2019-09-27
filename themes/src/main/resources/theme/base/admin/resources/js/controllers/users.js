@@ -552,8 +552,8 @@ module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, R
         // Safety first
         if (index == 0) {
             return;
-        } else if (index == 1) {
-            UserCredentials.moveToFirst(
+        } else {
+            UserCredentials.moveUp(
                 {
                     realm: realm.realm,
                     userId: user.id,
@@ -567,21 +567,6 @@ module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, R
                     console.log(err);
                 });
 
-        } else {
-            UserCredentials.moveCredentialAfter(
-                {
-                    realm: realm.realm,
-                    userId: user.id,
-                    credentialId: credentials[index].id,
-                    newPreviousCredentialId: credentials[index - 2].id
-                },
-                function () {
-                    $route.reload();
-                },
-                function (err) {
-                    Notifications.error("Error while moving the credential up. See console for more information.");
-                    console.log(err);
-                });
         }
     }
 
@@ -590,12 +575,11 @@ module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, R
         if (index == credentials.length - 1) {
             return;
         }
-        UserCredentials.moveCredentialAfter(
+        UserCredentials.moveDown(
             {
                 realm: realm.realm,
                 userId: user.id,
-                credentialId: credentials[index].id,
-                newPreviousCredentialId: credentials[index + 1].id
+                credentialId: credentials[index].id
             },
             function() {
                 $route.reload();

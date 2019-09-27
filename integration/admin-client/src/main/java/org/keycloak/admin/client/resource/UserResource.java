@@ -94,6 +94,29 @@ public interface UserResource {
     void removeCredential(@PathParam("credentialId")String credentialId);
 
     /**
+     * Update a credential for a user
+     */
+    @PUT
+    @Path("credentials/{credentialId}")
+    void updateCredential(final @PathParam("credentialId") String credentialId, CredentialRepresentation credentialRepresentation);
+
+    /**
+     * Move a credential to an upper position
+     * @param credentialId The credential to move
+     */
+    @POST
+    @Path("credentials/{credentialId}/moveUp")
+    void moveUp(final @PathParam("credentialId") String credentialId);
+
+    /**
+     * Move a credential down position
+     * @param credentialId The credential to move
+     */
+    @POST
+    @Path("credentials/{credentialId}/moveDown")
+    void moveDown(final @PathParam("credentialId") String credentialId);
+
+    /**
      * Disables or deletes all credentials for specific types.
      * Type examples "otp", "password"
      *

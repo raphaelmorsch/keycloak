@@ -50,7 +50,7 @@ import java.util.Collection;
         @NamedQuery(name="deleteFederatedUserCredentialsByRealmAndLink", query="delete from FederatedUserCredentialEntity cred where cred.userId IN (select u.id from UserEntity u where u.realmId=:realmId and u.federationLink=:link)")
 
 })
-@Table(name="FED_USER_CREDENTIAL")
+@Table(name="FED_USER_CREDENTIAL2")
 @Entity
 public class FederatedUserCredentialEntity {
     @Id

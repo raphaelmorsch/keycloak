@@ -10,11 +10,12 @@ import org.keycloak.models.credential.PasswordCredentialModel;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
-public class JpaUpdate7_0_0_FederatedUserCredentials extends CustomKeycloakTask {
+public class JpaUpdate8_0_0_FederatedUserCredentials extends CustomKeycloakTask {
 
     @Override
     protected void generateStatementsImpl() throws CustomChangeException {
-        String credentialTableName = database.correctObjectName("FED_USER_CREDENTIAL", Table.class);
+        // TODO:mposolda fix this!!!
+/*        String credentialTableName = database.correctObjectName("FED_USER_CREDENTIAL", Table.class);
         try (PreparedStatement statement = jdbcConnection.prepareStatement("SELECT HASH_ITERATIONS, SALT, TYPE, VALUE, COUNTER, DIGITS, PERIOD, ALGORITHM FROM " + credentialTableName);
              ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
@@ -51,13 +52,15 @@ public class JpaUpdate7_0_0_FederatedUserCredentials extends CustomKeycloakTask 
                     algorithm = "";
                 }
 
-                statements.add(
-                        new UpdateStatement(null, null, credentialTableName)
-                                .addNewColumnValue("SECRET_DATA", "{\"hash\":\"" + value + "\",\"salt\":\"" + salt + "\"}")
-                                .addNewColumnValue("CREDENTIAL_DATA", "{\"hashIterations\":\"" + hashIterations + "\",\"algorithm\":\"" + algorithm + "\"}")
-                                .addNewColumnValue("TYPE", PasswordCredentialModel.TYPE)
-                                .setWhereClause("TYPE='password'")
-                );
+                if (PasswordCredentialModel.TYPE.equals(type)) {
+                    statements.add(
+                            new UpdateStatement(null, null, credentialTableName)
+                                    .addNewColumnValue("SECRET_DATA", "{\"hash\":\"" + value + "\",\"salt\":\"" + salt + "\"}")
+                                    .addNewColumnValue("CREDENTIAL_DATA", "{\"hashIterations\":\"" + hashIterations + "\",\"algorithm\":\"" + algorithm + "\"}")
+                                    .addNewColumnValue("TYPE", PasswordCredentialModel.TYPE)
+                                    .setWhereClause("TYPE='password' AND ")
+                    );
+                }
                 statements.add(
                         new UpdateStatement(null, null, credentialTableName)
                                 .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\"}")
@@ -77,11 +80,11 @@ public class JpaUpdate7_0_0_FederatedUserCredentials extends CustomKeycloakTask 
             }
         } catch (Exception e) {
             throw new CustomChangeException(getTaskId() + ": Exception when updating data from previous version", e);
-        }
+        }*/
     }
 
     @Override
     protected String getTaskId() {
-        return "Update 7.0.0";
+        return "Update 8.0.0 - federated credentials";
     }
 }
