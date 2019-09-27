@@ -64,11 +64,10 @@ public class PasswordCredentialProvider implements CredentialProvider<PasswordCr
 
         }
         // if the model was marked for eviction while passwords were initialized, override it from credentialStore
-        if (!(user instanceof CachedUserModel) || ((CachedUserModel) user).isMarkedForEviction()) {
+        if (!(user instanceof CachedUserModel) || ((CachedUserModel) user).isMarkedForEviction() || passwords == null || passwords.isEmpty()) {
             passwords = getCredentialStore().getStoredCredentialsByType(realm, user, getType());
         }
         if (passwords == null || passwords.isEmpty()) return null;
-
 
         return PasswordCredentialModel.createFromCredentialModel(passwords.get(0));
     }

@@ -227,7 +227,9 @@ public class UserTest extends AbstractAdminTest {
     public void updateUserWithHashedCredentials(){
         String userId = createUser("user_hashed_creds", "user_hashed_creds@localhost");
 
-        PasswordCredentialModel credentialModel = PasswordCredentialModel.createFromValues("pbkdf2-sha256", "u1VXYxqVfWOzHpF2bGSLyA==".getBytes(StandardCharsets.UTF_8),
+        byte[] salt = new byte[]{-69,85,87,99,26,-107,125,99,-77,30,-111,118,108,100,-117,-56};
+
+        PasswordCredentialModel credentialModel = PasswordCredentialModel.createFromValues("pbkdf2-sha256", salt,
                 27500, "uskEPZWMr83pl2mzNB95SFXfIabe2UH9ClENVx/rrQqOjFEjL2aAOGpWsFNNF3qoll7Qht2mY5KxIDm3Rnve2w==");
         credentialModel.setCreatedDate(1001l);
         CredentialRepresentation hashedPassword = ModelToRepresentation.toRepresentation(credentialModel);
