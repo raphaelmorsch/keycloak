@@ -53,7 +53,7 @@ public class JpaUpdate7_0_0_FederatedUserCredentials extends CustomKeycloakTask 
 
                 statements.add(
                         new UpdateStatement(null, null, credentialTableName)
-                                .addNewColumnValue("SECRET_DATA", "{\"hash\":\"" + value + "\",\"salt\":\"" + salt + "\"}")
+                                .addNewColumnValue("SECRET_DATA", "{\"value\":\"" + value + "\",\"salt\":\"" + salt + "\"}")
                                 .addNewColumnValue("CREDENTIAL_DATA", "{\"hashIterations\":\"" + hashIterations + "\",\"algorithm\":\"" + algorithm + "\"}")
                                 .addNewColumnValue("TYPE", PasswordCredentialModel.TYPE)
                                 .setWhereClause("TYPE='password'")
