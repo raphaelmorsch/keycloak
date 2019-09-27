@@ -20,7 +20,7 @@
     <!--modifies the credentials to the new format, while copying the data as json in the new fields-->
     <changeSet author="keycloak" id="8.0.0">
 
-        <createTable tableName="CREDENTIAL2">
+        <!--<createTable tableName="CREDENTIAL2">
             <column name="ID" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
@@ -45,7 +45,7 @@
             <column name="SECRET_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
-        </createTable>
+        </createTable>-->
 
         <createTable tableName="FED_USER_CREDENTIAL2">
             <column name="ID" type="VARCHAR(255)">
@@ -77,7 +77,7 @@
             </column>
         </createTable>
 
-        <!--<addColumn tableName="CREDENTIAL">
+        <addColumn tableName="CREDENTIAL">
             <column name="SECRET_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
@@ -89,7 +89,7 @@
             </column>
         </addColumn>
 
-        <addColumn tableName="FED_USER_CREDENTIAL">
+        <!--<addColumn tableName="FED_USER_CREDENTIAL">
             <column name="SECRET_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
@@ -100,6 +100,12 @@
 
         <!--Update format of credential to fill secret_data and credential_data-->
         <!--<customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate8_0_0_Credentials"/>-->
+
+        <update tableName="CREDENTIAL">
+            "{\"hash\":\"" + value + "\",\"salt\":\"" + salt + "\"}"
+            <column name="SECRET_DATA" valueComputed="CONCAT({\\"hash\\":\", '@gmail.com ')"/>
+            <where>TYPE = 'password'</where>
+        </update>
 
         <!--Update format of fed_user_credential to fill secret_data and credential_data-->
         <!--<customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate8_0_0_FederatedUserCredentials"/>-->
