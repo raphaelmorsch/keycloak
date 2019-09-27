@@ -635,43 +635,20 @@ public class UserResource {
     }
 
     /**
-     * Update a credential for a user
+     * Update a credential label for a user
      */
     @PUT
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Path("credentials/{credentialId}")
-    public void updateCredential(final @PathParam("credentialId") String credentialId, CredentialRepresentation credentialRepresentation){
+    @Consumes(javax.ws.rs.core.MediaType.TEXT_PLAIN)
+    @Path("credentials/{credentialId}/label")
+    public void setLabel(final @PathParam("credentialId") String credentialId, String userLabel) {
         auth.users().requireManage(user);
-        // We update the existing credential representation and persist it
         CredentialModel credential = session.userCredentialManager().getStoredCredentialById(realm, user, credentialId);
         if (credential == null) {
             // we do this to make sure somebody can't phish ids
             if (auth.users().canQuery()) throw new NotFoundException("User not found");
             else throw new ForbiddenException();
         }
-        updateCredentialFromRep(credential, credentialRepresentation);
-        session.userCredentialManager().updateCredential(realm, user, credential);
-    }
-
-    /**
-     * Update a credential model. Inspiration : org.keycloak.servUserCredentialStoreManagerices.resources.admin.UserResource#updateUserFromRep()
-     * @param credential
-     * @param rep
-     */
-    private void updateCredentialFromRep(CredentialModel credential, CredentialRepresentation rep) {
-        // On purpose, for obvious security reasons, I omitted "secretData" and "type"
-        if (rep.getId() != null) {
-            credential.setId(rep.getId());
-        }
-        if (rep.getCreatedDate() != null) {
-            credential.setCreatedDate(rep.getCreatedDate());
-        }
-        if (rep.getCredentialData() != null) {
-            credential.setCredentialData(rep.getCredentialData());
-        }
-        if (rep.getUserLabel() != null) {
-            credential.setUserLabel(rep.getUserLabel());
-        }
+        session.userCredentialManager().updateCredentialLabel(realm, user, credentialId, userLabel);
     }
 
     /**

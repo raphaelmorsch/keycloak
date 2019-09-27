@@ -36,11 +36,32 @@ public class CredentialRepresentation {
     private Long createdDate;
     private String secretData;
     private String credentialData;
+    private Integer priority;
 
     private String value;
 
     // only used when updating a credential.  Might set required action
     protected Boolean temporary;
+
+    // All those fields are just for backwards compatibility
+    @Deprecated
+    protected String device;
+    @Deprecated
+    protected String hashedSaltedValue;
+    @Deprecated
+    protected String salt;
+    @Deprecated
+    protected Integer hashIterations;
+    @Deprecated
+    protected Integer counter;
+    @Deprecated
+    private String algorithm;
+    @Deprecated
+    private Integer digits;
+    @Deprecated
+    private Integer period;
+    @Deprecated
+    private MultivaluedHashMap<String, String> config;
 
     public String getId() {
         return id;
@@ -77,6 +98,14 @@ public class CredentialRepresentation {
         this.credentialData = credentialData;
     }
 
+    public Integer getPriority() {
+        return priority;
+    }
+
+    public void setPriority(Integer priority) {
+        this.priority = priority;
+    }
+
     public Long getCreatedDate() {
         return createdDate;
     }
@@ -99,6 +128,51 @@ public class CredentialRepresentation {
         this.temporary = temporary;
     }
 
+    @Deprecated
+    public String getDevice() {
+        return device;
+    }
+
+    @Deprecated
+    public String getHashedSaltedValue() {
+        return hashedSaltedValue;
+    }
+
+    @Deprecated
+    public String getSalt() {
+        return salt;
+    }
+
+    @Deprecated
+    public Integer getHashIterations() {
+        return hashIterations;
+    }
+
+    @Deprecated
+    public Integer getCounter() {
+        return counter;
+    }
+
+    @Deprecated
+    public String getAlgorithm() {
+        return algorithm;
+    }
+
+    @Deprecated
+    public Integer getDigits() {
+        return digits;
+    }
+
+    @Deprecated
+    public Integer getPeriod() {
+        return period;
+    }
+
+    @Deprecated
+    public MultivaluedHashMap<String, String> getConfig() {
+        return config;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -111,6 +185,7 @@ public class CredentialRepresentation {
         result = prime * result + ((type == null) ? 0 : type.hashCode());
         result = prime * result + ((id == null) ? 0 : id.hashCode());
         result = prime * result + ((value == null) ? 0 : value.hashCode());
+        result = prime * result + ((priority == null) ? 0 : priority);
         return result;
     }
 
@@ -162,6 +237,11 @@ public class CredentialRepresentation {
             if (other.value != null)
                 return false;
         } else if (!value.equals(other.value))
+            return false;
+        if (priority == null) {
+            if (other.priority != null)
+                return false;
+        } else if (!priority.equals(other.priority))
             return false;
         return true;
     }

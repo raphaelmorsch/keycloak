@@ -64,7 +64,7 @@ public class PasswordCredentialProvider implements CredentialProvider<PasswordCr
 
         }
         // if the model was marked for eviction while passwords were initialized, override it from credentialStore
-        if (!(user instanceof CachedUserModel) || ((CachedUserModel) user).isMarkedForEviction() || passwords == null || passwords.isEmpty()) {
+        if (!(user instanceof CachedUserModel) || ((CachedUserModel) user).isMarkedForEviction()) {
             passwords = getCredentialStore().getStoredCredentialsByType(realm, user, getType());
         }
         if (passwords == null || passwords.isEmpty()) return null;
@@ -112,6 +112,10 @@ public class PasswordCredentialProvider implements CredentialProvider<PasswordCr
         getCredentialStore().removeStoredCredential(realm, user, credentialId);
     }
 
+    @Override
+    public PasswordCredentialModel getCredentialFromModel(CredentialModel model) {
+        return PasswordCredentialModel.createFromCredentialModel(model);
+    }
 
 
     protected void expirePassword(RealmModel realm, UserModel user, PasswordPolicy policy) throws IOException {

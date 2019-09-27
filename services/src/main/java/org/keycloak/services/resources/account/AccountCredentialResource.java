@@ -90,10 +90,7 @@ public class AccountCredentialResource {
     @Path("{credentialId}/label")
     public void setLabel(final @PathParam("credentialId") String credentialId, String userLabel) {
         auth.require(AccountRoles.MANAGE_ACCOUNT);
-        // We update the existing credential representation and persist it
-        CredentialModel credential = session.userCredentialManager().getStoredCredentialById(realm, user, credentialId);
-        credential.setUserLabel(userLabel);
-        session.userCredentialManager().updateCredential(realm, user, credential);
+        session.userCredentialManager().updateCredentialLabel(realm, user, credentialId, userLabel);
     }
 
     /**

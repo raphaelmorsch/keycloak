@@ -23,7 +23,7 @@ import org.openqa.selenium.support.FindBy;
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
  */
-public class LoginTotpPage extends AbstractPage {
+public class LoginTotpPage extends CredentialsComboboxPage {
 
     @FindBy(id = "otp")
     private WebElement otpInput;

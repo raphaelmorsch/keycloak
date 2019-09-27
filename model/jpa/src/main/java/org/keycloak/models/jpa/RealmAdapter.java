@@ -1616,6 +1616,10 @@ public class RealmAdapter implements RealmModel, JpaModel<RealmEntity> {
         entity.setRequirement(model.getRequirement());
         entity.setAuthenticatorConfig(model.getAuthenticatorConfig());
         entity.setFlowId(model.getFlowId());
+        if (model.getParentFlow() != null) {
+            AuthenticationFlowEntity flow = em.find(AuthenticationFlowEntity.class, model.getParentFlow());
+            entity.setParentFlow(flow);
+        }
         em.flush();
     }
 

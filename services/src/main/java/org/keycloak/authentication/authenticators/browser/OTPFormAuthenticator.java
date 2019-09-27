@@ -64,7 +64,8 @@ public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator impl
 
         //TODO this is lazy for when there is no clearly defined credentialId available (for example direct grant or console OTP), replace with getting the credential from the name
         if (credentialId == null || credentialId.isEmpty()) {
-            credentialId = getCredentialProvider(context.getSession()).getPreferredCredential(context.getRealm(), context.getUser()).getId();
+            credentialId = getCredentialProvider(context.getSession())
+                    .getDefaultCredential(context.getSession(), context.getRealm(), context.getUser()).getId();
             context.setSelectedCredentialId(credentialId);
         }
 
