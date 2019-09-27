@@ -692,8 +692,10 @@ public class JpaUserFederatedStorageProvider implements
     }
 
     @Override
-    public void moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId) {
+    public boolean moveCredential(RealmModel realm, UserModel user, String id, boolean moveUp) {
         //do nothing, these credentials are not ordered
+        // TODO:mposolda really? Doublecheck...
+        return false;
     }
 
     @Override

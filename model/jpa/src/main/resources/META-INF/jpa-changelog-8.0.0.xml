@@ -18,18 +18,73 @@
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
 
     <!--modifies the credentials to the new format, while copying the data as json in the new fields-->
-    <changeSet author="alistair.doswald@elca.ch" id="7.0.0">
-        <addColumn tableName="CREDENTIAL">
+    <changeSet author="keycloak" id="8.0.0">
+
+        <createTable tableName="CREDENTIAL2">
+            <column name="ID" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="TYPE" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="USER_LABEL" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="CREATED_DATE" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="USER_ID" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PRIORITY" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="CREDENTIAL_DATA" type="CLOB">
+                <constraints nullable="true"/>
+            </column>
+            <column name="SECRET_DATA" type="CLOB">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="FED_USER_CREDENTIAL2">
+            <column name="ID" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="TYPE" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="USER_LABEL" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="CREATED_DATE" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="USER_ID" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="REALM_ID" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="STORAGE_PROVIDER_ID" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="CREDENTIAL_DATA" type="CLOB">
+                <constraints nullable="true"/>
+            </column>
+            <column name="SECRET_DATA" type="CLOB">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <!--<addColumn tableName="CREDENTIAL">
             <column name="SECRET_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
             <column name="CREDENTIAL_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
-            <column name="PREVIOUS_CREDENTIAL_LINK" type="VARCHAR">
-                <constraints nullable="true"/>
-            </column>
-            <column name="NEXT_CREDENTIAL_LINK" type="VARCHAR">
+            <column name="PRIORITY" type="INT">
                 <constraints nullable="true"/>
             </column>
         </addColumn>
@@ -41,15 +96,15 @@
             <column name="CREDENTIAL_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
-        </addColumn>
+        </addColumn>-->
 
         <!--Update format of credential to fill secret_data and credential_data-->
-        <customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate7_0_0_Credentials"/>
+        <!--<customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate8_0_0_Credentials"/>-->
 
         <!--Update format of fed_user_credential to fill secret_data and credential_data-->
-        <customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate7_0_0_FederatedUserCredentials"/>
+        <!--<customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate8_0_0_FederatedUserCredentials"/>-->
 
-        <renameColumn tableName="CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
+        <!--<renameColumn tableName="CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
 
         <dropColumn tableName="CREDENTIAL" columnName="HASH_ITERATIONS"/>
         <dropColumn tableName="CREDENTIAL" columnName="SALT"/>
@@ -57,10 +112,10 @@
         <dropColumn tableName="CREDENTIAL" columnName="COUNTER"/>
         <dropColumn tableName="CREDENTIAL" columnName="DIGITS"/>
         <dropColumn tableName="CREDENTIAL" columnName="PERIOD"/>
-        <dropColumn tableName="CREDENTIAL" columnName="ALGORITHM"/>
+        <dropColumn tableName="CREDENTIAL" columnName="ALGORITHM"/>-->
 
         <!--credential attributes are now held within the json of secret_data and credential_data (not this it was used in any case)-->
-        <dropTable tableName="CREDENTIAL_ATTRIBUTE"/>
+        <!--<dropTable tableName="CREDENTIAL_ATTRIBUTE"/>
 
         <renameColumn tableName="FED_USER_CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
 
@@ -70,10 +125,10 @@
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="COUNTER"/>
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="DIGITS"/>
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="PERIOD"/>
-        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="ALGORITHM"/>
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="ALGORITHM"/>-->
 
         <!--credential attributes are now held within the json of secret_data and credential_data (not this it was used in any case)-->
-        <dropTable tableName="FED_CREDENTIAL_ATTRIBUTE "/>
+        <!--<dropTable tableName="FED_CREDENTIAL_ATTRIBUTE "/>-->
 
     </changeSet>
 

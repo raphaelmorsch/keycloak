@@ -675,23 +675,27 @@ public class UserResource {
     }
 
     /**
-     * Move a credential to a position behind another credential
+     * Move a credential to an upper position
      * @param credentialId The credential to move
      */
-    @Path("credentials/{credentialId}/moveToFirst")
+    @Path("credentials/{credentialId}/moveUp")
     @POST
-    public void moveToFirst(final @PathParam("credentialId") String credentialId){
-        moveCredentialAfter(credentialId, null);
+    public void moveUp(final @PathParam("credentialId") String credentialId){
+        moveCredential(credentialId, true);
     }
 
     /**
-     * Move a credential to a position behind another credential
+     * Move a credential to a down position
      * @param credentialId The credential to move
-     * @param newPreviousCredentialId The credential that will be the previous element in the list. If set to null, the moved credential will be the first element in the list.
      */
-    @Path("credentials/{credentialId}/moveAfter/{newPreviousCredentialId}")
+    @Path("credentials/{credentialId}/moveDown")
     @POST
-    public void moveCredentialAfter(final @PathParam("credentialId") String credentialId, final @PathParam("newPreviousCredentialId") String newPreviousCredentialId){
+    public void moveDown(final @PathParam("credentialId") String credentialId){
+        moveCredential(credentialId, false);
+    }
+
+
+    private void moveCredential(String credentialId, boolean moveUp) {
         auth.users().requireManage(user);
         CredentialModel credential = session.userCredentialManager().getStoredCredentialById(realm, user, credentialId);
         if (credential == null) {
@@ -699,8 +703,14 @@ public class UserResource {
             if (auth.users().canQuery()) throw new NotFoundException("User not found");
             else throw new ForbiddenException();
         }
-        session.userCredentialManager().moveCredentialTo(realm, user, credentialId, newPreviousCredentialId);
+
+        if (session.userCredentialManager().moveCredential(realm, user, credentialId, moveUp)) {
+            adminEvent.operation(OperationType.UPDATE).resourcePath(session.getContext().getUri()).success();
+        } else {
+            throw new BadRequestException("Error when moving credentials");
+        }
     }
+
 
     /**
      * Send an email to the user with a link they can click to reset their password.

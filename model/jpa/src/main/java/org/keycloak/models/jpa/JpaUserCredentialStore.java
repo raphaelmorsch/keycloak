@@ -16,6 +16,7 @@
  */
 package org.keycloak.models.jpa;
 
+import org.jboss.logging.Logger;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.UserCredentialStore;
 import org.keycloak.models.KeycloakSession;
@@ -27,10 +28,8 @@ import org.keycloak.models.utils.KeycloakModelUtils;
 
 import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+import java.util.ListIterator;
 import java.util.stream.Collectors;
 
 /**
@@ -38,6 +37,8 @@ import java.util.stream.Collectors;
  * @version $Revision: 1 $
  */
 public class JpaUserCredentialStore implements UserCredentialStore {
+
+    protected static final Logger logger = Logger.getLogger(JpaUserCredentialStore.class);
 
     private final KeycloakSession session;
     protected final EntityManager em;
@@ -66,7 +67,7 @@ public class JpaUserCredentialStore implements UserCredentialStore {
 
     @Override
     public boolean removeStoredCredential(RealmModel realm, UserModel user, String id) {
-        CredentialEntity entity = removeCredentialEntity(id);
+        CredentialEntity entity = removeCredentialEntity(realm, user, id);
         return entity != null;
     }
 
@@ -90,28 +91,17 @@ public class JpaUserCredentialStore implements UserCredentialStore {
 
     @Override
     public List<CredentialModel> getStoredCredentials(RealmModel realm, UserModel user) {
+        List<CredentialEntity> results = getStoredCredentialEntities(realm, user);
+
+        // list is ordered correctly by priority (lowest priority value first)
+        return results.stream().map(this::toModel).collect(Collectors.toList());
+    }
+
+    private List<CredentialEntity> getStoredCredentialEntities(RealmModel realm, UserModel user) {
         UserEntity userEntity = em.getReference(UserEntity.class, user.getId());
         TypedQuery<CredentialEntity> query = em.createNamedQuery("credentialByUser", CredentialEntity.class)
                 .setParameter("user", userEntity);
-        List<CredentialEntity> results = query.getResultList();
-        //order the list correctly
-        Map<String, CredentialEntity> credentialMap = new HashMap<>();
-        CredentialEntity current = null;
-        for (CredentialEntity ce : results) {
-            credentialMap.put(ce.getId(), ce);
-            if (ce.getPreviousCredentialLink() == null) {
-                current = ce;
-            }
-        }
-        List<CredentialModel> rtn = new LinkedList<>();
-        if (current != null) {
-            while (current.getNextCredentialLink() != null) {
-                rtn.add(toModel(current));
-                current = credentialMap.get(current.getNextCredentialLink());
-            }
-            rtn.add(toModel(current));
-        }
-        return rtn;
+        return query.getResultList();
     }
 
     @Override
@@ -144,94 +134,76 @@ public class JpaUserCredentialStore implements UserCredentialStore {
         UserEntity userRef = em.getReference(UserEntity.class, user.getId());
         entity.setUser(userRef);
 
-        //add in linkedlist
-        CredentialEntity lastCredential = findLastCredentialInList(user);
-        if (lastCredential != null) {
-            putCredentialInLinkedListAfterCredential(entity, lastCredential.getId());
-        }
+        //add in linkedlist to last position
+        List<CredentialEntity> credentials = getStoredCredentialEntities(realm, user);
+        int priority = credentials.isEmpty() ? 10 : credentials.get(credentials.size() - 1).getPriority() + 10;
+        entity.setPriority(priority);
 
         em.persist(entity);
         return entity;
     }
 
-    CredentialEntity removeCredentialEntity(String id) {
+    CredentialEntity removeCredentialEntity(RealmModel realm, UserModel user, String id) {
         CredentialEntity entity = em.find(CredentialEntity.class, id);
         if (entity == null) return null;
-        takeOutCredentialAndRepairList(entity);
+
+        int currentPriority = entity.getPriority();
+
+        List<CredentialEntity> credentials = getStoredCredentialEntities(realm, user);
+
+        // Decrease priority of all credentials after our
+        for (CredentialEntity cred : credentials) {
+            if (cred.getPriority() > currentPriority) {
+                cred.setPriority(cred.getPriority() - 10);
+            }
+        }
+
         em.remove(entity);
         return entity;
     }
 
     ////Operations to handle the linked list of credentials
     @Override
-    public void moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId) {
-        if (newPreviousCredentialId == null) {
-            setCredentialAsFirst(realm, user, id);
-        }
-        CredentialEntity credentialToMove = em.find(CredentialEntity.class, id);
-        //moved to the same place, do nothing
-        if (newPreviousCredentialId == credentialToMove.getPreviousCredentialLink() || id == newPreviousCredentialId){
-            return;
-        }
-        takeOutCredentialAndRepairList(credentialToMove);
-        putCredentialInLinkedListAfterCredential(credentialToMove, newPreviousCredentialId);
-    }
+    public boolean moveCredential(RealmModel realm, UserModel user, String id, boolean moveUp) {
+        List<CredentialEntity> sortedCreds = getStoredCredentialEntities(realm, user);
 
-    public void setCredentialAsFirst(RealmModel realm, UserModel user, String id)  {
-        CredentialEntity credentialToMove = em.find(CredentialEntity.class, id);
-        //moved to the same place, do nothing
-        if (credentialToMove.getPreviousCredentialLink() == null) {
-            return;
+        int index = -1;
+        CredentialEntity credential = null;
+        boolean found = false;
+
+        ListIterator<CredentialEntity> it = sortedCreds.listIterator();
+        while (it.hasNext()) {
+            index = it.nextIndex();
+            credential = it.next();
+            if (id.equals(credential.getId())) {
+                found = true;
+                break;
+            }
         }
-        takeOutCredentialAndRepairList(credentialToMove);
-        CredentialEntity currentFirst = findFirstCredentialInList(user);
-        credentialToMove.setPreviousCredentialLink(null);
-        credentialToMove.setNextCredentialLink(currentFirst.getId());
-        currentFirst.setPreviousCredentialLink(credentialToMove.getId());
-    }
 
-    /**
-     * Takes out a credentialEntity from the linkedList and repairs the list by attaching the previous and next together
-     * @param ce The CredentialEntity to remove
-     */
-    private void takeOutCredentialAndRepairList(CredentialEntity ce) {
-        //
-        if (ce.getPreviousCredentialLink() != null) {
-            CredentialEntity currentPreviousCredential = em.find(CredentialEntity.class,ce.getPreviousCredentialLink());
-            currentPreviousCredential.setNextCredentialLink(ce.getNextCredentialLink());
+        if (credential == null) {
+            logger.warnf("Not found credential with id [%s] of user [%s]", id, user.getUsername());
+            return false;
         }
-        if (ce.getNextCredentialLink() != null) {
-            CredentialEntity currentNextCredential = em.find(CredentialEntity.class,ce.getNextCredentialLink());
-            currentNextCredential.setPreviousCredentialLink(ce.getPreviousCredentialLink());
+
+        if (index == 0 && moveUp) {
+            logger.warnf("Can't move up credential with id [%s] of user [%s]", id, user.getUsername());
+            return false;
         }
-    }
 
-    private void putCredentialInLinkedListAfterCredential(CredentialEntity ce, String newPreviousCredentialId) {
-        CredentialEntity newPreviousCredential = em.find(CredentialEntity.class, newPreviousCredentialId);
-        ce.setPreviousCredentialLink(newPreviousCredentialId);
-        ce.setNextCredentialLink(newPreviousCredential.getNextCredentialLink());
-        if (newPreviousCredential.getNextCredentialLink() != null) {
-            CredentialEntity currentNextCredential = em.find(CredentialEntity.class,newPreviousCredential.getNextCredentialLink());
-            currentNextCredential.setPreviousCredentialLink(ce.getId());
+        if (index == sortedCreds.size() - 1 && !moveUp) {
+            logger.warnf("Can't move down credential with id [%s] of user [%s]", id, user.getUsername());
+            return false;
         }
-        newPreviousCredential.setNextCredentialLink(ce.getId());
-    }
 
-    private CredentialEntity findFirstCredentialInList(UserModel user){
-        UserEntity userEntity = em.getReference(UserEntity.class, user.getId());
-        TypedQuery<CredentialEntity> query = em.createNamedQuery("firstCredentialInList", CredentialEntity.class)
-                .setParameter("user", userEntity);
-        List<CredentialEntity> results = query.getResultList();
-        return (results.isEmpty())?null:results.get(0);
-    }
+        // Switch with previous credential
+        CredentialEntity other = moveUp ? sortedCreds.get(index - 1) : sortedCreds.get(index + 1);
 
-    private CredentialEntity findLastCredentialInList(UserModel user) {
-        UserEntity userEntity = em.getReference(UserEntity.class, user.getId());
-        TypedQuery<CredentialEntity> query = em.createNamedQuery("lastCredentialInList", CredentialEntity.class)
-                .setParameter("user", userEntity);
-        List<CredentialEntity> results = query.getResultList();
-        return (results.isEmpty())?null:results.get(0);
-    }
+        int ourPriority = credential.getPriority();
+        credential.setPriority(other.getPriority());
+        other.setPriority(ourPriority);
 
+        return true;
+    }
 
 }

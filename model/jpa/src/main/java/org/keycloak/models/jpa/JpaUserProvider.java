@@ -18,7 +18,6 @@
 package org.keycloak.models.jpa;
 
 import org.keycloak.authorization.jpa.entities.ResourceEntity;
-import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.common.util.Time;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialModel;
@@ -45,7 +44,6 @@ import org.keycloak.models.jpa.entities.UserEntity;
 import org.keycloak.models.jpa.entities.UserGroupMembershipEntity;
 import org.keycloak.models.utils.DefaultRoles;
 import org.keycloak.models.utils.KeycloakModelUtils;
-import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.storage.StorageId;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.client.ClientStorageProvider;
@@ -60,7 +58,6 @@ import javax.persistence.criteria.Subquery;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -867,7 +864,7 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
 
     @Override
     public boolean removeStoredCredential(RealmModel realm, UserModel user, String id) {
-        CredentialEntity entity = credentialStore.removeCredentialEntity(id);
+        CredentialEntity entity = credentialStore.removeCredentialEntity(realm, user, id);
         UserEntity userEntity = userInEntityManagerContext(user.getId());
         if (entity != null && userEntity != null) {
             userEntity.getCredentials().remove(entity);
@@ -912,8 +909,9 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
         return credentialStore.getStoredCredentialByNameAndType(realm, user, name, type);
     }
 
-    public void moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId) {
-        credentialStore.moveCredentialTo(realm, user, id, newPreviousCredentialId);
+    @Override
+    public boolean moveCredential(RealmModel realm, UserModel user, String id, boolean moveUp) {
+        return credentialStore.moveCredential(realm, user, id, moveUp);
     }
 
     // Could override this to provide a custom behavior.
