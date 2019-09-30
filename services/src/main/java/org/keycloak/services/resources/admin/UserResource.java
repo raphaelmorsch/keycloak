@@ -658,7 +658,7 @@ public class UserResource {
      */
     @PUT
     @Consumes(javax.ws.rs.core.MediaType.TEXT_PLAIN)
-    @Path("{credentialId}/label")
+    @Path("credentials/{credentialId}/label")
     public void setLabel(final @PathParam("credentialId") String credentialId, String userLabel) {
         auth.users().requireManage(user);
         CredentialModel credential = session.userCredentialManager().getStoredCredentialById(realm, user, credentialId);

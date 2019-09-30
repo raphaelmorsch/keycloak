@@ -522,8 +522,8 @@ module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, R
         return object ? Object.keys(object) : [];
     }
 
-    $scope.saveCredential = function(credential) {
-        UserCredentials.updateCredential({ realm: realm.realm, userId: user.id, credentialId: credential.id }, {
+    $scope.updateCredentialLabel = function(credential) {
+        UserCredentials.updateCredentialLabel({ realm: realm.realm, userId: user.id, credentialId: credential.id }, {
             'id': credential.id,
             'userLabel': credential.userLabel,
             // We JSONify the credential data

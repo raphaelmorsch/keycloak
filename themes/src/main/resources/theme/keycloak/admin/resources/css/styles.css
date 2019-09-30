@@ -480,13 +480,9 @@ table.credential-data-table td:first-child {
 
 table.credential-data-table td.key {
     text-align: right;
-    padding-top: 8px;
+    font-weight: bold;
 }
 
-table.credential-data-table td.value {
-    text-align: right;
-    padding: 5px;
-}
 /* search highlighting */
 
 div[tree-model] li .highlight {
