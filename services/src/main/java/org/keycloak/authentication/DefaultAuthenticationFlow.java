@@ -262,7 +262,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 } catch (AuthenticationFlowException afe) {
                     //consuming the error is not good here from an administrative point of view, but the user, since he has alternatives, should be able to go to another alternative and continue
                     afeList.add(afe);
-                    //ServicesLogger.LOGGER.failedAuthentication(afe);
                     processor.getAuthenticationSession().setExecutionStatus(alternative.getId(), AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
                 }
             }
