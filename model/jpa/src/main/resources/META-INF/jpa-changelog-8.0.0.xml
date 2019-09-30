@@ -20,63 +20,6 @@
     <!--modifies the credentials to the new format, while copying the data as json in the new fields-->
     <changeSet author="keycloak" id="8.0.0">
 
-        <!--<createTable tableName="CREDENTIAL2">
-            <column name="ID" type="VARCHAR(255)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="TYPE" type="VARCHAR(255)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="USER_LABEL" type="VARCHAR(255)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="CREATED_DATE" type="VARCHAR(255)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="USER_ID" type="VARCHAR(255)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="PRIORITY" type="INT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="CREDENTIAL_DATA" type="CLOB">
-                <constraints nullable="true"/>
-            </column>
-            <column name="SECRET_DATA" type="CLOB">
-                <constraints nullable="true"/>
-            </column>
-        </createTable>-->
-
-        <createTable tableName="FED_USER_CREDENTIAL2">
-            <column name="ID" type="VARCHAR(255)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="TYPE" type="VARCHAR(255)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="USER_LABEL" type="VARCHAR(255)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="CREATED_DATE" type="VARCHAR(255)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="USER_ID" type="VARCHAR(255)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="REALM_ID" type="VARCHAR(36)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="STORAGE_PROVIDER_ID" type="VARCHAR(36)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="CREDENTIAL_DATA" type="CLOB">
-                <constraints nullable="true"/>
-            </column>
-            <column name="SECRET_DATA" type="CLOB">
-                <constraints nullable="true"/>
-            </column>
-        </createTable>
-
         <addColumn tableName="CREDENTIAL">
             <column name="USER_LABEL" type="VARCHAR(255)">
                 <constraints nullable="true"/>
@@ -92,14 +35,20 @@
             </column>
         </addColumn>
 
-        <!--<addColumn tableName="FED_USER_CREDENTIAL">
+        <addColumn tableName="FED_USER_CREDENTIAL">
+            <column name="USER_LABEL" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
             <column name="SECRET_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
             <column name="CREDENTIAL_DATA" type="CLOB">
                 <constraints nullable="true"/>
             </column>
-        </addColumn>-->
+            <column name="PRIORITY" type="INT">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
 
         <!--Update format of credential to fill secret_data and credential_data-->
         <!--<customChange class="org.keycloak.connections.jpa.updater.liquibase.custom.JpaUpdate8_0_0_Credentials"/>-->
@@ -144,18 +93,17 @@
         <!--credential attributes are now held within the json of secret_data and credential_data (not this it was used in any case)-->
         <dropTable tableName="CREDENTIAL_ATTRIBUTE"/>
 
-        <!--<renameColumn tableName="FED_USER_CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>
+        <!--<renameColumn tableName="FED_USER_CREDENTIAL" oldColumnName="DEVICE" newColumnName="USER_LABEL"/>-->
 
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="HASH_ITERATIONS"/>
-        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="SALT"/>
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="VALUE"/>
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="COUNTER"/>
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="DIGITS"/>
         <dropColumn tableName="FED_USER_CREDENTIAL" columnName="PERIOD"/>
-        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="ALGORITHM"/>-->
+        <dropColumn tableName="FED_USER_CREDENTIAL" columnName="ALGORITHM"/>
 
         <!--credential attributes are now held within the json of secret_data and credential_data (not this it was used in any case)-->
-        <!--<dropTable tableName="FED_CREDENTIAL_ATTRIBUTE "/>-->
+        <dropTable tableName="FED_CREDENTIAL_ATTRIBUTE "/>
 
     </changeSet>
 

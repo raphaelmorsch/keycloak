@@ -39,6 +39,9 @@ import java.util.stream.Collectors;
  */
 public class JpaUserCredentialStore implements UserCredentialStore {
 
+    // Typical priority difference between 2 credentials
+    public static final int PRIORITY_DIFFERENCE = 10;
+
     protected static final Logger logger = Logger.getLogger(JpaUserCredentialStore.class);
 
     private final KeycloakSession session;
@@ -146,7 +149,7 @@ public class JpaUserCredentialStore implements UserCredentialStore {
 
         //add in linkedlist to last position
         List<CredentialEntity> credentials = getStoredCredentialEntities(realm, user);
-        int priority = credentials.isEmpty() ? 10 : credentials.get(credentials.size() - 1).getPriority() + 10;
+        int priority = credentials.isEmpty() ? PRIORITY_DIFFERENCE : credentials.get(credentials.size() - 1).getPriority() + PRIORITY_DIFFERENCE;
         entity.setPriority(priority);
 
         em.persist(entity);
@@ -164,7 +167,7 @@ public class JpaUserCredentialStore implements UserCredentialStore {
         // Decrease priority of all credentials after our
         for (CredentialEntity cred : credentials) {
             if (cred.getPriority() > currentPriority) {
-                cred.setPriority(cred.getPriority() - 10);
+                cred.setPriority(cred.getPriority() - PRIORITY_DIFFERENCE);
             }
         }
 
