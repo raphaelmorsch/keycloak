@@ -94,8 +94,8 @@ public class UserCredentialStoreManager implements UserCredentialManager, OnUser
     }
 
     @Override
-    public void moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId){
-        getStoreForUser(user).moveCredentialTo(realm, user, id, newPreviousCredentialId);
+    public boolean moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId){
+        return getStoreForUser(user).moveCredentialTo(realm, user, id, newPreviousCredentialId);
     }
 
     @Override

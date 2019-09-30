@@ -49,6 +49,7 @@ import org.keycloak.authorization.store.ResourceStore;
 import org.keycloak.authorization.store.ScopeStore;
 import org.keycloak.authorization.store.StoreFactory;
 import org.keycloak.common.enums.SslRequired;
+import org.keycloak.common.util.Base64;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.common.util.Time;
 import org.keycloak.common.util.UriUtils;
@@ -58,6 +59,7 @@ import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.hash.PasswordHashProvider;
 import org.keycloak.keys.KeyProvider;
 import org.keycloak.migration.MigrationProvider;
+import org.keycloak.migration.migrators.MigrateTo8_0_0;
 import org.keycloak.migration.migrators.MigrationUtils;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
@@ -86,7 +88,12 @@ import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.UserProvider;
 import org.keycloak.models.cache.UserCache;
+import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.models.credential.dto.OTPCredentialData;
+import org.keycloak.models.credential.dto.OTPSecretData;
+import org.keycloak.models.credential.dto.PasswordCredentialData;
+import org.keycloak.models.credential.dto.PasswordSecretData;
 import org.keycloak.policy.PasswordPolicyManagerProvider;
 import org.keycloak.policy.PasswordPolicyNotMetException;
 import org.keycloak.policy.PolicyError;
@@ -612,8 +619,7 @@ public class RepresentationToModel {
             for (AuthenticationFlowRepresentation flowRep : rep.getAuthenticationFlows()) {
                 AuthenticationFlowModel model = newRealm.getFlowByAlias(flowRep.getAlias());
                 for (AuthenticationExecutionExportRepresentation exeRep : flowRep.getAuthenticationExecutions()) {
-                    AuthenticationExecutionModel execution = toModel(newRealm, exeRep);
-                    execution.setParentFlow(model.getId());
+                    AuthenticationExecutionModel execution = toModel(newRealm, model, exeRep);
                     newRealm.addAuthenticatorExecution(execution);
                 }
             }
@@ -828,6 +834,33 @@ public class RepresentationToModel {
             }
 
             realm.setClientScopes(clientScopes);
+        }
+    }
+
+    private static void convertDeprecatedCredentialsFormat(UserRepresentation user) {
+        if (user.getCredentials() != null) {
+            for (CredentialRepresentation cred : user.getCredentials()) {
+                try {
+                    if ((cred.getCredentialData() == null || cred.getSecretData() == null) && cred.getValue() == null) {
+                        if (PasswordCredentialModel.TYPE.equals(cred.getType()) || PasswordCredentialModel.PASSWORD_HISTORY.equals(cred.getType())) {
+                            PasswordCredentialData credentialData = new PasswordCredentialData(cred.getHashIterations(), cred.getAlgorithm());
+                            cred.setCredentialData(JsonSerialization.writeValueAsString(credentialData));
+                            // Created this manually to avoid conversion from Base64 and back
+                            cred.setSecretData("{\"value\":\"" + cred.getHashedSaltedValue() + "\",\"salt\":\"" + cred.getSalt() + "\"}");
+                            cred.setPriority(10);
+                        } else if (OTPCredentialModel.TOTP.equals(cred.getType()) || OTPCredentialModel.HOTP.equals(cred.getType())) {
+                            OTPCredentialData credentialData = new OTPCredentialData(cred.getType(), cred.getDigits(), cred.getCounter(), cred.getPeriod(), cred.getAlgorithm());
+                            OTPSecretData secretData = new OTPSecretData(cred.getHashedSaltedValue());
+                            cred.setCredentialData(JsonSerialization.writeValueAsString(credentialData));
+                            cred.setSecretData(JsonSerialization.writeValueAsString(secretData));
+                            cred.setPriority(20);
+                            cred.setType(OTPCredentialModel.TYPE);
+                        }
+                    }
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            }
         }
     }
 
@@ -1558,6 +1591,7 @@ public class RepresentationToModel {
 
     public static UserModel createUser(KeycloakSession session, RealmModel newRealm, UserRepresentation userRep) {
         convertDeprecatedSocialProviders(userRep);
+        convertDeprecatedCredentialsFormat(userRep);
 
         // Import users just to user storage. Don't federate
         UserModel user = session.userLocalStorage().addUser(newRealm, userRep.getId(), userRep.getUsername(), false, false);
@@ -1816,7 +1850,7 @@ public class RepresentationToModel {
 
     }
 
-    public static AuthenticationExecutionModel toModel(RealmModel realm, AuthenticationExecutionExportRepresentation rep) {
+    private static AuthenticationExecutionModel toModel(RealmModel realm, AuthenticationFlowModel parentFlow, AuthenticationExecutionExportRepresentation rep) {
         AuthenticationExecutionModel model = new AuthenticationExecutionModel();
         if (rep.getAuthenticatorConfig() != null) {
             AuthenticatorConfigModel config = realm.getAuthenticatorConfigByAlias(rep.getAuthenticatorConfig());
@@ -1831,10 +1865,11 @@ public class RepresentationToModel {
         model.setPriority(rep.getPriority());
         try {
             model.setRequirement(AuthenticationExecutionModel.Requirement.valueOf(rep.getRequirement()));
+            model.setParentFlow(parentFlow.getId());
         } catch (IllegalArgumentException iae) {
             //retro-compatible for previous OPTIONAL being changed to CONDITIONAL
             if ("OPTIONAL".equals(rep.getRequirement())){
-                model.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
+                MigrateTo8_0_0.migrateOptionalAuthenticationExecution(realm, parentFlow, model, false);
             }
         }
         return model;

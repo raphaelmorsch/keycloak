@@ -82,13 +82,6 @@ public class OTPCredentialProvider implements CredentialProvider<OTPCredentialMo
         return OTPCredentialModel.createFromCredentialModel(model);
     }
 
-    public OTPCredentialModel getPreferredCredential(RealmModel realm, UserModel user) {
-        if (!isConfiguredFor(realm, user)) {
-            return null;
-        }
-        return OTPCredentialModel.createFromCredentialModel(getCredentialStore().getStoredCredentialsByType(realm, user, getType()).get(0));
-    }
-
     @Override
     public boolean supportsCredentialType(String credentialType) {
         return getType().equals(credentialType);

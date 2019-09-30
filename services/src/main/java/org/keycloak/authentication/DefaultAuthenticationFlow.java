@@ -23,8 +23,12 @@ import org.keycloak.authentication.authenticators.conditional.ConditionalBlockAu
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
+import org.keycloak.models.Constants;
+import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.ServicesLogger;
+import org.keycloak.services.util.AuthenticationFlowHistoryHelper;
+import org.keycloak.services.util.AuthenticationFlowURLHelper;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
 import javax.ws.rs.core.MultivaluedHashMap;
@@ -93,47 +97,45 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             throw new AuthenticationFlowException("action is not in current execution", AuthenticationFlowError.INTERNAL_ERROR);
         }
 
-        //TODO check that execution is in current flow tree for security reasons?
-
         MultivaluedMap<String, String> inputData = processor.getRequest().getDecodedFormParameters();
-        String authExecId = inputData.getFirst("authenticationExecution");
-        String selectedCredentialId = inputData.getFirst("credentialId");
+        String authExecId = inputData.getFirst(Constants.AUTHENTICATION_EXECUTION);
+        String selectedCredentialId = inputData.getFirst(Constants.CREDENTIAL_ID);
 
         //check if the user has selected the "back" option
         if (inputData.containsKey("back")) {
-            //If current execution is required, get other required executions in flow, and see if we can return to previous
-            if (model.isRequired()) {
-                List<AuthenticationExecutionModel> executionsInCurrentFlow = processor.getRealm().getAuthenticationExecutions(model.getParentFlow());
+            AuthenticationSessionModel authSession = processor.getAuthenticationSession();
 
-                List<AuthenticationExecutionModel> requiredExecutions = executionsInCurrentFlow.stream().filter(AuthenticationExecutionModel::isRequired)
-                        .filter(m -> !isConditionalAuthenticator(m)).collect(Collectors.toList());
-                int index = requiredExecutions.indexOf(model);
-                //if in a list of required executions, move back to previous if not the first
-                if (index > 0) {
-                    processor.getAuthenticationSession().getExecutionStatus().remove(requiredExecutions.get(index - 1).getId());
-                    Response response = processSingleFlowExecutionModel(requiredExecutions.get(index - 1), null, false);
-                    if (response == null) {
-                        processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
-                        return processFlow();
-                    } else return response;
-                }
-            }
-            //Otherwise, go up to the parent of the current flow, if one exists
-            if (!processor.getRealm().getAuthenticationFlowById(model.getParentFlow()).isTopLevel()) {
-                //Clear all execution statuses of executions in parent flow and for each sub-tree. This is necessary to remove any
-                //status that may have been set by an automatic authenticator, but which would not be cleared otherwise.
-                AuthenticationExecutionModel currentFlow = processor.getRealm().getAuthenticationExecutionByFlowId(model.getParentFlow());
-                List<AuthenticationExecutionModel> parentFlowExecutions = processor.getRealm().getAuthenticationExecutions(currentFlow.getParentFlow());
-                for (AuthenticationExecutionModel execution : parentFlowExecutions) {
-                    recursiveClearExecutionStatus(execution);
-                }
-                processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
-                return processFlow();
+            if (AuthenticationFlowHistoryHelper.hasLastSuccessfulExecution(authSession)) {
+
+                String executionId = AuthenticationFlowHistoryHelper.pullLastSuccessfulExecution(authSession);
+                AuthenticationExecutionModel lastActionExecution = processor.getRealm().getAuthenticationExecutionById(executionId);
+
+                logger.debugf("Moving back to authentication execution '%s'", lastActionExecution.getAuthenticator());
+
+                recursiveClearExecutionStatusOfAllExecutionsAfterOurExecutionInclusive(lastActionExecution);
+
+                Response response = processSingleFlowExecutionModel(lastActionExecution, null, false);
+                if (response == null) {
+                    processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
+                    return processFlow();
+                } else return response;
+            } else {
+                // This normally shouldn't happen as "back" button shouldn't be available on the form. If it is still triggered, we show "pageExpired" page
+                new AuthenticationFlowURLHelper(processor.getSession(), processor.getRealm(), processor.getUriInfo())
+                        .showPageExpired(authSession);
             }
         }
 
         // check if the user has switched to a new authentication execution, and if so switch to it.
         if (authExecId != null && !authExecId.isEmpty()) {
+
+            // Check if switch to the requested authentication execution is allowed
+            createAuthenticationSelectionList(model).stream()
+                    .filter(authSelectionOption -> authExecId.equals(authSelectionOption.getAuthExecId()))
+                    .findFirst()
+                    .orElseThrow(() -> new AuthenticationFlowException("Requested authentication execution is not allowed", AuthenticationFlowError.INTERNAL_ERROR)
+            );
+
             model = processor.getRealm().getAuthenticationExecutionById(authExecId);
             Response response = processSingleFlowExecutionModel(model, selectedCredentialId, false);
             if (response == null) {
@@ -172,6 +174,64 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             return processFlow();
         } else return response;
     }
+
+    /**
+     * Clear execution status of targetExecution and also clear execution status of all the executions, which were triggered after this execution.
+     * This covers also "flow" executions and executions, which were set automatically
+     *
+     * @param targetExecution
+     */
+    private void recursiveClearExecutionStatusOfAllExecutionsAfterOurExecutionInclusive(AuthenticationExecutionModel targetExecution) {
+        RealmModel realm = processor.getRealm();
+        AuthenticationSessionModel authSession = processor.getAuthenticationSession();
+
+        // Clear execution status of our execution
+        authSession.getExecutionStatus().remove(targetExecution.getId());
+
+        // Find all the "sibling" executions after target execution including target execution. For those, we can recursively remove execution status
+        recursiveClearExecutionStatusOfAllSiblings(targetExecution);
+
+        // Find the parent flow. If corresponding execution of this parent flow already has "executionStatus" set, we should clear it and also clear
+        // the status for all the siblings after that execution
+        while (true) {
+            AuthenticationFlowModel parentFlow = realm.getAuthenticationFlowById(targetExecution.getParentFlow());
+            if (parentFlow.isTopLevel()) {
+                return;
+            }
+
+            AuthenticationExecutionModel flowExecution = realm.getAuthenticationExecutionByFlowId(parentFlow.getId());
+            if (authSession.getExecutionStatus().containsKey(flowExecution.getId())) {
+                authSession.getExecutionStatus().remove(flowExecution.getId());
+                recursiveClearExecutionStatusOfAllSiblings(flowExecution);
+                targetExecution = flowExecution;
+            } else {
+                return;
+            }
+
+        }
+    }
+
+
+    /**
+     * Recursively removes the execution status of all "sibling" executions after targetExecution.
+     *
+     * @param targetExecution
+     */
+    private void recursiveClearExecutionStatusOfAllSiblings(AuthenticationExecutionModel targetExecution) {
+        RealmModel realm = processor.getRealm();
+        AuthenticationFlowModel parentFlow = realm.getAuthenticationFlowById(targetExecution.getParentFlow());
+
+        logger.debugf("Recursively clearing executions in flow '%s', which are after execution '%s'", parentFlow.getAlias(), targetExecution.getId());
+
+        List<AuthenticationExecutionModel> siblingExecutions = realm.getAuthenticationExecutions(parentFlow.getId());
+        int index = siblingExecutions.indexOf(targetExecution);
+        siblingExecutions = siblingExecutions.subList(index + 1, siblingExecutions.size());
+
+        for (AuthenticationExecutionModel authExec : siblingExecutions) {
+            recursiveClearExecutionStatus(authExec);
+        }
+    }
+
 
     /**
      * Removes the execution status for an execution. If it is a flow, do the same for all sub-executions.
@@ -262,7 +322,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 } catch (AuthenticationFlowException afe) {
                     //consuming the error is not good here from an administrative point of view, but the user, since he has alternatives, should be able to go to another alternative and continue
                     afeList.add(afe);
-                    //ServicesLogger.LOGGER.failedAuthentication(afe);
                     processor.getAuthenticationSession().setExecutionStatus(alternative.getId(), AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
                 }
             }
@@ -346,6 +405,8 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         context.setAuthenticationSelections(selectionOptions);
         if (selectedCredentialId != null) {
             context.setSelectedCredentialId(selectedCredentialId);
+        } else if (!selectionOptions.isEmpty()) {
+            context.setSelectedCredentialId(selectionOptions.get(0).getCredentialId());
         }
         if (authenticator.requiresUser()) {
             if (authUser == null) {
@@ -454,7 +515,11 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         FlowStatus status = result.getStatus();
         switch (status) {
             case SUCCESS:
-                logger.debugv("authenticator SUCCESS: {0}", execution.getAuthenticator());
+                logger.infov("authenticator SUCCESS: {0}", execution.getAuthenticator());
+                if (isAction) {
+                    AuthenticationFlowHistoryHelper.pushLastSuccessfulExecution(processor.getAuthenticationSession(), execution.getId());
+                }
+
                 processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
                 return null;
             case FAILED:
