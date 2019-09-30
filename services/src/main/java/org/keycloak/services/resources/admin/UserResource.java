@@ -654,6 +654,23 @@ public class UserResource {
     }
 
     /**
+     * Update a credential label for a user
+     */
+    @PUT
+    @Consumes(javax.ws.rs.core.MediaType.TEXT_PLAIN)
+    @Path("{credentialId}/label")
+    public void setLabel(final @PathParam("credentialId") String credentialId, String userLabel) {
+        auth.users().requireManage(user);
+        CredentialModel credential = session.userCredentialManager().getStoredCredentialById(realm, user, credentialId);
+        if (credential == null) {
+            // we do this to make sure somebody can't phish ids
+            if (auth.users().canQuery()) throw new NotFoundException("User not found");
+            else throw new ForbiddenException();
+        }
+        session.userCredentialManager().updateCredentialLabel(realm, user, credentialId, userLabel);
+    }
+
+    /**
      * Update a credential model. Inspiration : org.keycloak.servUserCredentialStoreManagerices.resources.admin.UserResource#updateUserFromRep()
      * @param credential
      * @param rep

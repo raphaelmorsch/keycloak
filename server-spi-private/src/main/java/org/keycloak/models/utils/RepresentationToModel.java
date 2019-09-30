@@ -53,6 +53,7 @@ import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.common.util.Time;
 import org.keycloak.common.util.UriUtils;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.hash.PasswordHashProvider;
 import org.keycloak.keys.KeyProvider;
@@ -81,6 +82,7 @@ import org.keycloak.models.RequiredActionProviderModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.ScopeContainerModel;
 import org.keycloak.models.UserConsentModel;
+import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.UserProvider;
 import org.keycloak.models.cache.UserCache;
@@ -1627,29 +1629,17 @@ public class RepresentationToModel {
                     continue;
                 }
                 if (cred.getValue() != null && !cred.getValue().isEmpty()) {
-                    PasswordPolicy policy = realm.getPasswordPolicy();
                     RealmModel origRealm = session.getContext().getRealm();
                     try {
                         session.getContext().setRealm(realm);
-                        PolicyError error = session.getProvider(PasswordPolicyManagerProvider.class).validate(realm, user, cred.getValue());
-                        if (error != null) throw new ModelException(error.getMessage(), error.getParameters());
-
-                        PasswordHashProvider hash = session.getProvider(PasswordHashProvider.class, policy.getHashAlgorithm());
-                        if (hash == null) {
-                            logger.warnv("Realm PasswordPolicy PasswordHashProvider {0} not found", policy.getHashAlgorithm());
-                            throw new ModelException(String.format("Realm PasswordPolicy PasswordHashProvider %1$s not found",
-                                    policy.getHashAlgorithm()));
-                        }
-                        PasswordCredentialModel credentialModel = hash.encodedCredential(cred.getValue(), policy.getHashIterations());
-                        credentialModel.setCreatedDate(Time.currentTimeMillis());
-                        session.userCredentialManager().createCredential(realm, user, credentialModel);
+                        session.userCredentialManager().updateCredential(realm, user, UserCredentialModel.password(cred.getValue(), false));
                     } catch (ModelException ex) {
                         throw new PasswordPolicyNotMetException(ex.getMessage(), user.getUsername(), ex);
                     } finally {
                         session.getContext().setRealm(origRealm);
                     }
                 } else {
-                    session.userCredentialManager().createCredential(realm, user, toModel(cred));
+                    session.userCredentialManager().createCredentialThroughProvider(realm, user, toModel(cred));
                 }
             }
         }

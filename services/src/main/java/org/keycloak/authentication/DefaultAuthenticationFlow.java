@@ -47,6 +47,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     private final AuthenticationProcessor processor;
     private final AuthenticationFlowModel flow;
     private boolean successful;
+    private List<AuthenticationFlowException> afeList = new ArrayList<>();
 
     public DefaultAuthenticationFlow(AuthenticationProcessor processor, AuthenticationFlowModel flow) {
         this.processor = processor;
@@ -105,7 +106,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 List<AuthenticationExecutionModel> executionsInCurrentFlow = processor.getRealm().getAuthenticationExecutions(model.getParentFlow());
 
                 List<AuthenticationExecutionModel> requiredExecutions = executionsInCurrentFlow.stream().filter(AuthenticationExecutionModel::isRequired)
-                    .filter(m -> !isConditionalAuthenticator(m)).collect(Collectors.toList());
+                        .filter(m -> !isConditionalAuthenticator(m)).collect(Collectors.toList());
                 int index = requiredExecutions.indexOf(model);
                 //if in a list of required executions, move back to previous if not the first
                 if (index > 0) {
@@ -174,6 +175,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
 
     /**
      * Removes the execution status for an execution. If it is a flow, do the same for all sub-executions.
+     *
      * @param execution the execution for which the status must be cleared
      */
     private void recursiveClearExecutionStatus(AuthenticationExecutionModel execution) {
@@ -258,6 +260,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                         return null;
                     }
                 } catch (AuthenticationFlowException afe) {
+                    //consuming the error is not good here from an administrative point of view, but the user, since he has alternatives, should be able to go to another alternative and continue
+                    afeList.add(afe);
+                    //ServicesLogger.LOGGER.failedAuthentication(afe);
                     processor.getAuthenticationSession().setExecutionStatus(alternative.getId(), AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
                 }
             }
@@ -269,7 +274,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
 
     private boolean flowIsConditional() {
         AuthenticationExecutionModel flowModel = processor.getRealm().getAuthenticationExecutionByFlowId(flow.getId());
-        return flowModel!=null && flowModel.isConditional();
+        return flowModel != null && flowModel.isConditional();
     }
 
     private boolean isConditionalAuthenticator(AuthenticationExecutionModel model) {
@@ -292,7 +297,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         return !authenticator.matchCondition(context);
     }
 
-    private boolean isSetupRequired(AuthenticationExecutionModel model){
+    private boolean isSetupRequired(AuthenticationExecutionModel model) {
         return AuthenticationSessionModel.ExecutionStatus.SETUP_REQUIRED.equals(processor.getAuthenticationSession().getExecutionStatus().get(model.getId()));
     }
 
@@ -342,7 +347,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         if (selectedCredentialId != null) {
             context.setSelectedCredentialId(selectedCredentialId);
         }
-
         if (authenticator.requiresUser()) {
             if (authUser == null) {
                 throw new AuthenticationFlowException("authenticator: " + factory.getId(), AuthenticationFlowError.UNKNOWN_USER);
@@ -355,12 +359,13 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                     authenticator.setRequiredActions(processor.getSession(), processor.getRealm(), processor.getAuthenticationSession().getAuthenticatedUser());
                     return null;
                 } else {
-                    throw new AuthenticationFlowException(AuthenticationFlowError.CREDENTIAL_SETUP_REQUIRED);
+                    throw new AuthenticationFlowException("authenticator: " + factory.getId(), AuthenticationFlowError.CREDENTIAL_SETUP_REQUIRED);
                 }
             }
         }
         logger.debugv("invoke authenticator.authenticate: {0}", factory.getId());
         authenticator.authenticate(context);
+
         return processResult(context, false);
     }
 
@@ -368,8 +373,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
      * This method creates the list of authenticators that is presented to the user. For a required execution, this is
      * only the credentials associated to the authenticator, and for an alternative execution, this is all other alternative
      * executions in the flow, including the credentials.
-     *
+     * <p>
      * In both cases, the credentials take precedence, with the order selected by the user (or his administrator).
+     *
      * @param model The current execution model
      * @return an ordered list of the authentication selection options to present the user.
      */
@@ -395,7 +401,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                         nonCredentialExecutions.add(execution);
                     }
                 }
-            } else if (model.isRequired() && ! model.isAuthenticatorFlow()) {
+            } else if (model.isRequired() && !model.isAuthenticatorFlow()) {
                 //only get current credentials
                 Authenticator authenticator = processor.getSession().getProvider(Authenticator.class, model.getAuthenticator());
                 if (authenticator instanceof CredentialValidator) {
@@ -417,7 +423,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                     authenticationSelectionList.add(authSel);
                     countAuthSelections.add(credential.getType(), authSel);
                 }
-                for(Entry<String, List<AuthenticationSelectionOption>> entry : countAuthSelections.entrySet()) {
+                for (Entry<String, List<AuthenticationSelectionOption>> entry : countAuthSelections.entrySet()) {
                     if (entry.getValue().size() == 1) {
                         entry.getValue().get(0).setShowCredentialName(false);
                     }
@@ -474,7 +480,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 return sendChallenge(result, execution);
             case ATTEMPTED:
                 logger.debugv("authenticator ATTEMPTED: {0}", execution.getAuthenticator());
-                if (execution.getRequirement() == AuthenticationExecutionModel.Requirement.REQUIRED) {
+                if (execution.isRequired()) {
                     throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS);
                 }
                 processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
@@ -497,5 +503,10 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     @Override
     public boolean isSuccessful() {
         return successful;
+    }
+
+    @Override
+    public List<AuthenticationFlowException> getFlowExceptions(){
+        return afeList;
     }
 }

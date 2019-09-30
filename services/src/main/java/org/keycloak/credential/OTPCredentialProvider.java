@@ -77,6 +77,11 @@ public class OTPCredentialProvider implements CredentialProvider<OTPCredentialMo
         getCredentialStore().removeStoredCredential(realm, user, credentialId);
     }
 
+    @Override
+    public OTPCredentialModel getCredentialFromModel(CredentialModel model) {
+        return OTPCredentialModel.createFromCredentialModel(model);
+    }
+
     public OTPCredentialModel getPreferredCredential(RealmModel realm, UserModel user) {
         if (!isConfiguredFor(realm, user)) {
             return null;
