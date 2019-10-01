@@ -226,8 +226,7 @@ public class JpaUserCredentialStore implements UserCredentialStore {
             if (credential.getPriority() != expectedPriority) {
                 credential.setPriority(expectedPriority);
 
-                // TODO:mposolda
-                logger.infof("Priority of credential [%s] of user [%s] changed to [%d]", credential.getId(), user.getUsername(), expectedPriority);
+                logger.tracef("Priority of credential [%s] of user [%s] changed to [%d]", credential.getId(), user.getUsername(), expectedPriority);
             }
         }
         return true;

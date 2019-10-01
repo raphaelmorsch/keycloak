@@ -731,44 +731,55 @@ public class JpaUserFederatedStorageProvider implements
 
     @Override
     public boolean moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId) {
-//        List<FederatedUserCredentialEntity> sortedCreds = getStoredCredentialEntities(user.getId());
-//
-//        int index = -1;
-//        FederatedUserCredentialEntity credential = null;
-//        boolean found = false;
-//
-//        ListIterator<FederatedUserCredentialEntity> it = sortedCreds.listIterator();
-//        while (it.hasNext()) {
-//            index = it.nextIndex();
-//            credential = it.next();
-//            if (id.equals(credential.getId())) {
-//                found = true;
-//                break;
-//            }
-//        }
-//
-//        if (credential == null) {
-//            logger.warnf("Not found credential with id [%s] of user [%s]", id, user.getUsername());
-//            return false;
-//        }
-//
-//        if (index == 0 && moveUp) {
-//            logger.warnf("Can't move up credential with id [%s] of user [%s]", id, user.getUsername());
-//            return false;
-//        }
-//
-//        if (index == sortedCreds.size() - 1 && !moveUp) {
-//            logger.warnf("Can't move down credential with id [%s] of user [%s]", id, user.getUsername());
-//            return false;
-//        }
-//
-//        // Switch with previous credential
-//        FederatedUserCredentialEntity other = moveUp ? sortedCreds.get(index - 1) : sortedCreds.get(index + 1);
-//
-//        int ourPriority = credential.getPriority();
-//        credential.setPriority(other.getPriority());
-//        other.setPriority(ourPriority);
-//
+        List<FederatedUserCredentialEntity> sortedCreds = getStoredCredentialEntities(user.getId());
+
+        // 1 - Create new list and move everything to it.
+        List<FederatedUserCredentialEntity> newList = new ArrayList<>();
+        newList.addAll(sortedCreds);
+
+        // 2 - Find indexes of our and newPrevious credential
+        int ourCredentialIndex = -1;
+        int newPreviousCredentialIndex = -1;
+        FederatedUserCredentialEntity ourCredential = null;
+        int i = 0;
+        for (FederatedUserCredentialEntity credential : newList) {
+            if (id.equals(credential.getId())) {
+                ourCredentialIndex = i;
+                ourCredential = credential;
+            } else if(newPreviousCredentialId != null && newPreviousCredentialId.equals(credential.getId())) {
+                newPreviousCredentialIndex = i;
+            }
+            i++;
+        }
+
+        if (ourCredentialIndex == -1) {
+            logger.warnf("Not found credential with id [%s] of user [%s]", id, user.getUsername());
+            return false;
+        }
+
+        if (newPreviousCredentialId != null && newPreviousCredentialIndex == -1) {
+            logger.warnf("Can't move up credential with id [%s] of user [%s]", id, user.getUsername());
+            return false;
+        }
+
+        // 3 - Compute index where we move our credential
+        int toMoveIndex = newPreviousCredentialId==null ? 0 : newPreviousCredentialIndex + 1;
+
+        // 4 - Insert our credential to new position, remove it from the old position
+        newList.add(toMoveIndex, ourCredential);
+        int indexToRemove = toMoveIndex < ourCredentialIndex ? ourCredentialIndex + 1 : ourCredentialIndex;
+        newList.remove(indexToRemove);
+
+        // 5 - newList contains credentials in requested order now. Iterate through whole list and change priorities accordingly.
+        int expectedPriority = 0;
+        for (FederatedUserCredentialEntity credential : newList) {
+            expectedPriority += JpaUserCredentialStore.PRIORITY_DIFFERENCE;
+            if (credential.getPriority() != expectedPriority) {
+                credential.setPriority(expectedPriority);
+
+                logger.tracef("Priority of credential [%s] of user [%s] changed to [%d]", credential.getId(), user.getUsername(), expectedPriority);
+            }
+        }
         return true;
     }
 

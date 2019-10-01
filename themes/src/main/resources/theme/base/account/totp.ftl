@@ -14,7 +14,11 @@
                 <tr>
                     <td class="provider">${msg("mobile")}</td>
                     <td class="provider">${credential.id}</td>
-                    <td class="provider">${credential.userLabel}</td>
+                    <#if credential.userLabel??>
+                        <td class="provider">${credential.userLabel}</td>
+                    <#else>
+                        <td class="provider"></td>
+                    </#if>
                     <td class="action">
                         <form action="${url.totpUrl}" method="post" class="form-inline">
                             <input type="hidden" id="stateChecker" name="stateChecker" value="${stateChecker}">
