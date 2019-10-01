@@ -95,28 +95,25 @@ public class AccountCredentialResource {
     }
 
     /**
-     * Move a credential to an upper position
+     * Move a credential to a position behind another credential
      * @param credentialId The credential to move
      */
-    @Path("{credentialId}/moveUp")
+    @Path("{credentialId}/moveToFirst")
     @POST
-    public void moveUp(final @PathParam("credentialId") String credentialId){
-        moveCredential(credentialId, true);
+    public void moveToFirst(final @PathParam("credentialId") String credentialId){
+        moveCredentialAfter(credentialId, null);
     }
 
     /**
-     * Move a credential to a down position
+     * Move a credential to a position behind another credential
      * @param credentialId The credential to move
+     * @param newPreviousCredentialId The credential that will be the previous element in the list. If set to null, the moved credential will be the first element in the list.
      */
-    @Path("{credentialId}/moveDown")
+    @Path("{credentialId}/moveAfter/{newPreviousCredentialId}")
     @POST
-    public void moveDown(final @PathParam("credentialId") String credentialId){
-        moveCredential(credentialId, false);
-    }
-
-    private boolean moveCredential(String credentialId, boolean moveUp) {
+    public void moveCredentialAfter(final @PathParam("credentialId") String credentialId, final @PathParam("newPreviousCredentialId") String newPreviousCredentialId){
         auth.require(AccountRoles.MANAGE_ACCOUNT);
-        return session.userCredentialManager().moveCredential(realm, user, credentialId, moveUp);
+        session.userCredentialManager().moveCredentialTo(realm, user, credentialId, newPreviousCredentialId);
     }
 
     @GET

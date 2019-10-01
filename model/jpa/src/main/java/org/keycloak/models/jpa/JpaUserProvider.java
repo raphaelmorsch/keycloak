@@ -910,8 +910,8 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore {
     }
 
     @Override
-    public boolean moveCredential(RealmModel realm, UserModel user, String id, boolean moveUp) {
-        return credentialStore.moveCredential(realm, user, id, moveUp);
+    public boolean moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId) {
+        return credentialStore.moveCredentialTo(realm, user, id, newPreviousCredentialId);
     }
 
     // Could override this to provide a custom behavior.

@@ -730,45 +730,45 @@ public class JpaUserFederatedStorageProvider implements
     }
 
     @Override
-    public boolean moveCredential(RealmModel realm, UserModel user, String id, boolean moveUp) {
-        List<FederatedUserCredentialEntity> sortedCreds = getStoredCredentialEntities(user.getId());
-
-        int index = -1;
-        FederatedUserCredentialEntity credential = null;
-        boolean found = false;
-
-        ListIterator<FederatedUserCredentialEntity> it = sortedCreds.listIterator();
-        while (it.hasNext()) {
-            index = it.nextIndex();
-            credential = it.next();
-            if (id.equals(credential.getId())) {
-                found = true;
-                break;
-            }
-        }
-
-        if (credential == null) {
-            logger.warnf("Not found credential with id [%s] of user [%s]", id, user.getUsername());
-            return false;
-        }
-
-        if (index == 0 && moveUp) {
-            logger.warnf("Can't move up credential with id [%s] of user [%s]", id, user.getUsername());
-            return false;
-        }
-
-        if (index == sortedCreds.size() - 1 && !moveUp) {
-            logger.warnf("Can't move down credential with id [%s] of user [%s]", id, user.getUsername());
-            return false;
-        }
-
-        // Switch with previous credential
-        FederatedUserCredentialEntity other = moveUp ? sortedCreds.get(index - 1) : sortedCreds.get(index + 1);
-
-        int ourPriority = credential.getPriority();
-        credential.setPriority(other.getPriority());
-        other.setPriority(ourPriority);
-
+    public boolean moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId) {
+//        List<FederatedUserCredentialEntity> sortedCreds = getStoredCredentialEntities(user.getId());
+//
+//        int index = -1;
+//        FederatedUserCredentialEntity credential = null;
+//        boolean found = false;
+//
+//        ListIterator<FederatedUserCredentialEntity> it = sortedCreds.listIterator();
+//        while (it.hasNext()) {
+//            index = it.nextIndex();
+//            credential = it.next();
+//            if (id.equals(credential.getId())) {
+//                found = true;
+//                break;
+//            }
+//        }
+//
+//        if (credential == null) {
+//            logger.warnf("Not found credential with id [%s] of user [%s]", id, user.getUsername());
+//            return false;
+//        }
+//
+//        if (index == 0 && moveUp) {
+//            logger.warnf("Can't move up credential with id [%s] of user [%s]", id, user.getUsername());
+//            return false;
+//        }
+//
+//        if (index == sortedCreds.size() - 1 && !moveUp) {
+//            logger.warnf("Can't move down credential with id [%s] of user [%s]", id, user.getUsername());
+//            return false;
+//        }
+//
+//        // Switch with previous credential
+//        FederatedUserCredentialEntity other = moveUp ? sortedCreds.get(index - 1) : sortedCreds.get(index + 1);
+//
+//        int ourPriority = credential.getPriority();
+//        credential.setPriority(other.getPriority());
+//        other.setPriority(ourPriority);
+//
         return true;
     }
 

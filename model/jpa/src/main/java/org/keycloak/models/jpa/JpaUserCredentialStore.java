@@ -29,6 +29,8 @@ import org.keycloak.models.utils.KeycloakModelUtils;
 
 import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.stream.Collectors;
@@ -177,45 +179,57 @@ public class JpaUserCredentialStore implements UserCredentialStore {
 
     ////Operations to handle the linked list of credentials
     @Override
-    public boolean moveCredential(RealmModel realm, UserModel user, String id, boolean moveUp) {
+    public boolean moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId) {
         List<CredentialEntity> sortedCreds = getStoredCredentialEntities(realm, user);
 
-        int index = -1;
-        CredentialEntity credential = null;
-        boolean found = false;
+        // 1 - Create new list and move everything to it.
+        List<CredentialEntity> newList = new ArrayList<>();
+        newList.addAll(sortedCreds);
 
-        ListIterator<CredentialEntity> it = sortedCreds.listIterator();
-        while (it.hasNext()) {
-            index = it.nextIndex();
-            credential = it.next();
+        // 2 - Find indexes of our and newPrevious credential
+        int ourCredentialIndex = -1;
+        int newPreviousCredentialIndex = -1;
+        CredentialEntity ourCredential = null;
+        int i = 0;
+        for (CredentialEntity credential : newList) {
             if (id.equals(credential.getId())) {
-                found = true;
-                break;
+                ourCredentialIndex = i;
+                ourCredential = credential;
+            } else if(newPreviousCredentialId != null && newPreviousCredentialId.equals(credential.getId())) {
+                newPreviousCredentialIndex = i;
             }
+            i++;
         }
 
-        if (credential == null) {
+        if (ourCredentialIndex == -1) {
             logger.warnf("Not found credential with id [%s] of user [%s]", id, user.getUsername());
             return false;
         }
 
-        if (index == 0 && moveUp) {
+        if (newPreviousCredentialId != null && newPreviousCredentialIndex == -1) {
             logger.warnf("Can't move up credential with id [%s] of user [%s]", id, user.getUsername());
             return false;
         }
 
-        if (index == sortedCreds.size() - 1 && !moveUp) {
-            logger.warnf("Can't move down credential with id [%s] of user [%s]", id, user.getUsername());
-            return false;
+        // 3 - Compute index where we move our credential
+        int toMoveIndex = newPreviousCredentialId==null ? 0 : newPreviousCredentialIndex + 1;
+
+        // 4 - Insert our credential to new position, remove it from the old position
+        newList.add(toMoveIndex, ourCredential);
+        int indexToRemove = toMoveIndex < ourCredentialIndex ? ourCredentialIndex + 1 : ourCredentialIndex;
+        newList.remove(indexToRemove);
+
+        // 5 - newList contains credentials in requested order now. Iterate through whole list and change priorities accordingly.
+        int expectedPriority = 0;
+        for (CredentialEntity credential : newList) {
+            expectedPriority += PRIORITY_DIFFERENCE;
+            if (credential.getPriority() != expectedPriority) {
+                credential.setPriority(expectedPriority);
+
+                // TODO:mposolda
+                logger.infof("Priority of credential [%s] of user [%s] changed to [%d]", credential.getId(), user.getUsername(), expectedPriority);
+            }
         }
-
-        // Switch with previous credential
-        CredentialEntity other = moveUp ? sortedCreds.get(index - 1) : sortedCreds.get(index + 1);
-
-        int ourPriority = credential.getPriority();
-        credential.setPriority(other.getPriority());
-        other.setPriority(ourPriority);
-
         return true;
     }
 

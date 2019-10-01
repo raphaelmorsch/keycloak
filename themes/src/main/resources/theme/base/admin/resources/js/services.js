@@ -672,17 +672,18 @@ module.factory('UserCredentials', function($resource) {
         }
     }).update;
 
-    credentials.moveDown = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials/:credentialId/moveDown', {
+    credentials.moveCredentialAfter = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials/:credentialId/moveAfter/:newPreviousCredentialId', {
         realm : '@realm',
         userId : '@userId',
-        credentialId : '@credentialId'
+        credentialId : '@credentialId',
+        newPreviousCredentialId : '@newPreviousCredentialId'
     }, {
         update : {
             method : 'POST'
         }
     }).update;
 
-    credentials.moveUp = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials/:credentialId/moveUp', {
+    credentials.moveToFirst = $resource(authUrl + '/admin/realms/:realm/users/:userId/credentials/:credentialId/moveToFirst', {
         realm : '@realm',
         userId : '@userId',
         credentialId : '@credentialId'
