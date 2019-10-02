@@ -345,6 +345,8 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         context.setAuthenticationSelections(selectionOptions);
         if (selectedCredentialId != null) {
             context.setSelectedCredentialId(selectedCredentialId);
+        } else if (!selectionOptions.isEmpty()) {
+            context.setSelectedCredentialId(selectionOptions.get(0).getCredentialId());
         }
         if (authenticator.requiresUser()) {
             if (authUser == null) {
