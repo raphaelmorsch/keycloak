@@ -21,14 +21,20 @@ import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.ClientsResource;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.RoleResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.common.constants.KerberosConstants;
 import org.keycloak.component.PrioritizedComponentModel;
+import org.keycloak.credential.CredentialModel;
 import org.keycloak.keys.KeyProvider;
 import org.keycloak.models.AdminRoles;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.Constants;
 import org.keycloak.models.LDAPConstants;
 import org.keycloak.models.UserModel;
+import org.keycloak.models.credential.OTPCredentialModel;
+import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.models.credential.dto.OTPCredentialData;
+import org.keycloak.models.credential.dto.PasswordCredentialData;
 import org.keycloak.models.utils.DefaultAuthenticationFlows;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
 import org.keycloak.representations.AccessToken;
@@ -37,6 +43,7 @@ import org.keycloak.representations.idm.AuthenticationFlowRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ClientScopeRepresentation;
 import org.keycloak.representations.idm.ComponentRepresentation;
+import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.MappingsRepresentation;
 import org.keycloak.representations.idm.ProtocolMapperRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
@@ -52,7 +59,9 @@ import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.exportimport.ExportImportUtil;
 import org.keycloak.testsuite.runonserver.RunHelpers;
 import org.keycloak.testsuite.util.OAuthClient;
+import org.keycloak.util.JsonSerialization;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -238,6 +247,14 @@ public abstract class AbstractMigrationTest extends AbstractKeycloakTest {
         testRealmDefaultClientScopes(migrationRealm);
         // check that the 'microprofile-jwt' scope was added to the migrated clients.
         testMicroprofileJWTScopeAddedToClient();
+    }
+
+    protected void testMigrationTo8_0_0() {
+        // Check that credentials were created for user and are available
+        testCredentialsHaveCredentialsData();
+
+        // Check that authentication flows were migrated as expected
+        testOTPAuthenticatorsMigratedToConditionalFlow();
     }
 
     private void testDecisionStrategySetOnResourceServer() {
@@ -571,6 +588,41 @@ public abstract class AbstractMigrationTest extends AbstractKeycloakTest {
                 priority += 10;
             }
         }
+    }
+
+    protected void testCredentialsHaveCredentialsData() {
+        log.info("testing user's credentials have credentials data migrated");
+
+        List<CredentialRepresentation> credentials = ApiUtil.findUserByUsernameId(this.migrationRealm, "migration-test-user").credentials();
+        Assert.assertEquals(2, credentials.size());
+
+        try {
+            CredentialRepresentation password = credentials.stream().filter(credential -> PasswordCredentialModel.TYPE.equals(credential.getType()))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Not found password credential on user"));
+
+            PasswordCredentialData passwordData = JsonSerialization.readValue(password.getCredentialData(), PasswordCredentialData.class);
+            Assert.assertEquals(2750, passwordData.getHashIterations());
+            Assert.assertEquals("pbkdf2-sha256", passwordData.getAlgorithm());
+
+            CredentialRepresentation otp = credentials.stream().filter(credential -> OTPCredentialModel.TYPE.equals(credential.getType()))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Not found OTP credential on user"));
+
+            OTPCredentialData otpData = JsonSerialization.readValue(otp.getCredentialData(), OTPCredentialData.class);
+            Assert.assertEquals(OTPCredentialModel.TOTP, otpData.getSubType());
+            Assert.assertEquals("HmacSHA1", otpData.getAlgorithm());
+            Assert.assertEquals(40, otpData.getPeriod());
+            Assert.assertEquals(8, otpData.getDigits());
+            Assert.assertEquals(0, otpData.getCounter());
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+    }
+
+
+    protected void testOTPAuthenticatorsMigratedToConditionalFlow() {
+        // TODO:mposolda
     }
 
     protected void testMigrationTo2_x() throws Exception {

@@ -342,8 +342,12 @@
     "emailVerified" : false,
     "credentials" : [ {
       "type" : "password",
-      "credentialData" : "{\"hashIterations\" : 20000, \"algorithm\" : \"pbkdf2\"}",
-      "secretData" : "{\"value\":\"Y71bKP3V5cvqiPGxPspDCQRraGbJD4IGxjYOez4QdubTYpoFjYb2wdC+pRoXskBvOaCYQcGzMa3SatDrFlBm9Q==\",\"salt\":\"o6D0KTKeFVejy00RhKZxvQ==\"}",
+      "hashedSaltedValue" : "Y71bKP3V5cvqiPGxPspDCQRraGbJD4IGxjYOez4QdubTYpoFjYb2wdC+pRoXskBvOaCYQcGzMa3SatDrFlBm9Q==",
+      "salt" : "o6D0KTKeFVejy00RhKZxvQ==",
+      "hashIterations" : 30000,
+      "counter" : 0,
+      "algorithm" : "pbkdf2",
+      "digits" : 0,
       "createdDate" : 1476260086000
     } ],
     "requiredActions" : [ ],

@@ -3522,9 +3522,15 @@
     "emailVerified" : false,
     "credentials" : [ {
       "type" : "password",
-      "secretData" : "{\"value\" : \"JOrh81WYkyhsdJSYiQZEpbtV4FQYEMmqRxncHiBZKunm8g0zNqQOezqEF20IJZWvxvudT6wAcmTzWsv4Qd1tvg==\",\"salt\" : \"no71Rq8NWrZUpRY8cPxo2Q==\"}",
-      "credentialData" : "{\"hashIterations\" : 27500,\"algorithm\" : \"pbkdf2-sha256\"}",
-      "createdDate" : 1531932343560
+      "hashedSaltedValue" : "JOrh81WYkyhsdJSYiQZEpbtV4FQYEMmqRxncHiBZKunm8g0zNqQOezqEF20IJZWvxvudT6wAcmTzWsv4Qd1tvg==",
+      "salt" : "no71Rq8NWrZUpRY8cPxo2Q==",
+      "hashIterations" : 27500,
+      "counter" : 0,
+      "algorithm" : "pbkdf2-sha256",
+      "digits" : 0,
+      "period" : 0,
+      "createdDate" : 1531932343560,
+      "config" : { }
     } ],
     "disableableCredentialTypes" : [ "password" ],
     "requiredActions" : [ ],
