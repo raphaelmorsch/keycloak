@@ -39,6 +39,7 @@ import org.keycloak.models.utils.DefaultAuthenticationFlows;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.idm.AuthenticationExecutionExportRepresentation;
+import org.keycloak.representations.idm.AuthenticationExecutionInfoRepresentation;
 import org.keycloak.representations.idm.AuthenticationFlowRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ClientScopeRepresentation;
@@ -622,7 +623,45 @@ public abstract class AbstractMigrationTest extends AbstractKeycloakTest {
 
 
     protected void testOTPAuthenticatorsMigratedToConditionalFlow() {
-        // TODO:mposolda
+        log.info("testing authentication flows migrated");
+
+        testOTPExecutionMigratedToConditionalFlow("browser", "forms - auth-otp-form - Conditional","OTP Form");
+        testOTPExecutionMigratedToConditionalFlow("direct grant", "direct grant - direct-grant-validate-otp - Conditional","OTP");
+        testOTPExecutionMigratedToConditionalFlow("reset credentials", "reset credentials - reset-otp - Conditional","Reset OTP");
+        testOTPExecutionMigratedToConditionalFlow("first broker login", "Verify Existing Account by Re-authentication - auth-otp-form - Conditional","OTP Form");
+    }
+
+
+    private void testOTPExecutionMigratedToConditionalFlow(String topFlowAlias, String expectedOTPSubflowAlias, String expectedOTPExecutionDisplayName) {
+        List<AuthenticationExecutionInfoRepresentation> authExecutions = migrationRealm.flows().getExecutions(topFlowAlias);
+
+        int counter = -1;
+        AuthenticationExecutionInfoRepresentation subflowExecution = null;
+        for (AuthenticationExecutionInfoRepresentation ex : authExecutions) {
+            counter++;
+            if (expectedOTPSubflowAlias.equals(ex.getDisplayName())) {
+                subflowExecution = ex;
+                break;
+            }
+        }
+
+        if (subflowExecution == null) {
+            throw new AssertionError("Not found subflow with displayName '" + expectedOTPSubflowAlias + "' in the flow " + topFlowAlias);
+        }
+
+        Assert.assertEquals(AuthenticationExecutionModel.Requirement.CONDITIONAL.toString(), subflowExecution.getRequirement());
+
+        AuthenticationExecutionInfoRepresentation childEx1 = authExecutions.get(counter + 1);
+        Assert.assertEquals("Conditional block - user configured", childEx1.getDisplayName());
+        Assert.assertEquals(AuthenticationExecutionModel.Requirement.REQUIRED.toString(), childEx1.getRequirement());
+        Assert.assertEquals(0, childEx1.getIndex());
+        Assert.assertEquals(subflowExecution.getLevel() + 1, childEx1.getLevel());
+
+        AuthenticationExecutionInfoRepresentation childEx2 = authExecutions.get(counter + 2);
+        Assert.assertEquals(expectedOTPExecutionDisplayName, childEx2.getDisplayName());
+        Assert.assertEquals(AuthenticationExecutionModel.Requirement.REQUIRED.toString(), childEx2.getRequirement());
+        Assert.assertEquals(1, childEx2.getIndex());
+        Assert.assertEquals(subflowExecution.getLevel() + 1, childEx2.getLevel());
     }
 
     protected void testMigrationTo2_x() throws Exception {

@@ -59,6 +59,7 @@ import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.hash.PasswordHashProvider;
 import org.keycloak.keys.KeyProvider;
 import org.keycloak.migration.MigrationProvider;
+import org.keycloak.migration.migrators.MigrateTo8_0_0;
 import org.keycloak.migration.migrators.MigrationUtils;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
@@ -618,8 +619,7 @@ public class RepresentationToModel {
             for (AuthenticationFlowRepresentation flowRep : rep.getAuthenticationFlows()) {
                 AuthenticationFlowModel model = newRealm.getFlowByAlias(flowRep.getAlias());
                 for (AuthenticationExecutionExportRepresentation exeRep : flowRep.getAuthenticationExecutions()) {
-                    AuthenticationExecutionModel execution = toModel(newRealm, exeRep);
-                    execution.setParentFlow(model.getId());
+                    AuthenticationExecutionModel execution = toModel(newRealm, model, exeRep);
                     newRealm.addAuthenticatorExecution(execution);
                 }
             }
@@ -1848,7 +1848,7 @@ public class RepresentationToModel {
 
     }
 
-    public static AuthenticationExecutionModel toModel(RealmModel realm, AuthenticationExecutionExportRepresentation rep) {
+    private static AuthenticationExecutionModel toModel(RealmModel realm, AuthenticationFlowModel parentFlow, AuthenticationExecutionExportRepresentation rep) {
         AuthenticationExecutionModel model = new AuthenticationExecutionModel();
         if (rep.getAuthenticatorConfig() != null) {
             AuthenticatorConfigModel config = realm.getAuthenticatorConfigByAlias(rep.getAuthenticatorConfig());
@@ -1863,10 +1863,11 @@ public class RepresentationToModel {
         model.setPriority(rep.getPriority());
         try {
             model.setRequirement(AuthenticationExecutionModel.Requirement.valueOf(rep.getRequirement()));
+            model.setParentFlow(parentFlow.getId());
         } catch (IllegalArgumentException iae) {
             //retro-compatible for previous OPTIONAL being changed to CONDITIONAL
             if ("OPTIONAL".equals(rep.getRequirement())){
-                model.setRequirement(AuthenticationExecutionModel.Requirement.CONDITIONAL);
+                MigrateTo8_0_0.migrateOptionalAuthenticationExecution(realm, parentFlow, model);
             }
         }
         return model;
