@@ -623,7 +623,7 @@ public abstract class AbstractMigrationTest extends AbstractKeycloakTest {
 
 
     protected void testOTPAuthenticatorsMigratedToConditionalFlow() {
-        log.info("testing authentication flows migrated");
+        log.info("testing optional authentication executions migrated");
 
         testOTPExecutionMigratedToConditionalFlow("browser", "forms - auth-otp-form - Conditional","OTP Form");
         testOTPExecutionMigratedToConditionalFlow("direct grant", "direct grant - direct-grant-validate-otp - Conditional","OTP");
