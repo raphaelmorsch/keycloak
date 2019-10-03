@@ -1867,7 +1867,7 @@ public class RepresentationToModel {
         } catch (IllegalArgumentException iae) {
             //retro-compatible for previous OPTIONAL being changed to CONDITIONAL
             if ("OPTIONAL".equals(rep.getRequirement())){
-                MigrateTo8_0_0.migrateOptionalAuthenticationExecution(realm, parentFlow, model);
+                MigrateTo8_0_0.migrateOptionalAuthenticationExecution(realm, parentFlow, model, false);
             }
         }
         return model;

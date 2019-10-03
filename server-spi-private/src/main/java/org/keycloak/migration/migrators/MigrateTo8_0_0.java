@@ -35,27 +35,18 @@ public class MigrateTo8_0_0  implements Migration {
     }
 
     protected void migrateRealm(KeycloakSession session, RealmModel realm, boolean jsn) {
-
-
-//        MigrationProvider migrationProvider = session.getProvider(MigrationProvider.class);
-//
-//        // create 'microprofile-jwt' optional client scope in the realm.
-//        ClientScopeModel mpJWTScope = migrationProvider.addOIDCMicroprofileJWTClientScope(realm);
-//
-//        LOG.debugf("Added '%s' optional client scope", mpJWTScope.getName());
-//
-//        // assign 'microprofile-jwt' optional client scope to all the OIDC clients.
-//        for (ClientModel client : realm.getClients()) {
-//            if ((client.getProtocol() == null || "openid-connect".equals(client.getProtocol())) && (!client.isBearerOnly())) {
-//                client.addClientScope(mpJWTScope, false);
-//            }
-//        }
-//
-//        LOG.debugf("Client scope '%s' assigned to all the clients", mpJWTScope.getName());
+        for (AuthenticationFlowModel authFlow : realm.getAuthenticationFlows()) {
+            for (AuthenticationExecutionModel authExecution : realm.getAuthenticationExecutions(authFlow.getId())) {
+                // Those were OPTIONAL executions in previous version
+                if (authExecution.getRequirement() == AuthenticationExecutionModel.Requirement.CONDITIONAL) {
+                    migrateOptionalAuthenticationExecution(realm, authFlow, authExecution, true);
+                }
+            }
+        }
     }
 
 
-    public static void migrateOptionalAuthenticationExecution(RealmModel realm, AuthenticationFlowModel parentFlow, AuthenticationExecutionModel optionalExecution) {
+    public static void migrateOptionalAuthenticationExecution(RealmModel realm, AuthenticationFlowModel parentFlow, AuthenticationExecutionModel optionalExecution, boolean updateOptionalExecution) {
         // TODO:mposolda debug
         LOG.infof("Migrating optional execution '%s' of flow '%s' of realm '%s' to subflow", optionalExecution.getAuthenticator(), parentFlow.getAlias(), realm.getName());
 
@@ -88,7 +79,10 @@ public class MigrateTo8_0_0  implements Migration {
         optionalExecution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED);
         optionalExecution.setPriority(20);
 
-        // TODO:mposolda execution not updated during JSON migration, but for DB it should be !!!
-        //realm.updateAuthenticatorExecution(optionalExecution);
+        // In case of DB migration, we're updating existing execution, which is already in DB.
+        // In case of JSON migration, the execution is not yet in DB and will be added later
+        if (updateOptionalExecution) {
+            realm.updateAuthenticatorExecution(optionalExecution);
+        }
     }
 }
