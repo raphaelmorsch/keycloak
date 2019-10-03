@@ -31,7 +31,7 @@ public class MigrateTo8_0_0  implements Migration {
 
     @Override
     public void migrateImport(KeycloakSession session, RealmModel realm, RealmRepresentation rep, boolean skipUserDependent) {
-        migrateRealm(session, realm, true);
+        // No-op. Migration of optional authentication executions was already handled in RepresentationToModel.importRealm
     }
 
     protected void migrateRealm(KeycloakSession session, RealmModel realm, boolean jsn) {
@@ -56,6 +56,9 @@ public class MigrateTo8_0_0  implements Migration {
 
 
     public static void migrateOptionalAuthenticationExecution(RealmModel realm, AuthenticationFlowModel parentFlow, AuthenticationExecutionModel optionalExecution) {
+        // TODO:mposolda debug
+        LOG.infof("Migrating optional execution '%s' of flow '%s' of realm '%s' to subflow", optionalExecution.getAuthenticator(), parentFlow.getAlias(), realm.getName());
+
         AuthenticationFlowModel conditionalOTP = new AuthenticationFlowModel();
         conditionalOTP.setTopLevel(false);
         conditionalOTP.setBuiltIn(parentFlow.isBuiltIn());

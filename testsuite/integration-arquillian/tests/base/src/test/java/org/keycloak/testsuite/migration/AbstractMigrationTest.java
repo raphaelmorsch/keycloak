@@ -36,6 +36,7 @@ import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.models.credential.dto.OTPCredentialData;
 import org.keycloak.models.credential.dto.PasswordCredentialData;
 import org.keycloak.models.utils.DefaultAuthenticationFlows;
+import org.keycloak.models.utils.TimeBasedOTP;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.idm.AuthenticationExecutionExportRepresentation;
@@ -594,30 +595,34 @@ public abstract class AbstractMigrationTest extends AbstractKeycloakTest {
     protected void testCredentialsHaveCredentialsData() {
         log.info("testing user's credentials have credentials data migrated");
 
-        List<CredentialRepresentation> credentials = ApiUtil.findUserByUsernameId(this.migrationRealm, "migration-test-user").credentials();
-        Assert.assertEquals(2, credentials.size());
-
+        // Try to login with password+otp after the migration
         try {
-            CredentialRepresentation password = credentials.stream().filter(credential -> PasswordCredentialModel.TYPE.equals(credential.getType()))
-                    .findFirst()
-                    .orElseThrow(() -> new AssertionError("Not found password credential on user"));
+            oauth.realm(MIGRATION);
+            oauth.clientId("migration-test-client");
 
-            PasswordCredentialData passwordData = JsonSerialization.readValue(password.getCredentialData(), PasswordCredentialData.class);
-            Assert.assertEquals(2750, passwordData.getHashIterations());
-            Assert.assertEquals("pbkdf2-sha256", passwordData.getAlgorithm());
+            TimeBasedOTP otpGenerator = new TimeBasedOTP("HmacSHA1", 8, 40, 1);
+            String otp = otpGenerator.generateTOTP("dSdmuHLQhkm54oIm0A0S");
 
-            CredentialRepresentation otp = credentials.stream().filter(credential -> OTPCredentialModel.TYPE.equals(credential.getType()))
-                    .findFirst()
-                    .orElseThrow(() -> new AssertionError("Not found OTP credential on user"));
+            // Try invalid password first
+            OAuthClient.AccessTokenResponse response = oauth.doGrantAccessTokenRequest("b2c07929-69e3-44c6-8d7f-76939000b3e4",
+                    "migration-test-user", "password", otp);
+            Assert.assertNull(response.getAccessToken());
+            Assert.assertNotNull(response.getError());
 
-            OTPCredentialData otpData = JsonSerialization.readValue(otp.getCredentialData(), OTPCredentialData.class);
-            Assert.assertEquals(OTPCredentialModel.TOTP, otpData.getSubType());
-            Assert.assertEquals("HmacSHA1", otpData.getAlgorithm());
-            Assert.assertEquals(40, otpData.getPeriod());
-            Assert.assertEquals(8, otpData.getDigits());
-            Assert.assertEquals(0, otpData.getCounter());
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
+            // Try invalid OTP then
+            response = oauth.doGrantAccessTokenRequest("b2c07929-69e3-44c6-8d7f-76939000b3e4",
+                    "migration-test-user", "password2", "invalid");
+            Assert.assertNull(response.getAccessToken());
+            Assert.assertNotNull(response.getError());
+
+            // Try successful login now
+            response = oauth.doGrantAccessTokenRequest("b2c07929-69e3-44c6-8d7f-76939000b3e4",
+                    "migration-test-user", "password2", otp);
+            Assert.assertNull(response.getError());
+            AccessToken accessToken = oauth.verifyToken(response.getAccessToken());
+            assertEquals("migration-test-user", accessToken.getPreferredUsername());
+        } catch (Exception e) {
+            throw new AssertionError("Failed to login with user 'migration-test-user' after migration");
         }
     }
 
