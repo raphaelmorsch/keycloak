@@ -21,20 +21,14 @@ import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.ClientsResource;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.RoleResource;
-import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.common.constants.KerberosConstants;
 import org.keycloak.component.PrioritizedComponentModel;
-import org.keycloak.credential.CredentialModel;
 import org.keycloak.keys.KeyProvider;
 import org.keycloak.models.AdminRoles;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.Constants;
 import org.keycloak.models.LDAPConstants;
 import org.keycloak.models.UserModel;
-import org.keycloak.models.credential.OTPCredentialModel;
-import org.keycloak.models.credential.PasswordCredentialModel;
-import org.keycloak.models.credential.dto.OTPCredentialData;
-import org.keycloak.models.credential.dto.PasswordCredentialData;
 import org.keycloak.models.utils.DefaultAuthenticationFlows;
 import org.keycloak.models.utils.TimeBasedOTP;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
@@ -45,7 +39,6 @@ import org.keycloak.representations.idm.AuthenticationFlowRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ClientScopeRepresentation;
 import org.keycloak.representations.idm.ComponentRepresentation;
-import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.MappingsRepresentation;
 import org.keycloak.representations.idm.ProtocolMapperRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
@@ -61,9 +54,7 @@ import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.exportimport.ExportImportUtil;
 import org.keycloak.testsuite.runonserver.RunHelpers;
 import org.keycloak.testsuite.util.OAuthClient;
-import org.keycloak.util.JsonSerialization;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -253,7 +244,7 @@ public abstract class AbstractMigrationTest extends AbstractKeycloakTest {
 
     protected void testMigrationTo8_0_0() {
         // Check that credentials were created for user and are available
-        testCredentialsHaveCredentialsData();
+        testCredentialsMigratedToNewFormat();
 
         // Check that authentication flows were migrated as expected
         testOTPAuthenticatorsMigratedToConditionalFlow();
@@ -592,8 +583,8 @@ public abstract class AbstractMigrationTest extends AbstractKeycloakTest {
         }
     }
 
-    protected void testCredentialsHaveCredentialsData() {
-        log.info("testing user's credentials have credentials data migrated");
+    protected void testCredentialsMigratedToNewFormat() {
+        log.info("testing user's credentials migrated to new format with secretData and credentialData");
 
         // Try to login with password+otp after the migration
         try {
@@ -622,7 +613,7 @@ public abstract class AbstractMigrationTest extends AbstractKeycloakTest {
             AccessToken accessToken = oauth.verifyToken(response.getAccessToken());
             assertEquals("migration-test-user", accessToken.getPreferredUsername());
         } catch (Exception e) {
-            throw new AssertionError("Failed to login with user 'migration-test-user' after migration");
+            throw new AssertionError("Failed to login with user 'migration-test-user' after migration", e);
         }
     }
 

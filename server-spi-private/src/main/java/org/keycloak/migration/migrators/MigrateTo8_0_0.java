@@ -47,8 +47,7 @@ public class MigrateTo8_0_0  implements Migration {
 
 
     public static void migrateOptionalAuthenticationExecution(RealmModel realm, AuthenticationFlowModel parentFlow, AuthenticationExecutionModel optionalExecution, boolean updateOptionalExecution) {
-        // TODO:mposolda debug
-        LOG.infof("Migrating optional execution '%s' of flow '%s' of realm '%s' to subflow", optionalExecution.getAuthenticator(), parentFlow.getAlias(), realm.getName());
+        LOG.debugf("Migrating optional execution '%s' of flow '%s' of realm '%s' to subflow", optionalExecution.getAuthenticator(), parentFlow.getAlias(), realm.getName());
 
         AuthenticationFlowModel conditionalOTP = new AuthenticationFlowModel();
         conditionalOTP.setTopLevel(false);

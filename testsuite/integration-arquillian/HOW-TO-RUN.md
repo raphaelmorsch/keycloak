@@ -281,13 +281,10 @@ This test will:
  - stop Keycloak 4.8.3.Final
  - start latest Keycloak, which automatically updates DB from 4.8.3.Final
  - Do some test that data are correct
- - Stop MySQL DB docker container
+ - Stop MySQL DB docker container. In case of test failure, the MySQL container is not stopped, so you can manually inspect database.
  
 
-1) Prepare MySQL DB and ensure that MySQL DB is empty. See [../../docs/tests-db.md](../../docs/tests-db.md) for some hints for locally prepare Docker MySQL image.
-
-2) Run the test (Update according to your DB connection, versions etc):
-
+Run the test (Update according to your DB connection, versions etc):
 
     export OLD_KEYCLOAK_VERSION=4.8.3.Final
     mvn -B -f testsuite/integration-arquillian/pom.xml clean install -Pjpa,auth-server-wildfly,db-mysql,auth-server-migration \
