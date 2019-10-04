@@ -16,6 +16,8 @@
  */
 package org.keycloak.storage.jpa;
 
+import org.jboss.logging.Logger;
+import org.keycloak.common.util.Base64;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.common.util.Time;
 import org.keycloak.component.ComponentModel;
@@ -33,6 +35,8 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserConsentModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.models.jpa.JpaUserCredentialStore;
+import org.keycloak.models.jpa.entities.CredentialEntity;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.storage.StorageId;
 import org.keycloak.storage.UserStorageProvider;
@@ -56,6 +60,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Set;
 
 /**
@@ -65,6 +70,8 @@ import java.util.Set;
 public class JpaUserFederatedStorageProvider implements
         UserFederatedStorageProvider,
         UserCredentialStore {
+
+    protected static final Logger logger = Logger.getLogger(JpaUserFederatedStorageProvider.class);
 
     private final KeycloakSession session;
     protected EntityManager em;
@@ -575,11 +582,17 @@ public class JpaUserFederatedStorageProvider implements
         entity.setType(cred.getType());
         entity.setCredentialData(cred.getCredentialData());
         entity.setSecretData(cred.getSecretData());
-        cred.setUserLabel(entity.getUserLabel());
+        entity.setUserLabel(cred.getUserLabel());
 
         entity.setUserId(userId);
         entity.setRealmId(realm.getId());
         entity.setStorageProviderId(new StorageId(userId).getProviderId());
+
+        //add in linkedlist to last position
+        List<FederatedUserCredentialEntity> credentials = getStoredCredentialEntities(userId);
+        int priority = credentials.isEmpty() ? JpaUserCredentialStore.PRIORITY_DIFFERENCE : credentials.get(credentials.size() - 1).getPriority() + JpaUserCredentialStore.PRIORITY_DIFFERENCE;
+        entity.setPriority(priority);
+
         em.persist(entity);
         return toModel(entity);
     }
@@ -588,6 +601,18 @@ public class JpaUserFederatedStorageProvider implements
     public boolean removeStoredCredential(RealmModel realm, String userId, String id) {
         FederatedUserCredentialEntity entity = em.find(FederatedUserCredentialEntity.class, id);
         if (entity == null) return false;
+
+        int currentPriority = entity.getPriority();
+
+        List<FederatedUserCredentialEntity> credentials = getStoredCredentialEntities(userId);
+
+        // Decrease priority of all credentials after our
+        for (FederatedUserCredentialEntity cred : credentials) {
+            if (cred.getPriority() > currentPriority) {
+                cred.setPriority(cred.getPriority() - JpaUserCredentialStore.PRIORITY_DIFFERENCE);
+            }
+        }
+
         em.remove(entity);
         return true;
     }
@@ -606,6 +631,15 @@ public class JpaUserFederatedStorageProvider implements
         model.setType(entity.getType());
         model.setCreatedDate(entity.getCreatedDate());
         model.setUserLabel(entity.getUserLabel());
+
+        // Backwards compatibility - users from previous version still have "salt" in the DB filled.
+        // We migrate it to new secretData format on-the-fly
+        if (entity.getSalt() != null) {
+            String newSecretData = entity.getSecretData().replace("__SALT__", Base64.encodeBytes(entity.getSalt()));
+            entity.setSecretData(newSecretData);
+            entity.setSalt(null);
+        }
+
         model.setSecretData(entity.getSecretData());
         model.setCredentialData(entity.getCredentialData());
         return model;
@@ -613,14 +647,18 @@ public class JpaUserFederatedStorageProvider implements
 
     @Override
     public List<CredentialModel> getStoredCredentials(RealmModel realm, String userId) {
-        TypedQuery<FederatedUserCredentialEntity> query = em.createNamedQuery("federatedUserCredentialByUser", FederatedUserCredentialEntity.class)
-                .setParameter("userId", userId);
-        List<FederatedUserCredentialEntity> results = query.getResultList();
+        List<FederatedUserCredentialEntity> results = getStoredCredentialEntities(userId);
         List<CredentialModel> rtn = new LinkedList<>();
         for (FederatedUserCredentialEntity entity : results) {
             rtn.add(toModel(entity));
         }
         return rtn;
+    }
+
+    private List<FederatedUserCredentialEntity> getStoredCredentialEntities(String userId) {
+        TypedQuery<FederatedUserCredentialEntity> query = em.createNamedQuery("federatedUserCredentialByUser", FederatedUserCredentialEntity.class)
+                .setParameter("userId", userId);
+        return query.getResultList();
     }
 
     @Override
@@ -640,7 +678,7 @@ public class JpaUserFederatedStorageProvider implements
     public CredentialModel getStoredCredentialByNameAndType(RealmModel realm, String userId, String name, String type) {
         TypedQuery<FederatedUserCredentialEntity> query = em.createNamedQuery("federatedUserCredentialByNameAndType", FederatedUserCredentialEntity.class)
                 .setParameter("type", type)
-                .setParameter("device", name)
+                .setParameter("userLabel", name)
                 .setParameter("userId", userId);
         List<FederatedUserCredentialEntity> results = query.getResultList();
         if (results.isEmpty()) return null;
@@ -692,8 +730,57 @@ public class JpaUserFederatedStorageProvider implements
     }
 
     @Override
-    public void moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId) {
-        //do nothing, these credentials are not ordered
+    public boolean moveCredentialTo(RealmModel realm, UserModel user, String id, String newPreviousCredentialId) {
+        List<FederatedUserCredentialEntity> sortedCreds = getStoredCredentialEntities(user.getId());
+
+        // 1 - Create new list and move everything to it.
+        List<FederatedUserCredentialEntity> newList = new ArrayList<>();
+        newList.addAll(sortedCreds);
+
+        // 2 - Find indexes of our and newPrevious credential
+        int ourCredentialIndex = -1;
+        int newPreviousCredentialIndex = -1;
+        FederatedUserCredentialEntity ourCredential = null;
+        int i = 0;
+        for (FederatedUserCredentialEntity credential : newList) {
+            if (id.equals(credential.getId())) {
+                ourCredentialIndex = i;
+                ourCredential = credential;
+            } else if(newPreviousCredentialId != null && newPreviousCredentialId.equals(credential.getId())) {
+                newPreviousCredentialIndex = i;
+            }
+            i++;
+        }
+
+        if (ourCredentialIndex == -1) {
+            logger.warnf("Not found credential with id [%s] of user [%s]", id, user.getUsername());
+            return false;
+        }
+
+        if (newPreviousCredentialId != null && newPreviousCredentialIndex == -1) {
+            logger.warnf("Can't move up credential with id [%s] of user [%s]", id, user.getUsername());
+            return false;
+        }
+
+        // 3 - Compute index where we move our credential
+        int toMoveIndex = newPreviousCredentialId==null ? 0 : newPreviousCredentialIndex + 1;
+
+        // 4 - Insert our credential to new position, remove it from the old position
+        newList.add(toMoveIndex, ourCredential);
+        int indexToRemove = toMoveIndex < ourCredentialIndex ? ourCredentialIndex + 1 : ourCredentialIndex;
+        newList.remove(indexToRemove);
+
+        // 5 - newList contains credentials in requested order now. Iterate through whole list and change priorities accordingly.
+        int expectedPriority = 0;
+        for (FederatedUserCredentialEntity credential : newList) {
+            expectedPriority += JpaUserCredentialStore.PRIORITY_DIFFERENCE;
+            if (credential.getPriority() != expectedPriority) {
+                credential.setPriority(expectedPriority);
+
+                logger.tracef("Priority of credential [%s] of user [%s] changed to [%d]", credential.getId(), user.getUsername(), expectedPriority);
+            }
+        }
+        return true;
     }
 
     @Override
