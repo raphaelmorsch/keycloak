@@ -699,7 +699,6 @@ module.controller('UserCredentialsCtrl', function($scope, realm, user, $route, R
         Dialog.confirm('Send Email', 'Are you sure you want to send email to user?', function() {
             UserExecuteActionsEmail.update({ realm: realm.realm, userId: user.id, lifespan: $scope.emailActionsTimeout.toSeconds() }, $scope.emailActions, function() {
                 Notifications.success("Email sent to user");
-                $scope.emailActions = [];
             }, function() {
                 Notifications.error("Failed to send email to user");
             });
