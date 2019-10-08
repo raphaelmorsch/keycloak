@@ -24,20 +24,26 @@
     <#elseif section = "form">
         <#if authenticationSelections?size gt 1>
             <form id="kc-select-credential-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
-                <select id="authenticators-choice" class="form-control" size="1">
-                    <#list authenticationSelections as authenticationSelection>
-                        <#if authenticationSelection.credentialId?has_content>
-                            <option value="${authenticationSelection.id}" <#if selectedCredential?has_content && authenticationSelection.credentialId == selectedCredential>selected</#if>><#if authenticationSelection.showCredentialType()>${msg('${authenticationSelection.authExecName}')}</#if>${authenticationSelection.credentialName}</option>
-                        <#else >
-                            <option value="${authenticationSelection.id}" <#if authenticationSelection.authExecId == execution>selected</#if>>${msg('${authenticationSelection.authExecName}')}</option>
-                        </#if>
-                    </#list>
-                </select>
-                <input type="hidden" id="authexec-hidden-input" name="authenticationExecution" />
-                <input type="hidden" id="credentialId-hidden-input" name="credentialId" <#if selectedCredential?has_content>value="${selectedCredential}"</#if>/>
+                <div class="${properties.kcFormGroupClass!}">
+                    <div class="${properties.kcLabelWrapperClass!}">
+                        <label for="authenticators-choice" class="${properties.kcLabelClass!}">${msg("loginCredential")}</label>
+                    </div>
+                    <div class="${properties.kcInputWrapperClass!}">
+                        <select id="authenticators-choice" class="form-control" size="1">
+                            <#list authenticationSelections as authenticationSelection>
+                                <#if authenticationSelection.credentialId?has_content>
+                                    <option value="${authenticationSelection.id}" <#if selectedCredential?has_content && authenticationSelection.credentialId == selectedCredential>selected</#if>><#if authenticationSelection.showCredentialType()>${msg('${authenticationSelection.authExecName}')}</#if>${authenticationSelection.credentialName}</option>
+                                <#else >
+                                    <option value="${authenticationSelection.id}" <#if authenticationSelection.authExecId == execution>selected</#if>>${msg('${authenticationSelection.authExecName}')}</option>
+                                </#if>
+                            </#list>
+                        </select>
+                        <input type="hidden" id="authexec-hidden-input" name="authenticationExecution" />
+                        <input type="hidden" id="credentialId-hidden-input" name="credentialId" <#if selectedCredential?has_content>value="${selectedCredential}"</#if>/>
+                    </div>
+                </div>
             </form>
         </#if>
-        <br><br>
         <#nested "form">
     </#if>
 </@layout.registrationLayout>
