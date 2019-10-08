@@ -24,7 +24,7 @@
     <#elseif section = "form">
         <#if authenticationSelections?size gt 1>
             <form id="kc-select-credential-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
-                <select id="authenticators-choice" size="1">
+                <select id="authenticators-choice" class="form-control" size="1">
                     <#list authenticationSelections as authenticationSelection>
                         <#if authenticationSelection.credentialId?has_content>
                             <option value="${authenticationSelection.id}" <#if selectedCredential?has_content && authenticationSelection.credentialId == selectedCredential>selected</#if>><#if authenticationSelection.showCredentialType()>${msg('${authenticationSelection.authExecName}')}</#if>${authenticationSelection.credentialName}</option>
