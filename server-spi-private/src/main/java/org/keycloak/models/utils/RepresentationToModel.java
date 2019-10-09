@@ -838,26 +838,28 @@ public class RepresentationToModel {
     }
 
     private static void convertDeprecatedCredentialsFormat(UserRepresentation user) {
-        for (CredentialRepresentation cred : user.getCredentials()) {
-            try {
-                if ((cred.getCredentialData() == null || cred.getSecretData() == null) && cred.getValue() == null) {
-                    if (PasswordCredentialModel.TYPE.equals(cred.getType()) || PasswordCredentialModel.PASSWORD_HISTORY.equals(cred.getType())) {
-                        PasswordCredentialData credentialData = new PasswordCredentialData(cred.getHashIterations(), cred.getAlgorithm());
-                        cred.setCredentialData(JsonSerialization.writeValueAsString(credentialData));
-                        // Created this manually to avoid conversion from Base64 and back
-                        cred.setSecretData("{\"value\":\"" + cred.getHashedSaltedValue() + "\",\"salt\":\"" + cred.getSalt() + "\"}");
-                        cred.setPriority(10);
-                    } else if (OTPCredentialModel.TOTP.equals(cred.getType()) || OTPCredentialModel.HOTP.equals(cred.getType())) {
-                        OTPCredentialData credentialData = new OTPCredentialData(cred.getType(), cred.getDigits(), cred.getCounter(), cred.getPeriod(), cred.getAlgorithm());
-                        OTPSecretData secretData = new OTPSecretData(cred.getHashedSaltedValue());
-                        cred.setCredentialData(JsonSerialization.writeValueAsString(credentialData));
-                        cred.setSecretData(JsonSerialization.writeValueAsString(secretData));
-                        cred.setPriority(20);
-                        cred.setType(OTPCredentialModel.TYPE);
+        if (user.getCredentials() != null) {
+            for (CredentialRepresentation cred : user.getCredentials()) {
+                try {
+                    if ((cred.getCredentialData() == null || cred.getSecretData() == null) && cred.getValue() == null) {
+                        if (PasswordCredentialModel.TYPE.equals(cred.getType()) || PasswordCredentialModel.PASSWORD_HISTORY.equals(cred.getType())) {
+                            PasswordCredentialData credentialData = new PasswordCredentialData(cred.getHashIterations(), cred.getAlgorithm());
+                            cred.setCredentialData(JsonSerialization.writeValueAsString(credentialData));
+                            // Created this manually to avoid conversion from Base64 and back
+                            cred.setSecretData("{\"value\":\"" + cred.getHashedSaltedValue() + "\",\"salt\":\"" + cred.getSalt() + "\"}");
+                            cred.setPriority(10);
+                        } else if (OTPCredentialModel.TOTP.equals(cred.getType()) || OTPCredentialModel.HOTP.equals(cred.getType())) {
+                            OTPCredentialData credentialData = new OTPCredentialData(cred.getType(), cred.getDigits(), cred.getCounter(), cred.getPeriod(), cred.getAlgorithm());
+                            OTPSecretData secretData = new OTPSecretData(cred.getHashedSaltedValue());
+                            cred.setCredentialData(JsonSerialization.writeValueAsString(credentialData));
+                            cred.setSecretData(JsonSerialization.writeValueAsString(secretData));
+                            cred.setPriority(20);
+                            cred.setType(OTPCredentialModel.TYPE);
+                        }
                     }
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
                 }
-            } catch (IOException ioe) {
-                throw new RuntimeException(ioe);
             }
         }
     }
