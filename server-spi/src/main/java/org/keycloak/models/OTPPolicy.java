@@ -195,11 +195,7 @@ public class OTPPolicy implements Serializable {
                 return false;
             }
 
-            if (policy.getType().equals("totp") && policy.getPeriod() != 30) {
-                return false;
-            }
-
-            return true;
+            return policy.getType().equals("totp") && policy.getPeriod() == 30;
         }
     }
 
