@@ -76,12 +76,12 @@ public class IdpAutoLinkAuthenticatorFactory implements AuthenticatorFactory {
 
     @Override
     public String getDisplayType() {
-        return "Automatically link brokered account";
+        return "Automatically set existing user";
     }
 
     @Override
     public String getHelpText() {
-        return "Automatically link brokered account without any verification";
+        return "Automatically set existing user to authentication context without any verification";
     }
 
     @Override
