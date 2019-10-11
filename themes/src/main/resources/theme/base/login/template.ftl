@@ -70,14 +70,17 @@
           </#if>
 
           <#nested "form">
-            <#if url.hasAction() >
-                <form id="kc-select-back-form" action="${url.loginAction}" method="post">
-                    <div class="${properties.kcFormGroupClass!}">
-                        <input class="${properties.kcButtonClass!} ${properties.kcButtonDefaultClass!} ${properties.kcButtonBlockClass!} ${properties.kcButtonLargeClass!}"
-                               name="back" id="kc-back" type="submit" value="${msg("doBack")}"/>
-                    </div>
-                </form>
-            </#if>
+
+          <#if url.hasAction() >
+          <form id="kc-select-back-form" action="${url.loginAction}" method="post" <#if displayWide>class="${properties.kcContentWrapperClass!}"</#if>>
+              <div <#if displayWide>class="${properties.kcFormSocialAccountContentClass!} ${properties.kcFormSocialAccountClass!}"</#if>>
+                  <div class="${properties.kcFormGroupClass!}">
+                    <input class="${properties.kcButtonClass!} ${properties.kcButtonDefaultClass!} ${properties.kcButtonBlockClass!} ${properties.kcButtonLargeClass!}"
+                           name="back" id="kc-back" type="submit" value="${msg("doBack")}"/>
+                  </div>
+              </div>
+          </form>
+          </#if>
 
           <#if displayInfo>
               <div id="kc-info" class="${properties.kcSignUpClass!}">
