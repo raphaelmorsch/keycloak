@@ -23,6 +23,7 @@ import org.keycloak.authentication.authenticators.conditional.ConditionalBlockAu
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
+import org.keycloak.models.Constants;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.ServicesLogger;
 import org.keycloak.sessions.AuthenticationSessionModel;
@@ -93,11 +94,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             throw new AuthenticationFlowException("action is not in current execution", AuthenticationFlowError.INTERNAL_ERROR);
         }
 
-        //TODO check that execution is in current flow tree for security reasons?
-
         MultivaluedMap<String, String> inputData = processor.getRequest().getDecodedFormParameters();
-        String authExecId = inputData.getFirst("authenticationExecution");
-        String selectedCredentialId = inputData.getFirst("credentialId");
+        String authExecId = inputData.getFirst(Constants.AUTHENTICATION_EXECUTION);
+        String selectedCredentialId = inputData.getFirst(Constants.CREDENTIAL_ID);
 
         //check if the user has selected the "back" option
         if (inputData.containsKey("back")) {
@@ -134,6 +133,14 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
 
         // check if the user has switched to a new authentication execution, and if so switch to it.
         if (authExecId != null && !authExecId.isEmpty()) {
+
+            // Check if switch to the requested authentication execution is allowed
+            createAuthenticationSelectionList(model).stream()
+                    .filter(authSelectionOption -> authExecId.equals(authSelectionOption.getAuthExecId()))
+                    .findFirst()
+                    .orElseThrow(() -> new AuthenticationFlowException("Requested authentication execution is not allowed", AuthenticationFlowError.INTERNAL_ERROR)
+            );
+
             model = processor.getRealm().getAuthenticationExecutionById(authExecId);
             Response response = processSingleFlowExecutionModel(model, selectedCredentialId, false);
             if (response == null) {
