@@ -506,6 +506,7 @@ public class AuthenticationProcessor {
             String accessCode = generateAccessCode();
             URI action = getActionUrl(accessCode);
             LoginFormsProvider provider = getSession().getProvider(LoginFormsProvider.class)
+                    .setAuthContext(this)
                     .setAuthenticationSession(getAuthenticationSession())
                     .setUser(getUser())
                     .setActionUri(action)

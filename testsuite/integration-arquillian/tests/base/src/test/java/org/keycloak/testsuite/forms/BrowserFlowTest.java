@@ -30,6 +30,7 @@ import org.keycloak.testsuite.auth.page.login.OneTimeCode;
 import org.keycloak.testsuite.model.ClientModelTest;
 import org.keycloak.testsuite.pages.ErrorPage;
 import org.keycloak.testsuite.pages.LoginPage;
+import org.keycloak.testsuite.pages.LoginTotpPage;
 import org.keycloak.testsuite.pages.LoginUsernameOnlyPage;
 import org.keycloak.testsuite.pages.PasswordPage;
 import org.keycloak.testsuite.runonserver.RunOnServer;
@@ -66,6 +67,8 @@ public class BrowserFlowTest extends AbstractTestRealmKeycloakTest {
     @Page
     protected ErrorPage errorPage;
 
+    @Page
+    protected LoginTotpPage loginTotpPage;
 
     @Page
     private OneTimeCode oneTimeCodePage;
@@ -129,6 +132,27 @@ public class BrowserFlowTest extends AbstractTestRealmKeycloakTest {
     public void userWithOneAdditionalFactorOtpSuccess() throws InterruptedException {
         provideUsernamePassword("user-with-one-configured-otp");
         Assert.assertTrue(oneTimeCodePage.isOtpLabelPresent());
+
+        oneTimeCodePage.sendCode(getOtpCode("DJmQfC73VGFhw7D4QJ8A"));
+        Assert.assertFalse(loginPage.isCurrent());
+        Assert.assertFalse(oneTimeCodePage.isOtpLabelPresent());
+    }
+
+    @Test
+    public void testBackButton() throws InterruptedException {
+        provideUsernamePassword("user-with-one-configured-otp");
+        Assert.assertTrue(oneTimeCodePage.isOtpLabelPresent());
+
+        // Assert "Back" button available on the TOTP page
+        loginTotpPage.assertBackButtonAvailability(true);
+        loginTotpPage.clickBackButton();
+
+        // Assert "Back" button not available on the Browser page
+        loginPage.assertCurrent();
+        loginPage.assertBackButtonAvailability(false);
+
+        // Login
+        loginPage.login("user-with-one-configured-otp", "password");
 
         oneTimeCodePage.sendCode(getOtpCode("DJmQfC73VGFhw7D4QJ8A"));
         Assert.assertFalse(loginPage.isCurrent());

@@ -56,7 +56,6 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
 
     protected Response challenge(AuthenticationFlowContext context, String error) {
         LoginFormsProvider form = context.form()
-                .setAuthContext(context)
                 .setExecution(context.getExecution().getId());
         if (error != null) form.setError(error);
         return createLoginForm(form);
@@ -72,7 +71,7 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
 
     protected Response setDuplicateUserChallenge(AuthenticationFlowContext context, String eventError, String loginFormError, AuthenticationFlowError authenticatorError) {
         context.getEvent().error(eventError);
-        Response challengeResponse = context.form().setAuthContext(context)
+        Response challengeResponse = context.form()
                 .setError(loginFormError).createLoginUsernamePassword();
         context.failureChallenge(authenticatorError, challengeResponse);
         return challengeResponse;
