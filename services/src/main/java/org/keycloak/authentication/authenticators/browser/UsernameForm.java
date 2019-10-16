@@ -32,7 +32,7 @@ public final class UsernameForm extends UsernamePasswordForm {
 
     @Override
     protected Response challenge(AuthenticationFlowContext context, MultivaluedMap<String, String> formData) {
-        LoginFormsProvider forms = context.form().setAuthContext(context);
+        LoginFormsProvider forms = context.form();
 
         if (!formData.isEmpty()) forms.setFormData(formData);
 

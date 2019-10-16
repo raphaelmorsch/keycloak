@@ -25,6 +25,7 @@ import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.common.util.ObjectUtil;
 import org.keycloak.forms.login.LoginFormsPages;
 import org.keycloak.forms.login.LoginFormsProvider;
+import org.keycloak.forms.login.freemarker.model.AuthenticationContextBean;
 import org.keycloak.forms.login.freemarker.model.ClientBean;
 import org.keycloak.forms.login.freemarker.model.CodeBean;
 import org.keycloak.forms.login.freemarker.model.IdentityProviderBean;
@@ -193,10 +194,7 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
             attributes.put("statusCode", status.getStatusCode());
         }
 
-        if (context != null) {
-            attributes.put("authenticationSelections", context.getAuthenticationSelections());
-            attributes.put("selectedCredential", context.getSelectedCredentialId());
-        }
+        attributes.put("auth", new AuthenticationContextBean(context, actionUri));
         attributes.put(Constants.EXECUTION, execution);
 
 
