@@ -71,7 +71,7 @@
 
           <#nested "form">
 
-          <#if auth.showBackButton() >
+          <#if auth?has_content && auth.showBackButton() >
           <form id="kc-select-back-form" action="${url.loginAction}" method="post" <#if displayWide>class="${properties.kcContentWrapperClass!}"</#if>>
               <div <#if displayWide>class="${properties.kcFormSocialAccountContentClass!} ${properties.kcFormSocialAccountClass!}"</#if>>
                   <div class="${properties.kcFormGroupClass!}">
