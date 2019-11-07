@@ -19,39 +19,19 @@
 package org.keycloak.models.credential.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
 public class WebAuthnSecretData {
 
-    // These are in fact no secret data, however we don't want to display them in admin console etc. Doublecheck if it's ok
-    private final String attestationStatement;
-    private final String credentialPublicKey;
-
     @JsonCreator
-    public WebAuthnSecretData(@JsonProperty("attestationStatement") String attestationStatement,
-                              @JsonProperty("credentialPublicKey") String credentialPublicKey) {
-        this.attestationStatement = attestationStatement;
-        this.credentialPublicKey = credentialPublicKey;
-    }
-
-
-    public String getAttestationStatement() {
-        return attestationStatement;
-    }
-
-    public String getCredentialPublicKey() {
-        return credentialPublicKey;
+    public WebAuthnSecretData() {
     }
 
 
     @Override
     public String toString() {
-        return "WebAuthnSecretData { " +
-                "attestationStatement='" + attestationStatement + '\'' +
-                ", credentialPublicKey='" + credentialPublicKey + '\'' +
-                " }";
+        return "WebAuthnSecretData {}";
     }
 }

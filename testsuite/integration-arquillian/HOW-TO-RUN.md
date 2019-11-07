@@ -391,6 +391,22 @@ mvn -f testsuite/integration-arquillian/tests/base/pom.xml \
     -DchromeArguments=--enable-web-authentication-testing-api
 ```
 
+#### Troubleshooting
+
+If you try to run WebAuthn tests and you see error like:
+
+```
+Caused by: java.lang.RuntimeException: Unable to instantiate Drone via org.openqa.selenium.chrome.ChromeDriver(Capabilities): 
+  org.openqa.selenium.SessionNotCreatedException: session not created: This version of ChromeDriver only supports Chrome version 78
+```
+
+It could be because version of your locally installed chrome browser is not compatible with the version of chrome driver. Check what is the version
+of your chrome browser (You can open URL `chrome://version/` for the details) and then check available versions from the `https://chromedriver.chromium.org/downloads` .
+Then run the WebAuthn tests as above with the additional system property for specifying version of your chrome driver. For example:
+```
+-DchromeDriverVersion=77.0.3865.40
+```
+
 ## Social Login
 The social login tests require setup of all social networks including an example social user. These details can't be 
 shared as it would result in the clients and users eventually being blocked. By default these tests are skipped.

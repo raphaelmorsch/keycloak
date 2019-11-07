@@ -29,14 +29,20 @@ public class WebAuthnCredentialData {
     private final String aaguid;
     private final String credentialId;
     private long counter;
+    private String attestationStatement;
+    private String credentialPublicKey;
 
     @JsonCreator
     public WebAuthnCredentialData(@JsonProperty("aaguid") String aaguid,
                                   @JsonProperty("credentialId") String credentialId,
-                                  @JsonProperty("counter") long counter) {
+                                  @JsonProperty("counter") long counter,
+                                  @JsonProperty("attestationStatement") String attestationStatement,
+                                  @JsonProperty("credentialPublicKey") String credentialPublicKey                                  ) {
         this.aaguid = aaguid;
         this.credentialId = credentialId;
         this.counter = counter;
+        this.attestationStatement = attestationStatement;
+        this.credentialPublicKey = credentialPublicKey;
     }
 
     public String getAaguid() {
@@ -45,6 +51,14 @@ public class WebAuthnCredentialData {
 
     public String getCredentialId() {
         return credentialId;
+    }
+
+    public String getAttestationStatement() {
+        return attestationStatement;
+    }
+
+    public String getCredentialPublicKey() {
+        return credentialPublicKey;
     }
 
     public long getCounter() {
@@ -61,6 +75,8 @@ public class WebAuthnCredentialData {
                 "aaguid='" + aaguid + '\'' +
                 ", credentialId='" + credentialId + '\'' +
                 ", counter=" + counter +
+                ", attestationStatement='" + attestationStatement + '\'' +
+                ", credentialPublicKey='" + credentialPublicKey + '\'' +
                 " }";
     }
 }

@@ -40,7 +40,6 @@ import com.webauthn4j.validator.WebAuthnAuthenticationContextValidationResponse;
 import com.webauthn4j.validator.WebAuthnAuthenticationContextValidator;
 import org.keycloak.models.credential.WebAuthnCredentialModel;
 import org.keycloak.models.credential.dto.WebAuthnCredentialData;
-import org.keycloak.models.credential.dto.WebAuthnSecretData;
 
 public class WebAuthnCredentialProvider implements CredentialProvider<WebAuthnCredentialModel>, CredentialInputValidator {
 
@@ -117,11 +116,10 @@ public class WebAuthnCredentialProvider implements CredentialProvider<WebAuthnCr
         WebAuthnCredentialModel webAuthnCredential = getCredentialFromModel(credential);
 
         WebAuthnCredentialData credData = webAuthnCredential.getWebAuthnCredentialData();
-        WebAuthnSecretData secretData = webAuthnCredential.getWebAuthnSecretData();
 
         WebAuthnCredentialModelInput auth = new WebAuthnCredentialModelInput();
 
-        AttestationStatement attrStatement = attestationStatementConverter.convertToEntityAttribute(secretData.getAttestationStatement());
+        AttestationStatement attrStatement = attestationStatementConverter.convertToEntityAttribute(credData.getAttestationStatement());
         auth.setAttestationStatement(attrStatement);
 
         AAGUID aaguid = new AAGUID(credData.getAaguid());
@@ -133,7 +131,7 @@ public class WebAuthnCredentialProvider implements CredentialProvider<WebAuthnCr
             // NOP
         }
 
-        CredentialPublicKey pubKey = credentialPublicKeyConverter.convertToEntityAttribute(secretData.getCredentialPublicKey());
+        CredentialPublicKey pubKey = credentialPublicKeyConverter.convertToEntityAttribute(credData.getCredentialPublicKey());
 
         AttestedCredentialData attrCredData = new AttestedCredentialData(aaguid, credentialId, pubKey);
 
