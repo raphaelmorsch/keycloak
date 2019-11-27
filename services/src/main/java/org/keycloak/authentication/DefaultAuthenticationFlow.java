@@ -101,7 +101,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
 
         MultivaluedMap<String, String> inputData = processor.getRequest().getDecodedFormParameters();
         String authExecId = inputData.getFirst(Constants.AUTHENTICATION_EXECUTION);
-        String selectedCredentialId = inputData.getFirst(Constants.CREDENTIAL_ID);
+
+        // TODO:mposolda doublecheck this and eventually delete
+        //String selectedCredentialId = inputData.getFirst(Constants.CREDENTIAL_ID);
 
         //check if the user has selected the "back" option
         if (inputData.containsKey("back")) {
@@ -129,6 +131,13 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             }
         }
 
+        // User clicked on "try another way" link
+        if (inputData.containsKey("tryAnotherWay")) {
+            logger.info("User clicked on try another way");
+            // TODO:mposolda implement
+
+        }
+
         // check if the user has switched to a new authentication execution, and if so switch to it.
         if (authExecId != null && !authExecId.isEmpty()) {
 
@@ -148,7 +157,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 new AuthenticationFlowHistoryHelper(processor).pushExecution(selectionOptions.get(0).getAuthExecId());
             }
 
-            Response response = processSingleFlowExecutionModel(model, selectedCredentialId, false);
+            Response response = processSingleFlowExecutionModel(model, null, false);
             if (response == null) {
                 processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
                 checkAndValidateParentFlow(model);
@@ -173,8 +182,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         Authenticator authenticator = createAuthenticator(factory);
         AuthenticationProcessor.Result result = processor.createAuthenticatorContext(model, authenticator, executions);
         result.setAuthenticationSelections(createAuthenticationSelectionList(model));
-
-        result.setSelectedCredentialId(selectedCredentialId);
 
         logger.debugv("action: {0}", model.getAuthenticator());
         authenticator.action(result);
@@ -282,15 +289,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         List<AuthenticationExecutionModel> requiredList = new ArrayList<>();
         List<AuthenticationExecutionModel> alternativeList = new ArrayList<>();
 
-        for (AuthenticationExecutionModel execution : executions) {
-            if (isConditionalAuthenticator(execution)) {
-                continue;
-            } else if (execution.isRequired() || execution.isConditional()) {
-                requiredList.add(execution);
-            } else if (execution.isAlternative()) {
-                alternativeList.add(execution);
-            }
-        }
+        fillListsOfExecutions(executions, requiredList, alternativeList);
 
         //handle required elements : all required elements need to be executed
         boolean requiredElementsSuccessful = true;
@@ -340,12 +339,34 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         return null;
     }
 
+
+    // TODO:mposolda Javadoc
+    void fillListsOfExecutions(List<AuthenticationExecutionModel> executionsToProcess, List<AuthenticationExecutionModel> requiredList, List<AuthenticationExecutionModel> alternativeList) {
+        for (AuthenticationExecutionModel execution : executionsToProcess) {
+            if (isConditionalAuthenticator(execution)) {
+                continue;
+            } else if (execution.isRequired() || execution.isConditional()) {
+                requiredList.add(execution);
+            } else if (execution.isAlternative()) {
+                alternativeList.add(execution);
+            }
+        }
+
+        if (!requiredList.isEmpty() && !alternativeList.isEmpty()) {
+            // TODO:mposolda Log details about ignored alternative elements
+            // TODO:mposolda doublecheck if it's ok regarding various corner cases around conditions
+            logger.warn("REQUIRED and ALTERNATIVE elements at same level!");
+            alternativeList.clear();
+        }
+    }
+
+
     /**
      * Checks if the conditional subflow passed in parameter is disabled.
      * @param model
      * @return
      */
-    private boolean isConditionalSubflowDisabled(AuthenticationExecutionModel model) {
+    boolean isConditionalSubflowDisabled(AuthenticationExecutionModel model) {
         if (model == null || !model.isAuthenticatorFlow() || !model.isConditional()) {
             return false;
         };
@@ -381,6 +402,8 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         return AuthenticationSessionModel.ExecutionStatus.SETUP_REQUIRED.equals(processor.getAuthenticationSession().getExecutionStatus().get(model.getId()));
     }
 
+
+    // TODO:mposolda possibly remove selectedCredentialId from the parameters of this method
     private Response processSingleFlowExecutionModel(AuthenticationExecutionModel model, String selectedCredentialId, boolean calledFromFlow) {
         logger.debugv("check execution: {0} requirement: {1}", model.getAuthenticator(), model.getRequirement());
 
@@ -415,7 +438,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         //If executions are alternative, get the actual execution to show based on user preference
         List<AuthenticationSelectionOption> selectionOptions = createAuthenticationSelectionList(model);
         if (!selectionOptions.isEmpty() && calledFromFlow) {
-            List<AuthenticationSelectionOption> finalSelectionOptions = selectionOptions.stream().filter(aso -> !aso.getAuthenticationExecution().isAuthenticatorFlow() && !isProcessed(aso.getAuthenticationExecution())).collect(Collectors.toList());;
+            List<AuthenticationSelectionOption> finalSelectionOptions = selectionOptions.stream().filter(aso -> !aso.getAuthenticationExecution().isAuthenticatorFlow() && !isProcessed(aso.getAuthenticationExecution())).collect(Collectors.toList());
             if (finalSelectionOptions.isEmpty()) {
                 //move to next
                 return null;
@@ -429,11 +452,14 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         }
         AuthenticationProcessor.Result context = processor.createAuthenticatorContext(model, authenticator, executions);
         context.setAuthenticationSelections(selectionOptions);
-        if (selectedCredentialId != null) {
-            context.setSelectedCredentialId(selectedCredentialId);
-        } else if (!selectionOptions.isEmpty()) {
-            context.setSelectedCredentialId(selectionOptions.get(0).getCredentialId());
-        }
+
+        // TODO:mposolda doublecheck this and eventually delete
+//        if (selectedCredentialId != null) {
+//            context.setSelectedCredentialId(selectedCredentialId);
+//        } else if (!selectionOptions.isEmpty()) {
+//            context.setSelectedCredentialId(selectionOptions.get(0).getCredentialId());
+//        }
+
         if (authenticator.requiresUser()) {
             if (authUser == null) {
                 throw new AuthenticationFlowException("authenticator: " + factory.getId(), AuthenticationFlowError.UNKNOWN_USER);
@@ -467,72 +493,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
      * @return an ordered list of the authentication selection options to present the user.
      */
     private List<AuthenticationSelectionOption> createAuthenticationSelectionList(AuthenticationExecutionModel model) {
-        List<AuthenticationSelectionOption> authenticationSelectionList = new ArrayList<>();
-        if (processor.getAuthenticationSession() != null) {
-            Map<String, AuthenticationExecutionModel> typeAuthExecMap = new HashMap<>();
-            List<AuthenticationExecutionModel> nonCredentialExecutions = new ArrayList<>();
-            if (model.isAlternative()) {
-                //get all alternative executions to be able to list their credentials
-                List<AuthenticationExecutionModel> alternativeExecutions = processor.getRealm().getAuthenticationExecutions(model.getParentFlow())
-                        .stream().filter(AuthenticationExecutionModel::isAlternative).collect(Collectors.toList());
-                for (AuthenticationExecutionModel execution : alternativeExecutions) {
-                    if (!execution.isAuthenticatorFlow()) {
-                        Authenticator localAuthenticator = processor.getSession().getProvider(Authenticator.class, execution.getAuthenticator());
-                        if (!(localAuthenticator instanceof CredentialValidator)) {
-                            nonCredentialExecutions.add(execution);
-                            continue;
-                        }
-                        CredentialValidator<?> cv = (CredentialValidator<?>) localAuthenticator;
-                        typeAuthExecMap.put(cv.getType(processor.getSession()), execution);
-                    } else {
-                        nonCredentialExecutions.add(execution);
-                    }
-                }
-            } else if (model.isRequired() && !model.isAuthenticatorFlow()) {
-                //only get current credentials
-                Authenticator authenticator = processor.getSession().getProvider(Authenticator.class, model.getAuthenticator());
-                if (authenticator instanceof CredentialValidator) {
-                    typeAuthExecMap.put(((CredentialValidator<?>) authenticator).getType(processor.getSession()), model);
-                }
-            }
-            //add credential authenticators in order
-            if (processor.getAuthenticationSession().getAuthenticatedUser() != null) {
-                List<CredentialModel> credentials = processor.getSession().userCredentialManager()
-                        .getStoredCredentials(processor.getRealm(), processor.getAuthenticationSession().getAuthenticatedUser())
-                        .stream()
-                        .filter(credential -> typeAuthExecMap.containsKey(credential.getType()))
-                        .collect(Collectors.toList());
-
-                MultivaluedMap<String, AuthenticationSelectionOption> countAuthSelections = new MultivaluedHashMap<>();
-
-                for (CredentialModel credential : credentials) {
-                    AuthenticationSelectionOption authSel = new AuthenticationSelectionOption(typeAuthExecMap.get(credential.getType()), credential);
-                    authenticationSelectionList.add(authSel);
-                    countAuthSelections.add(credential.getType(), authSel);
-                }
-                for (Entry<String, List<AuthenticationSelectionOption>> entry : countAuthSelections.entrySet()) {
-                    if (entry.getValue().size() == 1) {
-                        entry.getValue().get(0).setShowCredentialName(false);
-                    }
-                }
-                //don't show credential type if there's only a single type in the list
-                if (countAuthSelections.keySet().size() == 1 && nonCredentialExecutions.isEmpty()) {
-                    for (AuthenticationSelectionOption so : authenticationSelectionList) {
-                        so.setShowCredentialType(false);
-                    }
-                }
-            }
-            //add all other authenticators (including flows)
-            for (AuthenticationExecutionModel exec : nonCredentialExecutions) {
-                if (exec.isAuthenticatorFlow()) {
-                    authenticationSelectionList.add(new AuthenticationSelectionOption(exec,
-                            processor.getRealm().getAuthenticationFlowById(exec.getFlowId())));
-                } else {
-                    authenticationSelectionList.add(new AuthenticationSelectionOption(exec));
-                }
-            }
-        }
-        return authenticationSelectionList;
+        return AuthenticationSelectionResolver.createAuthenticationSelectionList(processor, model);
     }
 
 

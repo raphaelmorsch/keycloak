@@ -26,6 +26,7 @@ import org.keycloak.authentication.RequiredActionProvider;
 import org.keycloak.authentication.requiredactions.UpdateTotp;
 import org.keycloak.credential.CredentialProvider;
 import org.keycloak.credential.OTPCredentialProvider;
+import org.keycloak.credential.OTPCredentialProviderFactory;
 import org.keycloak.events.Errors;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.KeycloakSession;
@@ -61,13 +62,18 @@ public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator impl
         MultivaluedMap<String, String> inputData = context.getHttpRequest().getDecodedFormParameters();
 
         String otp = inputData.getFirst("otp");
-        String credentialId = context.getSelectedCredentialId();
+
+        // TODO:mposolda replace with OTP-specific credential selection
+        //String credentialId = context.getSelectedCredentialId();
+        String credentialId = null;
 
         //TODO this is lazy for when there is no clearly defined credentialId available (for example direct grant or console OTP), replace with getting the credential from the name
         if (credentialId == null || credentialId.isEmpty()) {
             credentialId = getCredentialProvider(context.getSession())
                     .getDefaultCredential(context.getSession(), context.getRealm(), context.getUser()).getId();
-            context.setSelectedCredentialId(credentialId);
+
+            // TODO:mposolda OTP specific way of credential selection
+            // context.setSelectedCredentialId(credentialId);
         }
 
         UserModel userModel = context.getUser();
@@ -131,7 +137,7 @@ public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator impl
 
     @Override
     public OTPCredentialProvider getCredentialProvider(KeycloakSession session) {
-        return (OTPCredentialProvider)session.getProvider(CredentialProvider.class, "keycloak-otp");
+        return (OTPCredentialProvider)session.getProvider(CredentialProvider.class, OTPCredentialProviderFactory.PROVIDER_ID);
     }
 
 }

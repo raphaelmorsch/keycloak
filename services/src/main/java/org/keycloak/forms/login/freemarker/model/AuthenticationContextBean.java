@@ -44,15 +44,16 @@ public class AuthenticationContextBean {
         return context==null ? Collections.emptyList() : context.getAuthenticationSelections();
     }
 
-    public String getSelectedCredential() {
-        return context==null ? null : context.getSelectedCredentialId();
-    }
-
     public boolean showBackButton() {
         if (context == null) {
             return false;
         }
 
         return actionUri != null && new AuthenticationFlowHistoryHelper(context.getAuthenticationSession(), context.getFlowPath()).hasAnyExecution();
+    }
+
+
+    public boolean showTryAnotherWayLink() {
+        return getAuthenticationSelections().size() > 1;
     }
 }

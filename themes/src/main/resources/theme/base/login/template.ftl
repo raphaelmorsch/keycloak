@@ -82,6 +82,17 @@
           </form>
           </#if>
 
+          <#if auth?has_content && auth.showTryAnotherWayLink() >
+          <form id="kc-select-try-another-way-form" action="${url.loginAction}" method="post" <#if displayWide>class="${properties.kcContentWrapperClass!}"</#if>>
+              <div <#if displayWide>class="${properties.kcFormSocialAccountContentClass!} ${properties.kcFormSocialAccountClass!}"</#if>>
+                  <div class="${properties.kcFormGroupClass!}">
+                    <input class="${properties.kcButtonClass!} ${properties.kcButtonDefaultClass!} ${properties.kcButtonBlockClass!} ${properties.kcButtonLargeClass!}"
+                           name="tryAnotherWay" id="kc-try-another-way" type="submit" value="${msg("tryAnotherWay")}"/>
+                  </div>
+              </div>
+          </form>
+          </#if>
+
           <#if displayInfo>
               <div id="kc-info" class="${properties.kcSignUpClass!}">
                   <div id="kc-info-wrapper" class="${properties.kcInfoAreaWrapperClass!}">
