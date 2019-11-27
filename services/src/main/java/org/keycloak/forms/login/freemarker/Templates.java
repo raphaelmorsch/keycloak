@@ -51,7 +51,7 @@ public class Templates {
             case LOGIN_UPDATE_PASSWORD:
                 return "login-update-password.ftl";
             case LOGIN_SELECT_AUTHENTICATOR:
-                return "select.ftl";
+                return "select-authenticator.ftl";
             case REGISTER:
                 return "register.ftl";
             case INFO:

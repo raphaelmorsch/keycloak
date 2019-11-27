@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationSelectionOption;
+import org.keycloak.forms.login.LoginFormsPages;
 import org.keycloak.services.util.AuthenticationFlowHistoryHelper;
 
 /**
@@ -33,10 +34,12 @@ public class AuthenticationContextBean {
 
     private final AuthenticationFlowContext context;
     private final URI actionUri;
+    private final LoginFormsPages page;
 
-    public AuthenticationContextBean(AuthenticationFlowContext context, URI actionUri) {
+    public AuthenticationContextBean(AuthenticationFlowContext context, URI actionUri, LoginFormsPages page) {
         this.context = context;
         this.actionUri = actionUri;
+        this.page = page;
     }
 
 
@@ -54,6 +57,6 @@ public class AuthenticationContextBean {
 
 
     public boolean showTryAnotherWayLink() {
-        return getAuthenticationSelections().size() > 1;
+        return getAuthenticationSelections().size() > 1 && page != LoginFormsPages.LOGIN_SELECT_AUTHENTICATOR;
     }
 }

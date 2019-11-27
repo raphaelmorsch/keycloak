@@ -1,6 +1,5 @@
-<#macro registrationLayout bodyClass="" displayInfo=false displayMessage=true displayWide=false>
 <#import "template.ftl" as layout>
-<@layout.registrationLayout; section>
+<@layout.registrationLayout displayInfo=true; section>
     <#if section = "header">
         <script type="text/javascript">
             // Fill up the two hidden and submit the form
@@ -15,7 +14,6 @@
                 });
             </#if>
         </script>
-        <#nested "header">
     <#elseif section = "form">
         <form id="kc-select-credential-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
             <div class="${properties.kcFormGroupClass!}">
@@ -32,7 +30,6 @@
                 </div>
             </div>
         </form>
-        <#nested "form">
     </#if>
 </@layout.registrationLayout>
-</#macro>
+

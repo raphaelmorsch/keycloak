@@ -126,7 +126,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 } else return response;
             } else {
                 // This normally shouldn't happen as "back" button shouldn't be available on the form. If it is still triggered, we show "pageExpired" page
-                new AuthenticationFlowURLHelper(processor.getSession(), processor.getRealm(), processor.getUriInfo())
+                return new AuthenticationFlowURLHelper(processor.getSession(), processor.getRealm(), processor.getUriInfo())
                         .showPageExpired(authSession);
             }
         }
@@ -134,8 +134,12 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         // User clicked on "try another way" link
         if (inputData.containsKey("tryAnotherWay")) {
             logger.info("User clicked on try another way");
-            // TODO:mposolda implement
 
+            List<AuthenticationSelectionOption> selectionOptions = createAuthenticationSelectionList(model);
+
+            AuthenticationProcessor.Result result = processor.createAuthenticatorContext(model, null, null);
+            result.setAuthenticationSelections(selectionOptions);
+            return result.form().createSelectAuthenticator();
         }
 
         // check if the user has switched to a new authentication execution, and if so switch to it.

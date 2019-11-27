@@ -87,7 +87,7 @@
               <div <#if displayWide>class="${properties.kcFormSocialAccountContentClass!} ${properties.kcFormSocialAccountClass!}"</#if>>
                   <div class="${properties.kcFormGroupClass!}">
                     <input class="${properties.kcButtonClass!} ${properties.kcButtonDefaultClass!} ${properties.kcButtonBlockClass!} ${properties.kcButtonLargeClass!}"
-                           name="tryAnotherWay" id="kc-try-another-way" type="submit" value="${msg("tryAnotherWay")}"/>
+                           name="tryAnotherWay" id="kc-try-another-way" type="submit" value="${msg("doTryAnotherWay")}"/>
                   </div>
               </div>
           </form>
