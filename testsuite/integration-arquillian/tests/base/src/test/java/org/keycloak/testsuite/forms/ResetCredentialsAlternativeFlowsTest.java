@@ -124,7 +124,7 @@ public class ResetCredentialsAlternativeFlowsTest extends AbstractTestRealmKeycl
     @Test
     public void testBackButtonWhenSwitchToResetCredentialsFlowFromAlternativeBrowserFlow() {
         try {
-            BrowserFlowTest.configureBrowserFlowWithAlternativeCredentials(testingClient);
+            MultiFactorAuthenticationTest.configureBrowserFlowWithAlternativeCredentials(testingClient);
 
             // Provide username and then click "Forget password"
             provideUsernameAndClickResetPassword("login-test");
@@ -151,7 +151,7 @@ public class ResetCredentialsAlternativeFlowsTest extends AbstractTestRealmKeycl
     @Test
     public void testNotExistingUserProvidedInResetCredentialsFlow() {
         try {
-            BrowserFlowTest.configureBrowserFlowWithAlternativeCredentials(testingClient);
+            MultiFactorAuthenticationTest.configureBrowserFlowWithAlternativeCredentials(testingClient);
 
             // Provide username and then click "Forget password"
             provideUsernameAndClickResetPassword("login-test");
@@ -178,7 +178,7 @@ public class ResetCredentialsAlternativeFlowsTest extends AbstractTestRealmKeycl
     @Test
     public void testDifferentUserProvidedInResetCredentialsFlow() {
         try {
-            BrowserFlowTest.configureBrowserFlowWithAlternativeCredentials(testingClient);
+            MultiFactorAuthenticationTest.configureBrowserFlowWithAlternativeCredentials(testingClient);
 
             // Provide username and then click "Forget password"
             provideUsernameAndClickResetPassword("login-test");
@@ -204,7 +204,7 @@ public class ResetCredentialsAlternativeFlowsTest extends AbstractTestRealmKeycl
     @Test
     public void testSameUserProvidedInResetCredentialsFlow() {
         try {
-            BrowserFlowTest.configureBrowserFlowWithAlternativeCredentials(testingClient);
+            MultiFactorAuthenticationTest.configureBrowserFlowWithAlternativeCredentials(testingClient);
 
             // Provide username and then click "Forget password"
             provideUsernameAndClickResetPassword("login-test");
@@ -231,7 +231,7 @@ public class ResetCredentialsAlternativeFlowsTest extends AbstractTestRealmKeycl
     @Test
     public void testResetCredentialsFlowWithUsernameProvidedFromBrowserFlow() throws Exception {
         try {
-            BrowserFlowTest.configureBrowserFlowWithAlternativeCredentials(testingClient);
+            MultiFactorAuthenticationTest.configureBrowserFlowWithAlternativeCredentials(testingClient);
             final String newFlowAlias = "resetcred - alternative";
             // Configure reset-credentials flow without ResetCredentialsChooseUser authenticator
             configureResetCredentialsRemoveExecutionsAndBindTheFlow(
