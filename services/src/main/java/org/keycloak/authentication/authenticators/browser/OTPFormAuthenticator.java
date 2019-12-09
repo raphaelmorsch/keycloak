@@ -45,6 +45,9 @@ import java.util.List;
  * @version $Revision: 1 $
  */
 public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator implements Authenticator, CredentialValidator<OTPCredentialProvider> {
+
+    public static final String SELECTED_OTP_CREDENTIAL_ID = "selectedOtpCredentialId";
+
     @Override
     public void action(AuthenticationFlowContext context) {
         validateOTP(context);
@@ -63,18 +66,13 @@ public class OTPFormAuthenticator extends AbstractUsernameFormAuthenticator impl
 
         String otp = inputData.getFirst("otp");
 
-        // TODO:mposolda replace with OTP-specific credential selection
-        //String credentialId = context.getSelectedCredentialId();
-        String credentialId = null;
+        String credentialId = inputData.getFirst("selectedCredentialId");
 
-        //TODO this is lazy for when there is no clearly defined credentialId available (for example direct grant or console OTP), replace with getting the credential from the name
         if (credentialId == null || credentialId.isEmpty()) {
             credentialId = getCredentialProvider(context.getSession())
                     .getDefaultCredential(context.getSession(), context.getRealm(), context.getUser()).getId();
-
-            // TODO:mposolda OTP specific way of credential selection
-            // context.setSelectedCredentialId(credentialId);
         }
+        context.form().setAttribute(SELECTED_OTP_CREDENTIAL_ID, credentialId);
 
         UserModel userModel = context.getUser();
         if (!enabledUser(context, userModel)) {

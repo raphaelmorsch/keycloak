@@ -4,6 +4,22 @@
         ${msg("doLogIn")}
     <#elseif section = "form">
         <form id="kc-otp-login-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
+
+            <#if otpLogin.userOtpCredentials?size gt 1>
+                <div class="${properties.kcFormGroupClass!}">
+                    <div class="${properties.kcLabelWrapperClass!}">
+                        <label for="selected-credential-id" class="${properties.kcLabelClass!}">${msg("loginCredential")}</label>
+                    </div>
+                    <div class="${properties.kcInputWrapperClass!}">
+                        <select id="selected-credential-id" name="selectedCredentialId" class="form-control" size="1">
+                            <#list otpLogin.userOtpCredentials as otpCredential>
+                                <option value="${otpCredential.id}" <#if otpCredential.id == otpLogin.selectedCredentialId>selected</#if>>${otpCredential.userLabel}</option>
+                            </#list>
+                        </select>
+                    </div>
+                </div>
+            </#if>
+
             <div class="${properties.kcFormGroupClass!}">
                 <div class="${properties.kcLabelWrapperClass!}">
                     <label for="otp" class="${properties.kcLabelClass!}">${msg("loginOtpOneTime")}</label>

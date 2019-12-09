@@ -78,16 +78,14 @@ class AuthenticationSelectionResolver {
                         .filter(credential -> typeAuthExecMap.containsKey(credential.getType()))
                         .collect(Collectors.toList());
 
-                MultivaluedMap<String, AuthenticationSelectionOption> countAuthSelections = new MultivaluedHashMap<>();
-
-                for (CredentialModel credential : credentials) {
-                    AuthenticationSelectionOption authSel = new AuthenticationSelectionOption(processor.getSession(), typeAuthExecMap.get(credential.getType()));
-                    authenticationSelectionList.add(authSel);
-                    countAuthSelections.add(credential.getType(), authSel);
-                }
+                authenticationSelectionList = credentials.stream()
+                        .map(CredentialModel::getType)
+                        .distinct()
+                        .map(credentialType -> new AuthenticationSelectionOption(processor.getSession(), typeAuthExecMap.get(credentialType)))
+                        .collect(Collectors.toList());
             }
 
-            //add all other authenticators (including flows)
+            //add all other authenticators
             for (AuthenticationExecutionModel exec : nonCredentialExecutions) {
                 authenticationSelectionList.add(new AuthenticationSelectionOption(processor.getSession(), exec));
             }
