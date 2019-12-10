@@ -19,7 +19,9 @@
 package org.keycloak.forms.login.freemarker.model;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.keycloak.authentication.authenticators.browser.OTPFormAuthenticator;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.CredentialProvider;
 import org.keycloak.credential.OTPCredentialProvider;
@@ -37,11 +39,15 @@ import org.keycloak.models.credential.OTPCredentialModel;
 public class TotpLoginBean {
 
     private final String selectedCredentialId;
-    private final List<CredentialModel> userOtpCredentials;
+    private final List<OTPCredential> userOtpCredentials;
 
     public TotpLoginBean(KeycloakSession session, RealmModel realm, UserModel user, String selectedCredentialId) {
-        this.userOtpCredentials = session.userCredentialManager()
+        List<CredentialModel> userOtpCredentials = session.userCredentialManager()
                 .getStoredCredentialsByType(realm, user, OTPCredentialModel.TYPE);
+
+        this.userOtpCredentials = userOtpCredentials.stream()
+                .map(OTPCredential::new)
+                .collect(Collectors.toList());
 
         // This means user did not yet manually selected any OTP credential through the UI. So just go with the default one with biggest priority
         if (selectedCredentialId == null || selectedCredentialId.isEmpty()) {
@@ -56,11 +62,32 @@ public class TotpLoginBean {
     }
 
 
-    public List<CredentialModel> getUserOtpCredentials() {
+    public List<OTPCredential> getUserOtpCredentials() {
         return userOtpCredentials;
     }
 
     public String getSelectedCredentialId() {
         return selectedCredentialId;
+    }
+
+
+    public static class OTPCredential {
+
+        private final String id;
+        private final String userLabel;
+
+        public OTPCredential(CredentialModel credentialModel) {
+            this.id = credentialModel.getId();
+            // TODO: "Unnamed" OTP credentials should be displayed in the UI in gray
+            this.userLabel = credentialModel.getUserLabel() == null || credentialModel.getUserLabel().isEmpty() ? OTPFormAuthenticator.UNNAMED : credentialModel.getUserLabel();
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getUserLabel() {
+            return userLabel;
+        }
     }
 }
