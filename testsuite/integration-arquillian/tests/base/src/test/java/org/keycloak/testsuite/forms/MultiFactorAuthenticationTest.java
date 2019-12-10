@@ -28,9 +28,11 @@ import org.jboss.arquillian.test.api.ArquillianResource;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
+import org.keycloak.authentication.AuthenticationFlow;
 import org.keycloak.authentication.authenticators.browser.OTPFormAuthenticatorFactory;
 import org.keycloak.authentication.authenticators.browser.PasswordFormFactory;
 import org.keycloak.authentication.authenticators.browser.UsernameFormFactory;
+import org.keycloak.events.Details;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
@@ -44,6 +46,7 @@ import org.keycloak.testsuite.pages.PasswordPage;
 import org.keycloak.testsuite.pages.SelectAuthenticatorPage;
 import org.keycloak.testsuite.util.FlowUtil;
 import org.keycloak.testsuite.util.OAuthClient;
+import org.keycloak.testsuite.util.WaitUtils;
 import org.openqa.selenium.WebDriver;
 
 import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
@@ -180,47 +183,62 @@ public class MultiFactorAuthenticationTest extends AbstractTestRealmKeycloakTest
     }
 
 
-    // TODO:mposolda - test with alternatives at different subflow
-//    @Test
-//    public void testBackButtonFromAlternativeSubflow() {
-//        final String newFlowAlias = "browser - back button subflow";
-//        testingClient.server("test").run(session -> FlowUtil.inCurrentRealm(session).copyBrowserFlow(newFlowAlias));
-//        testingClient.server("test").run(session -> FlowUtil.inCurrentRealm(session)
-//                .selectFlow(newFlowAlias)
-//                .inForms(forms -> forms
-//                        .clear()
-//                        .addAuthenticatorExecution(AuthenticationExecutionModel.Requirement.REQUIRED, UsernameFormFactory.PROVIDER_ID)
-//                        .addSubFlowExecution(Requirement.REQUIRED, reqSubFlow -> reqSubFlow
-//                                // Add authenticators to this flow: 1 PASSWORD, 2 Another subflow with having only OTP as child
-//                                .addAuthenticatorExecution(Requirement.ALTERNATIVE, PasswordFormFactory.PROVIDER_ID)
-//                                .addSubFlowExecution("otp subflow", AuthenticationFlow.BASIC_FLOW, Requirement.ALTERNATIVE, altSubFlow -> altSubFlow
-//                                        .addAuthenticatorExecution(Requirement.REQUIRED, OTPFormAuthenticatorFactory.PROVIDER_ID)
-//                                )
-//                        )
-//                )
-//                .defineAsBrowserFlow()
-//        );
-//
-//        try {
-//            // Provide username, should be on password page
-//            needsPassword("user-with-one-configured-otp");
-//
-//            // Select the OTP subflow. The credential selection won't be on the page due it's subflow
-//            passwordPage.selectCredential("otp subflow");
-//            loginTotpPage.assertCurrent();
-//            loginTotpPage.assertCredentialsComboboxAvailability(false);
-//
-//            // Click "back". Should be on password page
-//            loginTotpPage.clickBackButton();
-//            passwordPage.assertCurrent();
-//            passwordPage.login("password");
-//
-//            Assert.assertFalse(passwordPage.isCurrent());
-//            Assert.assertFalse(loginPage.isCurrent());
-//            events.expectLogin().user(testRealm().users().search("user-with-one-configured-otp").get(0).getId())
-//                    .detail(Details.USERNAME, "user-with-one-configured-otp").assertEvent();
-//        } finally {
-//            revertFlows("browser - back button subflow");
-//        }
-//    }
+    @Test
+    public void testAlternativeMechanismsInDifferentSubflows() {
+        final String newFlowAlias = "browser - back button subflow";
+        testingClient.server("test").run(session -> FlowUtil.inCurrentRealm(session).copyBrowserFlow(newFlowAlias));
+        testingClient.server("test").run(session -> FlowUtil.inCurrentRealm(session)
+                .selectFlow(newFlowAlias)
+                .inForms(forms -> forms
+                        .clear()
+                        .addAuthenticatorExecution(AuthenticationExecutionModel.Requirement.REQUIRED, UsernameFormFactory.PROVIDER_ID)
+                        .addSubFlowExecution(AuthenticationExecutionModel.Requirement.REQUIRED, reqSubFlow -> reqSubFlow
+                                // Add authenticators to this flow: 1 PASSWORD, 2 Another subflow with having only OTP as child
+                                .addAuthenticatorExecution(AuthenticationExecutionModel.Requirement.ALTERNATIVE, PasswordFormFactory.PROVIDER_ID)
+                                .addSubFlowExecution("otp subflow", AuthenticationFlow.BASIC_FLOW, AuthenticationExecutionModel.Requirement.ALTERNATIVE, altSubFlow -> altSubFlow
+                                        .addAuthenticatorExecution(AuthenticationExecutionModel.Requirement.REQUIRED, OTPFormAuthenticatorFactory.PROVIDER_ID)
+                                )
+                        )
+                )
+                .defineAsBrowserFlow()
+        );
+
+        WaitUtils.pause(10000000);
+
+        try {
+            // Provide username, should be on password page with the link "Try another way" available
+            loginUsernameOnlyPage.open();
+            loginUsernameOnlyPage.login("user-with-one-configured-otp");
+            passwordPage.assertCurrent();
+            passwordPage.assertTryAnotherWayLinkAvailability(true);
+
+            // Click "Try another way" . Ability to have both password and OTP should be possible even if OTP is in different subflow
+            passwordPage.clickTryAnotherWayLink();
+            selectAuthenticatorPage.assertCurrent();
+            Assert.assertEquals(Arrays.asList("Password", "OTP"), selectAuthenticatorPage.getAvailableLoginMethods());
+            selectAuthenticatorPage.selectLoginMethod("OTP");
+
+            // Should be on the OTP now. Click "Try another way" again. Should see again both Password and OTP
+            loginTotpPage.assertCurrent();
+            loginTotpPage.assertTryAnotherWayLinkAvailability(true);
+
+            loginTotpPage.clickTryAnotherWayLink();
+            selectAuthenticatorPage.assertCurrent();
+            Assert.assertEquals(Arrays.asList("Password", "OTP"), selectAuthenticatorPage.getAvailableLoginMethods());
+
+            selectAuthenticatorPage.selectLoginMethod("Password");
+            passwordPage.assertCurrent();
+            passwordPage.login("password");
+
+            Assert.assertFalse(passwordPage.isCurrent());
+            Assert.assertFalse(loginPage.isCurrent());
+            events.expectLogin().user(testRealm().users().search("user-with-one-configured-otp").get(0).getId())
+                    .detail(Details.USERNAME, "user-with-one-configured-otp").assertEvent();
+        } finally {
+            BrowserFlowTest.revertFlows(testRealm(),"browser - back button subflow");
+        }
+    }
+
+
+    // TODO:mposolda Test for browser refresh - on the CredentialSelector page and on the OTP page (or the other)
 }
