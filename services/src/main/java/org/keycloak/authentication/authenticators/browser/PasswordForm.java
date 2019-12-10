@@ -18,6 +18,9 @@
 package org.keycloak.authentication.authenticators.browser;
 
 import org.keycloak.authentication.AuthenticationFlowContext;
+import org.keycloak.authentication.CredentialValidator;
+import org.keycloak.credential.CredentialProvider;
+import org.keycloak.credential.PasswordCredentialProvider;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
@@ -26,7 +29,7 @@ import org.keycloak.models.UserModel;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
-public class PasswordForm extends UsernamePasswordForm {
+public class PasswordForm extends UsernamePasswordForm implements CredentialValidator<PasswordCredentialProvider> {
 
     protected boolean validateForm(AuthenticationFlowContext context, MultivaluedMap<String, String> formData) {
         return validatePassword(context, context.getUser(), formData, false);
@@ -52,5 +55,10 @@ public class PasswordForm extends UsernamePasswordForm {
     @Override
     protected Response createLoginForm(LoginFormsProvider form) {
         return form.createLoginPassword();
+    }
+
+    @Override
+    public PasswordCredentialProvider getCredentialProvider(KeycloakSession session) {
+        return (PasswordCredentialProvider)session.getProvider(CredentialProvider.class, "keycloak-password");
     }
 }

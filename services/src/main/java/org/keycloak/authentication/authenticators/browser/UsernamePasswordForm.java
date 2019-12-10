@@ -38,7 +38,7 @@ import javax.ws.rs.core.Response;
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
  */
-public class UsernamePasswordForm extends AbstractUsernameFormAuthenticator implements Authenticator, CredentialValidator<PasswordCredentialProvider> {
+public class UsernamePasswordForm extends AbstractUsernameFormAuthenticator implements Authenticator {
     protected static ServicesLogger log = ServicesLogger.LOGGER;
 
     @Override
@@ -107,8 +107,4 @@ public class UsernamePasswordForm extends AbstractUsernameFormAuthenticator impl
 
     }
 
-    @Override
-    public PasswordCredentialProvider getCredentialProvider(KeycloakSession session) {
-        return (PasswordCredentialProvider)session.getProvider(CredentialProvider.class, "keycloak-password");
-    }
 }
