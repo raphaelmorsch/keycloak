@@ -27,10 +27,10 @@ public class AuthenticationSelectionOption {
     }
 
     public String getAuthExecDisplayName() {
-
+        // TODO: Retrieve the displayName for the authenticator from the AuthenticationFactory
+        // TODO: Retrieve icon CSS style
+        // TODO: Should be addressed as part of https://issues.redhat.com/browse/KEYCLOAK-12185
         return getAuthExecName();
-        // TODO:mposolda Retrieve the displayName for the authenticator from the AuthenticationFactory
-        // TODO:mposolda Retrieve icon CSS style
     }
 
 

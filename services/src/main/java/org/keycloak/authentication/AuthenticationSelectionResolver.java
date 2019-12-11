@@ -48,6 +48,16 @@ class AuthenticationSelectionResolver {
      * executions in the flow, including the credentials.
      * <p>
      * In both cases, the credentials take precedence, with the order selected by the user (or his administrator).
+     * <p>
+     * The implementation needs to take various subflows into account.
+     *
+     * For example during configuration of the authentication flow like this:
+     * - WebAuthn:                 ALTERNATIVE
+     * - Password-and-OTP subflow:  ALTERNATIVE
+     *   - Password REQUIRED
+     *   - OTP      REQUIRED
+     * The user can authenticate with: WebAuthn OR (Password AND OTP). In this case, the user should be able to choose between WebAuthn and Password
+     * even if those mechanisms are in different subflows
      *
      * @param model The current execution model
      * @return an ordered list of the authentication selection options to present the user.
@@ -59,24 +69,13 @@ class AuthenticationSelectionResolver {
             Map<String, AuthenticationExecutionModel> typeAuthExecMap = new HashMap<>();
             List<AuthenticationExecutionModel> nonCredentialExecutions = new ArrayList<>();
 
-            String topFlowId = getFlowIdOfTheMostTopUsefulFlow(processor, model);
+            String topFlowId = getFlowIdOfTheHighestUsefulFlow(processor, model);
 
             if (topFlowId == null) {
                 addSimpleAuthenticationExecution(processor, model, typeAuthExecMap, nonCredentialExecutions);
             } else {
                 addAllExecutionsFromSubflow(processor, topFlowId, typeAuthExecMap, nonCredentialExecutions);
             }
-//            if (model.isAlternative()) {
-//                //get all alternative executions to be able to list their credentials
-//                addAllExecutionsFromSubflow(processor, model.getParentFlow(), typeAuthExecMap, nonCredentialExecutions);
-//            } else if (model.isRequired()) {
-//                if (!model.isAuthenticatorFlow()) {
-//                    addSimpleAuthenticationExecution(processor, model, typeAuthExecMap, nonCredentialExecutions);
-//                } else {
-//                    // RequiredExecution pointed to a flow, so process it recursively as a flow
-//                    addAllExecutionsFromSubflow(processor, model.getFlowId(), typeAuthExecMap, nonCredentialExecutions);
-//                }
-//            }
 
             //add credential authenticators in order
             if (processor.getAuthenticationSession().getAuthenticatedUser() != null) {
@@ -99,29 +98,43 @@ class AuthenticationSelectionResolver {
             }
         }
 
-        // TODO:mposolda: trace?
-        logger.infof("Selections when trying execution '%s' : %s", model.getAuthenticator(), authenticationSelectionList);
+        logger.debugf("Selections when trying execution '%s' : %s", model.getAuthenticator(), authenticationSelectionList);
 
         return authenticationSelectionList;
     }
 
 
-    // TODO:mposolda javadoc
-    private static String getFlowIdOfTheMostTopUsefulFlow(AuthenticationProcessor processor, AuthenticationExecutionModel execution) {
+    /**
+     * Return the flowId of the "highest" subflow, which we need to take into account when creating list of authentication mechanisms
+     * shown to the user.
+     *
+     * For example during configuration of the authentication flow like this:
+     * - WebAuthn:                 ALTERNATIVE
+     * - Password-and-OTP subflow:  ALTERNATIVE
+     *   - Password REQUIRED
+     *   - OTP      REQUIRED
+     *
+     * and assuming that "execution" parameter is PasswordForm, we also need to take the higher subflow into account as user
+     * should be able to choose among WebAuthn and Password
+     *
+     * @param processor
+     * @param execution
+     * @return
+     */
+    private static String getFlowIdOfTheHighestUsefulFlow(AuthenticationProcessor processor, AuthenticationExecutionModel execution) {
         String flowId = null;
         RealmModel realm = processor.getRealm();
 
         while (true) {
             if (execution.isAlternative()) {
-                //get all alternative executions to be able to list their credentials
+                //Consider parent flow as we need to get all alternative executions to be able to list their credentials
                 flowId = execution.getParentFlow();
             } else if (execution.isRequired()  || execution.isConditional()) {
                 if (execution.isAuthenticatorFlow()) {
                     flowId = execution.getFlowId();
                 }
 
-                // Find the corresponding execution. If it is 1st execution in the particular subflow, we need to consider parent flow as well
-                //AuthenticationFlowModel flow = realm.getAuthenticationFlowById(execution.getParentFlow());
+                // Find the corresponding execution. If it is 1st REQUIRED execution in the particular subflow, we need to consider parent flow as well
                 List<AuthenticationExecutionModel> executions = realm.getAuthenticationExecutions(execution.getParentFlow());
                 int executionIndex = executions.indexOf(execution);
                 if (executionIndex != 0) {
@@ -140,7 +153,7 @@ class AuthenticationSelectionResolver {
     }
 
 
-    // Process single authExecution, which does NOT point to authentication flow.
+    // Process single authenticaion execution, which does NOT point to authentication flow.
     // Fill the typeAuthExecMap and nonCredentialExecutions accordingly
     private static void addSimpleAuthenticationExecution(AuthenticationProcessor processor, AuthenticationExecutionModel execution, Map<String, AuthenticationExecutionModel> typeAuthExecMap, List<AuthenticationExecutionModel> nonCredentialExecutions) {
         Authenticator localAuthenticator = processor.getSession().getProvider(Authenticator.class, execution.getAuthenticator());
@@ -156,15 +169,21 @@ class AuthenticationSelectionResolver {
     }
 
 
-    // Return true if at least something was added to any of the list
+    /**
+     * Fill the typeAuthExecMap and nonCredentialExecutions collections with all available authentication mechanisms for the particular subflow with
+     * given flowId
+     *
+     * Return true if at least something was added to any of the list
+     */
     private static boolean addAllExecutionsFromSubflow(AuthenticationProcessor processor, String flowId, Map<String, AuthenticationExecutionModel> typeAuthExecMap, List<AuthenticationExecutionModel> nonCredentialExecutions) {
         AuthenticationFlowModel flowModel = processor.getRealm().getAuthenticationFlowById(flowId);
-        // TODO:mposolda should rather throw an error?
-        if (flowModel == null) return false;
+        if (flowModel == null) {
+            throw new AuthenticationFlowException("Flow not found", AuthenticationFlowError.INTERNAL_ERROR);
+        }
+
         DefaultAuthenticationFlow flow = new DefaultAuthenticationFlow(processor, flowModel);
 
-        // TODO:mposolda debug or trace
-        logger.infof("Going through the flow '%s' for adding executions", flowModel.getAlias());
+        logger.debugf("Going through the flow '%s' for adding executions", flowModel.getAlias());
 
         List<AuthenticationExecutionModel> executions = processor.getRealm().getAuthenticationExecutions(flowId);
 

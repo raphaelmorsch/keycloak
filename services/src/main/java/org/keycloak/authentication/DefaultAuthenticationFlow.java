@@ -20,7 +20,6 @@ package org.keycloak.authentication;
 import org.jboss.logging.Logger;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.authentication.authenticators.conditional.ConditionalAuthenticator;
-import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
 import org.keycloak.models.Constants;
@@ -31,15 +30,11 @@ import org.keycloak.services.util.AuthenticationFlowHistoryHelper;
 import org.keycloak.services.util.AuthenticationFlowURLHelper;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
-import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 /**
@@ -106,9 +101,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         MultivaluedMap<String, String> inputData = processor.getRequest().getDecodedFormParameters();
         String authExecId = inputData.getFirst(Constants.AUTHENTICATION_EXECUTION);
 
-        // TODO:mposolda doublecheck this and eventually delete
-        //String selectedCredentialId = inputData.getFirst(Constants.CREDENTIAL_ID);
-
         //check if the user has selected the "back" option
         if (inputData.containsKey("back")) {
             AuthenticationSessionModel authSession = processor.getAuthenticationSession();
@@ -123,7 +115,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
 
                 recursiveClearExecutionStatusOfAllExecutionsAfterOurExecutionInclusive(lastActionExecution);
 
-                Response response = processSingleFlowExecutionModel(lastActionExecution, null, false);
+                Response response = processSingleFlowExecutionModel(lastActionExecution, false);
                 if (response == null) {
                     processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
                     return processFlow();
@@ -165,25 +157,11 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 new AuthenticationFlowHistoryHelper(processor).pushExecution(selectionOptions.get(0).getAuthExecId());
             }
 
-            Response response = processSingleFlowExecutionModel(model, null, false);
+            Response response = processSingleFlowExecutionModel(model, false);
             if (response == null) {
                 return continueAuthenticationAfterSuccessfulAction(model);
             } else return response;
         }
-        //handle case where execution is a flow
-        // TODO:mposolda it seems this whole block can be removed. It doesn't seem to be used anywhere. Doublecheck if testsuite is passing
-//        if (model.isAuthenticatorFlow()) {
-//            logger.debug("execution is flow");
-//            AuthenticationFlow authenticationFlow = processor.createFlowExecution(model.getFlowId(), model);
-//            Response flowChallenge = authenticationFlow.processAction(actionExecution);
-//            if (flowChallenge == null) {
-//                checkAndValidateParentFlow(model);
-//                return processFlow();
-//            } else {
-//                processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
-//                return flowChallenge;
-//            }
-//        }
 
         //handle normal execution case
         AuthenticatorFactory factory = getAuthenticatorFactory(model);
@@ -200,7 +178,13 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     }
 
 
-    // TODO:mposolda javadoc
+    /**
+     * Called after "actionExecutionModel" execution is finished (Either successful or attempted). Find the next appropriate authentication
+     * flow where the authentication should continue and continue with authentication process.
+     *
+     * @param actionExecutionModel
+     * @return Response if some more forms should be displayed during authentication. Null otherwise.
+     */
     private Response continueAuthenticationAfterSuccessfulAction(AuthenticationExecutionModel actionExecutionModel) {
         processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
 
@@ -211,7 +195,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             // This means that 1st unfinished ancestor flow is the top flow. We can just process it from the start
             return processFlow();
         } else {
-            Response response = processSingleFlowExecutionModel(parentFlowExecution, null, false);
+            Response response = processSingleFlowExecutionModel(parentFlowExecution, false);
             if (response == null) {
                 processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
                 return processFlow();
@@ -338,7 +322,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 requiredIListIterator.remove();
                 continue;
             }
-            Response response = processSingleFlowExecutionModel(required, null, true);
+            Response response = processSingleFlowExecutionModel(required, true);
             requiredElementsSuccessful &= processor.isSuccessful(required) || isSetupRequired(required);
             if (response != null) {
                 return response;
@@ -356,7 +340,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             //handle alternative elements: the first alternative element to be satisfied is enough
             for (AuthenticationExecutionModel alternative : alternativeList) {
                 try {
-                    Response response = processSingleFlowExecutionModel(alternative, null, true);
+                    Response response = processSingleFlowExecutionModel(alternative, true);
                     if (response != null) {
                         return response;
                     }
@@ -377,7 +361,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     }
 
 
-    // TODO:mposolda Javadoc
+    /**
+     * Just iterates over executionsToProcess and fill "requiredList" and "alternativeList" according to it
+     */
     void fillListsOfExecutions(List<AuthenticationExecutionModel> executionsToProcess, List<AuthenticationExecutionModel> requiredList, List<AuthenticationExecutionModel> alternativeList) {
         for (AuthenticationExecutionModel execution : executionsToProcess) {
             if (isConditionalAuthenticator(execution)) {
@@ -390,9 +376,11 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         }
 
         if (!requiredList.isEmpty() && !alternativeList.isEmpty()) {
-            // TODO:mposolda Log details about ignored alternative elements
-            // TODO:mposolda doublecheck if it's ok regarding various corner cases around conditions
-            logger.warn("REQUIRED and ALTERNATIVE elements at same level!");
+            List<String> alternativeIds = alternativeList.stream()
+                    .map(AuthenticationExecutionModel::getAuthenticator)
+                    .collect(Collectors.toList());
+
+            logger.warnf("REQUIRED and ALTERNATIVE elements at same level! Those alternative executions will be ignored: %s", alternativeIds);
             alternativeList.clear();
         }
     }
@@ -440,8 +428,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     }
 
 
-    // TODO:mposolda possibly remove selectedCredentialId from the parameters of this method
-    private Response processSingleFlowExecutionModel(AuthenticationExecutionModel model, String selectedCredentialId, boolean calledFromFlow) {
+    private Response processSingleFlowExecutionModel(AuthenticationExecutionModel model, boolean calledFromFlow) {
         logger.debugv("check execution: {0} requirement: {1}", model.getAuthenticator(), model.getRequirement());
 
         if (isProcessed(model)) {
@@ -489,13 +476,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         }
         AuthenticationProcessor.Result context = processor.createAuthenticatorContext(model, authenticator, executions);
         context.setAuthenticationSelections(selectionOptions);
-
-        // TODO:mposolda doublecheck this and eventually delete
-//        if (selectedCredentialId != null) {
-//            context.setSelectedCredentialId(selectedCredentialId);
-//        } else if (!selectionOptions.isEmpty()) {
-//            context.setSelectedCredentialId(selectionOptions.get(0).getCredentialId());
-//        }
 
         if (authenticator.requiresUser()) {
             if (authUser == null) {
