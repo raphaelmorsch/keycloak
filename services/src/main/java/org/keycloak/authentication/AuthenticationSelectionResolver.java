@@ -31,6 +31,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
+import org.keycloak.models.RealmModel;
 
 /**
  * Resolves set of AuthenticationSelectionOptions
@@ -58,17 +59,24 @@ class AuthenticationSelectionResolver {
             Map<String, AuthenticationExecutionModel> typeAuthExecMap = new HashMap<>();
             List<AuthenticationExecutionModel> nonCredentialExecutions = new ArrayList<>();
 
-            if (model.isAlternative()) {
-                //get all alternative executions to be able to list their credentials
-                addAllExecutionsFromSubflow(processor, model.getParentFlow(), typeAuthExecMap, nonCredentialExecutions);
-            } else if (model.isRequired()) {
-                if (!model.isAuthenticatorFlow()) {
-                    addSimpleAuthenticationExecution(processor, model, typeAuthExecMap, nonCredentialExecutions);
-                } else {
-                    // RequiredExecution pointed to a flow, so process it recursively as a flow
-                    addAllExecutionsFromSubflow(processor, model.getFlowId(), typeAuthExecMap, nonCredentialExecutions);
-                }
+            String topFlowId = getFlowIdOfTheMostTopUsefulFlow(processor, model);
+
+            if (topFlowId == null) {
+                addSimpleAuthenticationExecution(processor, model, typeAuthExecMap, nonCredentialExecutions);
+            } else {
+                addAllExecutionsFromSubflow(processor, topFlowId, typeAuthExecMap, nonCredentialExecutions);
             }
+//            if (model.isAlternative()) {
+//                //get all alternative executions to be able to list their credentials
+//                addAllExecutionsFromSubflow(processor, model.getParentFlow(), typeAuthExecMap, nonCredentialExecutions);
+//            } else if (model.isRequired()) {
+//                if (!model.isAuthenticatorFlow()) {
+//                    addSimpleAuthenticationExecution(processor, model, typeAuthExecMap, nonCredentialExecutions);
+//                } else {
+//                    // RequiredExecution pointed to a flow, so process it recursively as a flow
+//                    addAllExecutionsFromSubflow(processor, model.getFlowId(), typeAuthExecMap, nonCredentialExecutions);
+//                }
+//            }
 
             //add credential authenticators in order
             if (processor.getAuthenticationSession().getAuthenticatedUser() != null) {
@@ -98,12 +106,49 @@ class AuthenticationSelectionResolver {
     }
 
 
+    // TODO:mposolda javadoc
+    private static String getFlowIdOfTheMostTopUsefulFlow(AuthenticationProcessor processor, AuthenticationExecutionModel execution) {
+        String flowId = null;
+        RealmModel realm = processor.getRealm();
+
+        while (true) {
+            if (execution.isAlternative()) {
+                //get all alternative executions to be able to list their credentials
+                flowId = execution.getParentFlow();
+            } else if (execution.isRequired()  || execution.isConditional()) {
+                if (execution.isAuthenticatorFlow()) {
+                    flowId = execution.getFlowId();
+                }
+
+                // Find the corresponding execution. If it is 1st execution in the particular subflow, we need to consider parent flow as well
+                //AuthenticationFlowModel flow = realm.getAuthenticationFlowById(execution.getParentFlow());
+                List<AuthenticationExecutionModel> executions = realm.getAuthenticationExecutions(execution.getParentFlow());
+                int executionIndex = executions.indexOf(execution);
+                if (executionIndex != 0) {
+                    return flowId;
+                } else {
+                    flowId = execution.getParentFlow();
+                }
+            }
+
+            AuthenticationFlowModel flow = realm.getAuthenticationFlowById(flowId);
+            if (flow.isTopLevel()) {
+                return flowId;
+            }
+            execution = realm.getAuthenticationExecutionByFlowId(flowId);
+        }
+    }
+
+
     // Process single authExecution, which does NOT point to authentication flow.
     // Fill the typeAuthExecMap and nonCredentialExecutions accordingly
     private static void addSimpleAuthenticationExecution(AuthenticationProcessor processor, AuthenticationExecutionModel execution, Map<String, AuthenticationExecutionModel> typeAuthExecMap, List<AuthenticationExecutionModel> nonCredentialExecutions) {
         Authenticator localAuthenticator = processor.getSession().getProvider(Authenticator.class, execution.getAuthenticator());
         if (!(localAuthenticator instanceof CredentialValidator)) {
-            nonCredentialExecutions.add(execution);
+            // Don't add already processed executions
+            if (!DefaultAuthenticationFlow.isProcessed(processor, execution)) {
+                nonCredentialExecutions.add(execution);
+            }
         } else {
             CredentialValidator<?> cv = (CredentialValidator<?>) localAuthenticator;
             typeAuthExecMap.put(cv.getType(processor.getSession()), execution);

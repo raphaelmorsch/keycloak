@@ -61,6 +61,10 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     }
 
     protected boolean isProcessed(AuthenticationExecutionModel model) {
+        return isProcessed(processor, model);
+    }
+
+    protected static boolean isProcessed(AuthenticationProcessor processor, AuthenticationExecutionModel model) {
         if (model.isDisabled()) return true;
         AuthenticationSessionModel.ExecutionStatus status = processor.getAuthenticationSession().getExecutionStatus().get(model.getId());
         if (status == null) return false;
@@ -96,7 +100,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         }
         AuthenticationExecutionModel model = processor.getRealm().getAuthenticationExecutionById(actionExecution);
         if (model == null) {
-            throw new AuthenticationFlowException("action is not in current execution", AuthenticationFlowError.INTERNAL_ERROR);
+            throw new AuthenticationFlowException("Execution not found", AuthenticationFlowError.INTERNAL_ERROR);
         }
 
         MultivaluedMap<String, String> inputData = processor.getRequest().getDecodedFormParameters();

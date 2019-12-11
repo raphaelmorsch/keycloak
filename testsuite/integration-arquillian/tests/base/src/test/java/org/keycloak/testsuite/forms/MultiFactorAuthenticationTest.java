@@ -203,8 +203,6 @@ public class MultiFactorAuthenticationTest extends AbstractTestRealmKeycloakTest
                 .defineAsBrowserFlow()
         );
 
-        WaitUtils.pause(10000000);
-
         try {
             // Provide username, should be on password page with the link "Try another way" available
             loginUsernameOnlyPage.open();
