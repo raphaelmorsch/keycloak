@@ -32,8 +32,10 @@ import org.keycloak.authentication.AuthenticationFlow;
 import org.keycloak.authentication.authenticators.browser.OTPFormAuthenticatorFactory;
 import org.keycloak.authentication.authenticators.browser.PasswordFormFactory;
 import org.keycloak.authentication.authenticators.browser.UsernameFormFactory;
+import org.keycloak.authentication.authenticators.browser.WebAuthnAuthenticatorFactory;
 import org.keycloak.events.Details;
 import org.keycloak.models.AuthenticationExecutionModel;
+import org.keycloak.models.utils.TimeBasedOTP;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
@@ -185,7 +187,7 @@ public class MultiFactorAuthenticationTest extends AbstractTestRealmKeycloakTest
 
     @Test
     public void testAlternativeMechanismsInDifferentSubflows() {
-        final String newFlowAlias = "browser - back button subflow";
+        final String newFlowAlias = "browser - alternative mechanisms";
         testingClient.server("test").run(session -> FlowUtil.inCurrentRealm(session).copyBrowserFlow(newFlowAlias));
         testingClient.server("test").run(session -> FlowUtil.inCurrentRealm(session)
                 .selectFlow(newFlowAlias)
@@ -233,10 +235,54 @@ public class MultiFactorAuthenticationTest extends AbstractTestRealmKeycloakTest
             events.expectLogin().user(testRealm().users().search("user-with-one-configured-otp").get(0).getId())
                     .detail(Details.USERNAME, "user-with-one-configured-otp").assertEvent();
         } finally {
-            BrowserFlowTest.revertFlows(testRealm(),"browser - back button subflow");
+            BrowserFlowTest.revertFlows(testRealm(),"browser - alternative mechanisms");
         }
     }
 
 
-    // TODO:mposolda Test for browser refresh - on the CredentialSelector page and on the OTP page (or the other)
+    // Test for the case when user can authenticate either with: WebAuthn OR (Password AND OTP)
+    // WebAuthn is not enabled for the user, so he needs to use password AND OTP
+    @Test
+    public void testAlternativeMechanismsInDifferentSubflows_firstMechanismUnavailable() {
+        final String newFlowAlias = "browser - alternative mechanisms";
+        testingClient.server("test").run(session -> FlowUtil.inCurrentRealm(session).copyBrowserFlow(newFlowAlias));
+        testingClient.server("test").run(session -> FlowUtil.inCurrentRealm(session)
+                .selectFlow(newFlowAlias)
+                .inForms(forms -> forms
+                        .clear()
+                        .addAuthenticatorExecution(AuthenticationExecutionModel.Requirement.REQUIRED, UsernameFormFactory.PROVIDER_ID)
+                        .addSubFlowExecution(AuthenticationExecutionModel.Requirement.REQUIRED, reqSubFlow -> reqSubFlow
+                                // Add authenticators to this flow: 1 WebAuthn, 2 Another subflow with having Password AND OTP as children
+                                .addAuthenticatorExecution(AuthenticationExecutionModel.Requirement.ALTERNATIVE, WebAuthnAuthenticatorFactory.PROVIDER_ID)
+                                .addSubFlowExecution("password and otp subflow", AuthenticationFlow.BASIC_FLOW, AuthenticationExecutionModel.Requirement.ALTERNATIVE, altSubFlow -> altSubFlow
+                                        .addAuthenticatorExecution(AuthenticationExecutionModel.Requirement.REQUIRED, PasswordFormFactory.PROVIDER_ID)
+                                        .addAuthenticatorExecution(AuthenticationExecutionModel.Requirement.REQUIRED, OTPFormAuthenticatorFactory.PROVIDER_ID)
+                                )
+                        )
+                )
+                .defineAsBrowserFlow()
+        );
+
+        try {
+            // Provide username, should be on password page without the link "Try another way" available
+            loginUsernameOnlyPage.open();
+            loginUsernameOnlyPage.login("user-with-one-configured-otp");
+            passwordPage.assertCurrent();
+            passwordPage.assertTryAnotherWayLinkAvailability(false);
+
+            // Login with password. Should be on the OTP page without try-another-way link available
+            passwordPage.login("password");
+            loginTotpPage.assertCurrent();
+            loginTotpPage.assertTryAnotherWayLinkAvailability(false);
+
+            // Successfully login with OTP
+            loginTotpPage.login(new TimeBasedOTP().generateTOTP("DJmQfC73VGFhw7D4QJ8A"));
+            Assert.assertFalse(loginTotpPage.isCurrent());
+            events.expectLogin().user(testRealm().users().search("user-with-one-configured-otp").get(0).getId())
+                    .detail(Details.USERNAME, "user-with-one-configured-otp").assertEvent();
+        } finally {
+            BrowserFlowTest.revertFlows(testRealm(),"browser - alternative mechanisms");
+        }
+    }
+
 }

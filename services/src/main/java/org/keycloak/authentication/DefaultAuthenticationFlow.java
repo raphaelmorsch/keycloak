@@ -167,24 +167,24 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
 
             Response response = processSingleFlowExecutionModel(model, null, false);
             if (response == null) {
-                processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
-                checkAndValidateParentFlow(model);
-                return processFlow();
+                return continueAuthenticationAfterSuccessfulAction(model);
             } else return response;
         }
         //handle case where execution is a flow
-        if (model.isAuthenticatorFlow()) {
-            logger.debug("execution is flow");
-            AuthenticationFlow authenticationFlow = processor.createFlowExecution(model.getFlowId(), model);
-            Response flowChallenge = authenticationFlow.processAction(actionExecution);
-            if (flowChallenge == null) {
-                checkAndValidateParentFlow(model);
-                return processFlow();
-            } else {
-                processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
-                return flowChallenge;
-            }
-        }
+        // TODO:mposolda it seems this whole block can be removed. It doesn't seem to be used anywhere. Doublecheck if testsuite is passing
+//        if (model.isAuthenticatorFlow()) {
+//            logger.debug("execution is flow");
+//            AuthenticationFlow authenticationFlow = processor.createFlowExecution(model.getFlowId(), model);
+//            Response flowChallenge = authenticationFlow.processAction(actionExecution);
+//            if (flowChallenge == null) {
+//                checkAndValidateParentFlow(model);
+//                return processFlow();
+//            } else {
+//                processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
+//                return flowChallenge;
+//            }
+//        }
+
         //handle normal execution case
         AuthenticatorFactory factory = getAuthenticatorFactory(model);
         Authenticator authenticator = createAuthenticator(factory);
@@ -195,11 +195,32 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         authenticator.action(result);
         Response response = processResult(result, true);
         if (response == null) {
-            processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
-            checkAndValidateParentFlow(model);
-            return processFlow();
+            return continueAuthenticationAfterSuccessfulAction(model);
         } else return response;
     }
+
+
+    // TODO:mposolda javadoc
+    private Response continueAuthenticationAfterSuccessfulAction(AuthenticationExecutionModel actionExecutionModel) {
+        processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
+
+        String firstUnfinishedParentFlowId = checkAndValidateParentFlow(actionExecutionModel);
+        AuthenticationExecutionModel parentFlowExecution = processor.getRealm().getAuthenticationExecutionByFlowId(firstUnfinishedParentFlowId);
+
+        if (parentFlowExecution == null) {
+            // This means that 1st unfinished ancestor flow is the top flow. We can just process it from the start
+            return processFlow();
+        } else {
+            Response response = processSingleFlowExecutionModel(parentFlowExecution, null, false);
+            if (response == null) {
+                processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
+                return processFlow();
+            } else {
+                return response;
+            }
+        }
+    }
+
 
     /**
      * Clear execution status of targetExecution and also clear execution status of all the executions, which were triggered after this execution.
@@ -275,23 +296,31 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
      * This method makes sure that the parent flow's corresponding execution is considered successful if its contained
      * executions are successful.
      * The purpose is for when an execution is validated through an action, to make sure its parent flow can be successful
-     * when re-evaluation the flow tree.
+     * when re-evaluation the flow tree. If the flow is successful, we will recursively check it's parent flow as well
      *
      * @param model An execution model.
+     * @return flowId of the 1st ancestor flow, which is not yet successfully finished and may require some further processing
      */
-    private void checkAndValidateParentFlow(AuthenticationExecutionModel model) {
-        List<AuthenticationExecutionModel> localExecutions = processor.getRealm().getAuthenticationExecutions(model.getParentFlow());
-        AuthenticationExecutionModel parentFlowModel = processor.getRealm().getAuthenticationExecutionByFlowId(model.getParentFlow());
-        if (parentFlowModel != null &&
-                ((model.isRequired() && localExecutions.stream().allMatch(processor::isSuccessful)) ||
-                        (model.isAlternative() && localExecutions.stream().anyMatch(processor::isSuccessful)))) {
-            processor.getAuthenticationSession().setExecutionStatus(parentFlowModel.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
+    private String checkAndValidateParentFlow(AuthenticationExecutionModel model) {
+        while (true) {
+            List<AuthenticationExecutionModel> localExecutions = processor.getRealm().getAuthenticationExecutions(model.getParentFlow());
+            AuthenticationExecutionModel parentFlowExecutionModel = processor.getRealm().getAuthenticationExecutionByFlowId(model.getParentFlow());
+            if (parentFlowExecutionModel != null &&
+                    ((model.isRequired() && localExecutions.stream().allMatch(processor::isSuccessful)) ||
+                            (model.isAlternative() && localExecutions.stream().anyMatch(processor::isSuccessful)))) {
+                processor.getAuthenticationSession().setExecutionStatus(parentFlowExecutionModel.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
+
+                // Flow is successfully finished. Recursively check whether it's parent flow is now successful as well
+                model = parentFlowExecutionModel;
+            } else {
+                return model.getParentFlow();
+            }
         }
     }
 
     @Override
     public Response processFlow() {
-        logger.debug("processFlow");
+        logger.debugf("processFlow: %s", flow.getAlias());
 
         //separate flow elements into required and alternative elements
         List<AuthenticationExecutionModel> requiredList = new ArrayList<>();
