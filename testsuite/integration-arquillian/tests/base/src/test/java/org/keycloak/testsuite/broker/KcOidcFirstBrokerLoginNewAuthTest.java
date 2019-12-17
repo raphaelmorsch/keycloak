@@ -12,6 +12,7 @@ import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.pages.PasswordPage;
 import org.keycloak.testsuite.pages.SelectAuthenticatorPage;
 import org.keycloak.testsuite.util.UserBuilder;
+import org.keycloak.testsuite.util.WaitUtils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -220,6 +221,52 @@ public class KcOidcFirstBrokerLoginNewAuthTest extends AbstractInitializedBaseBr
         idpConfirmLinkPage.assertBackButtonAvailability(false);
 
         // Authenticate
+        idpConfirmLinkPage.clickLinkAccount();
+
+        Assert.assertTrue(passwordPage.isCurrent("consumer"));
+        passwordPage.login("password");
+
+        loginTotpPage.assertCurrent();
+        loginTotpPage.login(totp.generateTOTP(totpSecret));
+
+        assertUserAuthenticatedInConsumer(consumerRealmUserId);
+    }
+
+
+    @Test
+    public void testUsernameLabelAndResetLogin() {
+        configureBrokerFlowToReAuthenticationWithPasswordForm(bc.getIDPAlias(), "first broker login with password form");
+
+        // Create user and link him with TOTP
+        String consumerRealmUserId = createUser("consumer");
+        String totpSecret = addTOTPToUser("consumer");
+
+        loginWithBrokerAndConfirmLinkAccount();
+
+        // Login with password
+        Assert.assertTrue(passwordPage.isCurrent("consumer"));
+        passwordPage.assertTryAnotherWayLinkAvailability(false);
+        passwordPage.assertAttemptedUsernameAvailability(true);
+        Assert.assertEquals("consumer", passwordPage.getAttemptedUsername());
+        passwordPage.login("password");
+
+        // Assert on TOTP page. Assert "Back" button available
+        loginTotpPage.assertCurrent();
+        loginTotpPage.assertTryAnotherWayLinkAvailability(false);
+        loginTotpPage.assertAttemptedUsernameAvailability(true);
+        Assert.assertEquals("consumer", loginTotpPage.getAttemptedUsername());
+
+        // Click "Reset" . Should be at the beginning of the browser flow (even before broker login)
+        loginTotpPage.clickResetLogin();
+
+        Assert.assertTrue(loginPage.isCurrent("consumer"));
+        Assert.assertFalse(driver.getPageSource().contains("We are sorry"));
+
+        // Authenticate with broker from the beginning and assert everything is ok
+        logInWithBroker(bc);
+
+        waitForPage(driver, "account already exists", false);
+        assertTrue(idpConfirmLinkPage.isCurrent());
         idpConfirmLinkPage.clickLinkAccount();
 
         Assert.assertTrue(passwordPage.isCurrent("consumer"));
