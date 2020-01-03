@@ -196,6 +196,7 @@ public class ProvidersTest extends AbstractAuthenticationTest {
         addProviderInfo(result, "testsuite-username", "Testsuite Username Only",
                 "Testsuite Username authenticator.  Username parameter sets username");
         addProviderInfo(result, "webauthn-authenticator", "WebAuthn Authenticator", "Authenticator for WebAuthn");
+        addProviderInfo(result, "webauthn-authenticator-strong", "WebAuthn Strong Credential Authenticator", "Authenticator for WebAuthn Strong credential");
 
         addProviderInfo(result, "auth-username-form", "Username Form",
                 "Selects a user from his username.");
