@@ -106,6 +106,9 @@ public class RealmRepresentation {
     protected Integer otpPolicyLookAheadWindow;
     protected Integer otpPolicyPeriod;
     protected List<String> otpSupportedApplications;
+
+    // WebAuthn 2-factor properties below
+
     protected String webAuthnPolicyRpEntityName;
     protected List<String> webAuthnPolicySignatureAlgorithms;
     protected String webAuthnPolicyRpId;
@@ -116,6 +119,19 @@ public class RealmRepresentation {
     protected Integer webAuthnPolicyCreateTimeout;
     protected Boolean webAuthnPolicyAvoidSameAuthenticatorRegister;
     protected List<String> webAuthnPolicyAcceptableAaguids;
+
+    // WebAuthn strong (passwordless) properties below
+
+    protected String webAuthnPolicyStrongRpEntityName;
+    protected List<String> webAuthnPolicyStrongSignatureAlgorithms;
+    protected String webAuthnPolicyStrongRpId;
+    protected String webAuthnPolicyStrongAttestationConveyancePreference;
+    protected String webAuthnPolicyStrongAuthenticatorAttachment;
+    protected String webAuthnPolicyStrongRequireResidentKey;
+    protected String webAuthnPolicyStrongUserVerificationRequirement;
+    protected Integer webAuthnPolicyStrongCreateTimeout;
+    protected Boolean webAuthnPolicyStrongAvoidSameAuthenticatorRegister;
+    protected List<String> webAuthnPolicyStrongAcceptableAaguids;
 
     protected List<UserRepresentation> users;
     protected List<UserRepresentation> federatedUsers;
@@ -926,6 +942,8 @@ public class RealmRepresentation {
         this.otpSupportedApplications = otpSupportedApplications;
     }
 
+    // WebAuthn 2-factor properties below
+
     public String getWebAuthnPolicyRpEntityName() {
         return webAuthnPolicyRpEntityName;
     }
@@ -1004,6 +1022,89 @@ public class RealmRepresentation {
 
     public void setWebAuthnPolicyAcceptableAaguids(List<String> webAuthnPolicyAcceptableAaguids) {
         this.webAuthnPolicyAcceptableAaguids = webAuthnPolicyAcceptableAaguids;
+    }
+
+    // WebAuthn strong (passwordless) properties below
+
+
+    public String getWebAuthnPolicyStrongRpEntityName() {
+        return webAuthnPolicyStrongRpEntityName;
+    }
+
+    public void setWebAuthnPolicyStrongRpEntityName(String webAuthnPolicyStrongRpEntityName) {
+        this.webAuthnPolicyStrongRpEntityName = webAuthnPolicyStrongRpEntityName;
+    }
+
+    public List<String> getWebAuthnPolicyStrongSignatureAlgorithms() {
+        return webAuthnPolicyStrongSignatureAlgorithms;
+    }
+
+    public void setWebAuthnPolicyStrongSignatureAlgorithms(List<String> webAuthnPolicyStrongSignatureAlgorithms) {
+        this.webAuthnPolicyStrongSignatureAlgorithms = webAuthnPolicyStrongSignatureAlgorithms;
+    }
+
+    public String getWebAuthnPolicyStrongRpId() {
+        return webAuthnPolicyStrongRpId;
+    }
+
+    public void setWebAuthnPolicyStrongRpId(String webAuthnPolicyStrongRpId) {
+        this.webAuthnPolicyStrongRpId = webAuthnPolicyStrongRpId;
+    }
+
+    public String getWebAuthnPolicyStrongAttestationConveyancePreference() {
+        return webAuthnPolicyStrongAttestationConveyancePreference;
+    }
+
+    public void setWebAuthnPolicyStrongAttestationConveyancePreference(String webAuthnPolicyStrongAttestationConveyancePreference) {
+        this.webAuthnPolicyStrongAttestationConveyancePreference = webAuthnPolicyStrongAttestationConveyancePreference;
+    }
+
+    public String getWebAuthnPolicyStrongAuthenticatorAttachment() {
+        return webAuthnPolicyStrongAuthenticatorAttachment;
+    }
+
+    public void setWebAuthnPolicyStrongAuthenticatorAttachment(String webAuthnPolicyStrongAuthenticatorAttachment) {
+        this.webAuthnPolicyStrongAuthenticatorAttachment = webAuthnPolicyStrongAuthenticatorAttachment;
+    }
+
+    public String getWebAuthnPolicyStrongRequireResidentKey() {
+        return webAuthnPolicyStrongRequireResidentKey;
+    }
+
+    public void setWebAuthnPolicyStrongRequireResidentKey(String webAuthnPolicyStrongRequireResidentKey) {
+        this.webAuthnPolicyStrongRequireResidentKey = webAuthnPolicyStrongRequireResidentKey;
+    }
+
+    public String getWebAuthnPolicyStrongUserVerificationRequirement() {
+        return webAuthnPolicyStrongUserVerificationRequirement;
+    }
+
+    public void setWebAuthnPolicyStrongUserVerificationRequirement(String webAuthnPolicyStrongUserVerificationRequirement) {
+        this.webAuthnPolicyStrongUserVerificationRequirement = webAuthnPolicyStrongUserVerificationRequirement;
+    }
+
+    public Integer getWebAuthnPolicyStrongCreateTimeout() {
+        return webAuthnPolicyStrongCreateTimeout;
+    }
+
+    public void setWebAuthnPolicyStrongCreateTimeout(Integer webAuthnPolicyStrongCreateTimeout) {
+        this.webAuthnPolicyStrongCreateTimeout = webAuthnPolicyStrongCreateTimeout;
+    }
+
+    public Boolean isWebAuthnPolicyStrongAvoidSameAuthenticatorRegister() {
+        return webAuthnPolicyStrongAvoidSameAuthenticatorRegister;
+    }
+
+    public void setWebAuthnPolicyStrongAvoidSameAuthenticatorRegister(Boolean webAuthnPolicyStrongAvoidSameAuthenticatorRegister) {
+        this.webAuthnPolicyStrongAvoidSameAuthenticatorRegister = webAuthnPolicyStrongAvoidSameAuthenticatorRegister;
+    }
+
+    public List<String> getWebAuthnPolicyStrongAcceptableAaguids() {
+        return webAuthnPolicyStrongAcceptableAaguids;
+    }
+
+    public void setWebAuthnPolicyStrongAcceptableAaguids(List<String> webAuthnPolicyStrongAcceptableAaguids) {
+        this.webAuthnPolicyStrongAcceptableAaguids = webAuthnPolicyStrongAcceptableAaguids;
     }
 
     public String getBrowserFlow() {

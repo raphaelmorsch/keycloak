@@ -343,6 +343,7 @@ public class ModelToRepresentation {
         rep.setOtpPolicyType(otpPolicy.getType());
         rep.setOtpPolicyLookAheadWindow(otpPolicy.getLookAheadWindow());
         rep.setOtpSupportedApplications(otpPolicy.getSupportedApplications());
+
         WebAuthnPolicy webAuthnPolicy = realm.getWebAuthnPolicy();
         rep.setWebAuthnPolicyRpEntityName(webAuthnPolicy.getRpEntityName());
         rep.setWebAuthnPolicySignatureAlgorithms(webAuthnPolicy.getSignatureAlgorithm());
@@ -354,6 +355,19 @@ public class ModelToRepresentation {
         rep.setWebAuthnPolicyCreateTimeout(webAuthnPolicy.getCreateTimeout());
         rep.setWebAuthnPolicyAvoidSameAuthenticatorRegister(webAuthnPolicy.isAvoidSameAuthenticatorRegister());
         rep.setWebAuthnPolicyAcceptableAaguids(webAuthnPolicy.getAcceptableAaguids());
+
+        webAuthnPolicy = realm.getWebAuthnPolicyStrong();
+        rep.setWebAuthnPolicyStrongRpEntityName(webAuthnPolicy.getRpEntityName());
+        rep.setWebAuthnPolicyStrongSignatureAlgorithms(webAuthnPolicy.getSignatureAlgorithm());
+        rep.setWebAuthnPolicyStrongRpId(webAuthnPolicy.getRpId());
+        rep.setWebAuthnPolicyStrongAttestationConveyancePreference(webAuthnPolicy.getAttestationConveyancePreference());
+        rep.setWebAuthnPolicyStrongAuthenticatorAttachment(webAuthnPolicy.getAuthenticatorAttachment());
+        rep.setWebAuthnPolicyStrongRequireResidentKey(webAuthnPolicy.getRequireResidentKey());
+        rep.setWebAuthnPolicyStrongUserVerificationRequirement(webAuthnPolicy.getUserVerificationRequirement());
+        rep.setWebAuthnPolicyStrongCreateTimeout(webAuthnPolicy.getCreateTimeout());
+        rep.setWebAuthnPolicyStrongAvoidSameAuthenticatorRegister(webAuthnPolicy.isAvoidSameAuthenticatorRegister());
+        rep.setWebAuthnPolicyStrongAcceptableAaguids(webAuthnPolicy.getAcceptableAaguids());
+
         if (realm.getBrowserFlow() != null) rep.setBrowserFlow(realm.getBrowserFlow().getAlias());
         if (realm.getRegistrationFlow() != null) rep.setRegistrationFlow(realm.getRegistrationFlow().getAlias());
         if (realm.getDirectGrantFlow() != null) rep.setDirectGrantFlow(realm.getDirectGrantFlow().getAlias());

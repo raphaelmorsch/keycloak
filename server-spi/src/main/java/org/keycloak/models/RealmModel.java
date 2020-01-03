@@ -240,8 +240,29 @@ public interface RealmModel extends RoleContainerModel {
     OTPPolicy getOTPPolicy();
     void setOTPPolicy(OTPPolicy policy);
 
+    /**
+     * @return  WebAuthn policy for 2-factor authentication
+     */
     WebAuthnPolicy getWebAuthnPolicy();
+
+    /**
+     * Set WebAuthn policy for 2-factor authentication
+     *
+     * @param policy
+     */
     void setWebAuthnPolicy(WebAuthnPolicy policy);
+
+    /**
+     *
+     * @return WebAuthn strong (passwordless) properties below. This is temporary and will be removed later.
+     */
+    WebAuthnPolicy getWebAuthnPolicyStrong();
+
+    /**
+     * Set WebAuthn strong (passwordless) properties below. This is temporary and will be removed later.
+     * @param policy
+     */
+    void setWebAuthnPolicyStrong(WebAuthnPolicy policy);
 
     RoleModel getRoleById(String id);
 
