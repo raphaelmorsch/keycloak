@@ -236,7 +236,7 @@ public class WebAuthnAuthenticator implements Authenticator, CredentialValidator
     private static final String ERR_NO_AUTHENTICATORS_REGISTERED = "No WebAuthn Authenticator registered.";
     private static final String ERR_WEBAUTHN_API_GET = "Failed to authenticate by the WebAuthn Authenticator";
     private static final String ERR_DIFFERENT_USER_AUTHENTICATED = "First authenticated user is not the one authenticated by the WebAuthn authenticator.";
-    private static final String ERR_WEBAUTHN_VERIFICATION_FAIL = "WetAuthn Authentication result is invalid.";
+    private static final String ERR_WEBAUTHN_VERIFICATION_FAIL = "WebAuthn Authentication result is invalid.";
     private static final String ERR_WEBAUTHN_AUTHENTICATED_USER_NOT_FOUND = "Unknown user authenticated by the WebAuthn Authenticator";
 
     private void setErrorResponse(AuthenticationFlowContext context, final String errorCase, final String errorMessage) {
