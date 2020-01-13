@@ -390,38 +390,40 @@ public class LDAPProvidersIntegrationTest extends AbstractLDAPTest {
         // Test admin endpoint. Assert federated endpoint returns password in LDAP "supportedCredentials", but there is no stored password
         assertPasswordConfiguredThroughLDAPOnly(user);
 
-        // Update password through required action.
-        UserRepresentation user2 = user.toRepresentation();
-        user2.setRequiredActions(Arrays.asList(UserModel.RequiredAction.UPDATE_PASSWORD.toString()));
-        user.update(user2);
+        // Test this just for the import mode. No-import mode doesn't support requiredActions right now
+        if (isImportEnabled()) {
+            // Update password through required action.
+            UserRepresentation user2 = user.toRepresentation();
+            user2.setRequiredActions(Arrays.asList(UserModel.RequiredAction.UPDATE_PASSWORD.toString()));
+            user.update(user2);
 
-        loginPage.open();
-        loginPage.login(username, "Password1-updated1");
-        requiredActionChangePasswordPage.assertCurrent();
+            loginPage.open();
+            loginPage.login(username, "Password1-updated1");
+            requiredActionChangePasswordPage.assertCurrent();
 
-        requiredActionChangePasswordPage.changePassword("Password1-updated2", "Password1-updated2");
+            requiredActionChangePasswordPage.changePassword("Password1-updated2", "Password1-updated2");
 
-        appPage.assertCurrent();
-        appPage.logout();
+            appPage.assertCurrent();
+            appPage.logout();
 
-        // Assert user can authenticate with the new password
-        loginSuccessAndLogout(username, "Password1-updated2");
+            // Assert user can authenticate with the new password
+            loginSuccessAndLogout(username, "Password1-updated2");
 
-        // Test admin endpoint. Assert federated endpoint returns password in LDAP "supportedCredentials", but there is no stored password
-        assertPasswordConfiguredThroughLDAPOnly(user);
+            // Test admin endpoint. Assert federated endpoint returns password in LDAP "supportedCredentials", but there is no stored password
+            assertPasswordConfiguredThroughLDAPOnly(user);
+        }
     }
 
 
     // Use admin REST endpoints
     private void assertPasswordConfiguredThroughLDAPOnly(UserResource user) {
-        List<CredentialRepresentation> storedCredentials = user.credentials();
-
         // Assert password not stored locally
-        for (CredentialRepresentation credential : user.credentials()) {
+        List<CredentialRepresentation> storedCredentials = user.credentials();
+        for (CredentialRepresentation credential : storedCredentials) {
             Assert.assertFalse(PasswordCredentialModel.TYPE.equals(credential.getType()));
         }
 
-        //
+        // Assert password is stored in the LDAP
         List<String> userStorageCredentials = user.getConfiguredUserStorageCredentials();
         Assert.assertTrue(userStorageCredentials.contains(PasswordCredentialModel.TYPE));
     }
@@ -982,6 +984,25 @@ public class LDAPProvidersIntegrationTest extends AbstractLDAPTest {
             } catch (AuthenticationException ex) {
                 throw new RuntimeException(ex);
             }
+        });
+
+        // Test admin REST endpoints
+        UserResource userResource = ApiUtil.findUserByUsernameId(testRealm(), "johnkeycloak");
+
+        // Assert password is stored locally
+        List<String> storedCredentials = userResource.credentials().stream()
+                .map(CredentialRepresentation::getType)
+                .collect(Collectors.toList());
+        Assert.assertTrue(storedCredentials.contains(PasswordCredentialModel.TYPE));
+
+        // Assert password is supported in the LDAP too.
+        List<String> userStorageCredentials = userResource.getConfiguredUserStorageCredentials();
+        Assert.assertTrue(userStorageCredentials.contains(PasswordCredentialModel.TYPE));
+
+        testingClient.server().run(session -> {
+            LDAPTestContext ctx = LDAPTestContext.init(session);
+            RealmModel appRealm = ctx.getRealm();
+            UserModel user = session.users().getUserByUsername("johnkeycloak", appRealm);
 
             // User is deleted just locally
             Assert.assertTrue(session.users().removeUser(appRealm, user));
