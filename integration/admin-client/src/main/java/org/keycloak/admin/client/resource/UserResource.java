@@ -17,6 +17,7 @@
 
 package org.keycloak.admin.client.resource;
 
+import org.jboss.resteasy.annotations.cache.NoCache;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.FederatedIdentityRepresentation;
 import org.keycloak.representations.idm.GroupRepresentation;
@@ -103,6 +104,18 @@ public interface UserResource {
     @Path("credentials")
     @Produces(MediaType.APPLICATION_JSON)
     List<CredentialRepresentation> credentials();
+
+
+    /**
+     * Return just credentials, which are provided by the user storage where user is stored. Returned values can contain for example "password", "otp" etc.
+     * This will always return empty list for "local" users, which are not backed by any user storage
+     *
+     * @return
+     */
+    @GET
+    @Path("configured-user-storage-credentials")
+    @Produces(MediaType.APPLICATION_JSON)
+    List<String> getConfiguredUserStorageCredentials();
 
     /**
      * Remove a credential for a user
