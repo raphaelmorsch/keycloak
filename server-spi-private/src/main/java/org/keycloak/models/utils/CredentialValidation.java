@@ -17,6 +17,7 @@
 
 package org.keycloak.models.utils;
 
+import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.credential.OTPCredentialModel;
 
 /**
