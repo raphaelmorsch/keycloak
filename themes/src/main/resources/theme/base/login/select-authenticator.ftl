@@ -1,20 +1,62 @@
 <#import "template.ftl" as layout>
 <@layout.registrationLayout displayInfo=true; section>
-    <#if section = "header" || section = "show-username">
-        <script type="text/javascript">
-            // Fill up the two hidden and submit the form
-            function fillAndSubmit() {
-                document.getElementById('authexec-hidden-input').value = document.getElementById('authenticators-choice').value;
-                document.getElementById('kc-select-credential-form').submit();
-            }
-            <#if auth.authenticationSelections?size gt 1>
-                // We bind the action to the select
-                window.addEventListener('load', function() {
-                    document.getElementById('authenticators-choice').addEventListener('change', fillAndSubmit);
-                });
-            </#if>
-        </script>
+    <#if section = "header">
+        ${msg("selectAuthenticator")}
     <#elseif section = "form">
+            <div class="list-group list-view-pf">
+                <div class="list-group-item list-view-pf-stacked">
+                    <div class="list-view-pf-main-info">
+                        <div class="list-view-pf-left">
+                            <span class="fa fa-unlock list-view-pf-icon-lg"></span>
+                        </div>
+                        <div class="list-view-pf-body">
+                            <div class="list-view-pf-description">
+                                <div class="list-group-item-heading">
+                                    Password
+                                </div>
+                                <div class="list-group-item-text">
+                                    Log in by entering your password.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="list-group-item list-view-pf-stacked">
+                    <div class="list-view-pf-main-info">
+                        <div class="list-view-pf-left">
+                            <span class="fa fa-mobile list-view-pf-icon-lg"></span>
+                        </div>
+                        <div class="list-view-pf-body">
+                            <div class="list-view-pf-description">
+                                <div class="list-group-item-heading">
+                                    Authenticator Application
+                                </div>
+                                <div class="list-group-item-text">
+                                    Enter a verification code from authenticator applicationN.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="list-group-item list-view-pf-stacked">
+                    <div class="list-view-pf-main-info">
+                        <div class="list-view-pf-left">
+                            <span class="fa fa-key list-view-pf-icon-lg"></span>
+                        </div>
+                        <div class="list-view-pf-body">
+                            <div class="list-view-pf-description">
+                                <div class="list-group-item-heading">
+                                    Security Key
+                                </div>
+                                <div class="list-group-item-text">
+                                    Use your security key to log in.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         <form id="kc-select-credential-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
             <div class="${properties.kcFormGroupClass!}">
                 <div class="${properties.kcLabelWrapperClass!}">
