@@ -107,4 +107,18 @@ public class PasswordFormFactory implements AuthenticatorFactory, DisplayTypeAut
         return false;
     }
 
+    @Override
+    public String getUserDisplayName() {
+        return "auth-password-form";
+    }
+
+    @Override
+    public String getUserHelpText() {
+        return "auth-password-help-text";
+    }
+
+    @Override
+    public String getIconCssClass() {
+        return "kcAuthenticatorPasswordClass";
+    }
 }
