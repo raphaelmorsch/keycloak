@@ -5,12 +5,12 @@ import org.keycloak.models.KeycloakSession;
 
 public class AuthenticationSelectionOption {
 
-    private final KeycloakSession session;
     private final AuthenticationExecutionModel authExec;
+    private final AuthenticatorFactory factory;
 
     public AuthenticationSelectionOption(KeycloakSession session, AuthenticationExecutionModel authExec) {
-        this.session = session;
         this.authExec = authExec;
+        this.factory = (AuthenticatorFactory) session.getKeycloakSessionFactory().getProviderFactory(Authenticator.class, authExec.getAuthenticator());
     }
 
 
@@ -22,15 +22,17 @@ public class AuthenticationSelectionOption {
         return authExec.getId();
     }
 
-    public String getAuthExecName() {
-        return authExec.getAuthenticator();
+    public String getUserDisplayName() {
+        return factory.getUserDisplayName();
     }
 
-    public String getAuthExecDisplayName() {
-        // TODO: Retrieve the displayName for the authenticator from the AuthenticationFactory
-        // TODO: Retrieve icon CSS style
-        // TODO: Should be addressed as part of https://issues.redhat.com/browse/KEYCLOAK-12185
-        return getAuthExecName();
+    public String getUserHelpText() {
+        return factory.getUserHelpText();
+    }
+
+    // TODO:mposolda probably rename this
+    public String getIconCssClass() {
+        return factory.getIconCssClass();
     }
 
 

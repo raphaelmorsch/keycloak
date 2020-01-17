@@ -90,4 +90,22 @@ public class WebAuthnAuthenticatorFactory implements AuthenticatorFactory {
     public String getId() {
         return PROVIDER_ID;
     }
+
+    @Override
+    public String getUserDisplayName() {
+        // TODO:mposolda localization
+        return "Security Key";
+    }
+
+    @Override
+    public String getUserHelpText() {
+        // TODO:mposolda localization
+        return "Use your security key to log in.";
+    }
+
+    @Override
+    public String getIconCssClass() {
+        // TODO:mposolda
+        return "fa fa-key list-view-pf-icon-lg";
+    }
 }

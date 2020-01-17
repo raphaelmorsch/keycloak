@@ -107,4 +107,21 @@ public class PasswordFormFactory implements AuthenticatorFactory, DisplayTypeAut
         return false;
     }
 
+    @Override
+    public String getUserDisplayName() {
+        // TODO:mposolda localization
+        return "Password";
+    }
+
+    @Override
+    public String getUserHelpText() {
+        // TODO:mposolda localization
+        return "Log in by entering your password.";
+    }
+
+    @Override
+    public String getIconCssClass() {
+        // TODO:mposolda
+        return "fa fa-unlock list-view-pf-icon-lg";
+    }
 }

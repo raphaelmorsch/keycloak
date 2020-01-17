@@ -106,4 +106,22 @@ public class OTPFormAuthenticatorFactory implements AuthenticatorFactory, Displa
     public List<ProviderConfigProperty> getConfigProperties() {
         return null;
     }
+
+    @Override
+    public String getUserDisplayName() {
+        // TODO:mposolda localization
+        return "Authenticator Application";
+    }
+
+    @Override
+    public String getUserHelpText() {
+        // TODO:mposolda localization and remove A
+        return "Enter a verification code from authenticator applicationA.";
+    }
+
+    @Override
+    public String getIconCssClass() {
+        // TODO:mposolda
+        return "fa fa-mobile list-view-pf-icon-lg";
+    }
 }

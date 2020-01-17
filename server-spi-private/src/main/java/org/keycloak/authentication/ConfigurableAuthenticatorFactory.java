@@ -68,4 +68,39 @@ public interface ConfigurableAuthenticatorFactory extends ConfiguredProvider {
      * @return
      */
     boolean isUserSetupAllowed();
+
+    /**
+     * Returns the label, which will be shown to the end user on various screens, like login screen with available authentication mechanisms.
+     * This label will reference this particular authenticator type.
+     * It should be clear to end users. For example, implementations can return "Authenticator Application" for OTP or "Security Key" for WebAuthn.
+     * Ideally this should be a message, so that it is possible to localize it for various languages
+     *
+     * Authenticators, which don't require user interactions may typically just fallback to {@link #getDisplayType()}
+     */
+    default String getUserDisplayName() {
+        return getDisplayType();
+    }
+
+    /**
+     * Returns the text, which will be shown to the user on various screens, like login screen with available authentication mechanisms.
+     * This text will reference this particular authenticator type.
+     * For example for OTP, the returned text could be "Enter a verification code from authenticator application" .
+     *
+     * Ideally this should be a message, so that it is possible to localize it for various languages
+     *
+     * The difference to {@link #getHelpText()} method is, that this method is shown to end users, not to the administrators.
+     * Authenticators, which don't require user interactions may typically just fallback to {@link #getHelpText()}.
+     */
+    default String getUserHelpText() {
+        return getHelpText();
+    }
+
+    // TODO:mposolda this should be improved and rewritten. See some other places and best practices...
+    /**
+     * Return the icon CSS to be displayed in the table when user can select from various possibilities
+     */
+    default String getIconCssClass() {
+        // TODO:mposolda this will need to be rewritten!!!
+        return "fa list-view-pf-icon-lg";
+    }
 }

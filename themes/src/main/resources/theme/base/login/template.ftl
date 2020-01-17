@@ -55,6 +55,7 @@
           <#if !(auth?has_content && auth.showUsername() && !auth.showResetCredentials())>
               <h1 id="kc-page-title"><#nested "header"></h1>
           <#else>
+              <#nested "show-username">
               <div class="${properties.kcFormGroupClass!}">
                   <div id="kc-username">
                       <label id="kc-attempted-username">${auth.attemptedUsername}</label>
