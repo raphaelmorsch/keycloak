@@ -122,8 +122,7 @@ public class UsernamePasswordFormFactory implements AuthenticatorFactory, Displa
 
     @Override
     public String getIconCssClass() {
-        // TODO:mposolda
-        return "fa fa-unlock list-view-pf-icon-lg";
+        return "kcAuthenticatorPasswordClass";
     }
 
 }

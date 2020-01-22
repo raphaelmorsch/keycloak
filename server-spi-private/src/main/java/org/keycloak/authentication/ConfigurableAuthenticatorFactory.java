@@ -96,12 +96,24 @@ public interface ConfigurableAuthenticatorFactory extends ConfiguredProvider {
         return getHelpText();
     }
 
-    // TODO:mposolda this should be improved and rewritten. See some other places and best practices...
+
     /**
-     * Return the icon CSS to be displayed in the table when user can select from various possibilities
+     * Return the icon CSS, which can be used to display icon, which represents this particular authenticator.
+     *
+     * The icon will be displayed on various places. For example the "Select authenticator" screen during login, where user can select from
+     * various authentication mechanisms for two-factor or passwordless authentication.
+     *
+     * The returned value can be either:
+     * - Key of the property, which will reference the actual CSS in the themes.properties file. For example if you return "kcAuthenticatorWebAuthnClass"
+     *   from this method, then your themes.properties should have the property like for example "kcAuthenticatorWebAuthnClass=fa fa-key list-view-pf-icon-lg" .
+     *   This would mean that "fa fa-key list-view-pf-icon-lg" will be the actual CSS used.
+     * - the icon CSS class directly. For example you can return "fa fa-key list-view-pf-icon-lg" directly for the above example with WebAuthn.
+     *   This alternative is fine just if your authenticator can use same CSS class for all the themes.
+     *
+     * If you don't expect your authenticator to need icon (for example it will never be shown in the "select authenticator" screen), then
+     * it is fine to keep the default value.
      */
     default String getIconCssClass() {
-        // TODO:mposolda this will need to be rewritten!!!
-        return "fa list-view-pf-icon-lg";
+        return "kcAuthenticatorDefaultClass";
     }
 }

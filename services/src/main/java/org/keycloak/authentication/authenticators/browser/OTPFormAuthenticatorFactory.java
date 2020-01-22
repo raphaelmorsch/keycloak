@@ -119,7 +119,6 @@ public class OTPFormAuthenticatorFactory implements AuthenticatorFactory, Displa
 
     @Override
     public String getIconCssClass() {
-        // TODO:mposolda
-        return "fa fa-mobile list-view-pf-icon-lg";
+        return "kcAuthenticatorOTPClass";
     }
 }

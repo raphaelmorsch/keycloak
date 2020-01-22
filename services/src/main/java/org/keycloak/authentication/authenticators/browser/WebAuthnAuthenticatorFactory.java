@@ -103,7 +103,6 @@ public class WebAuthnAuthenticatorFactory implements AuthenticatorFactory {
 
     @Override
     public String getIconCssClass() {
-        // TODO:mposolda
-        return "fa fa-key list-view-pf-icon-lg";
+        return "kcAuthenticatorWebAuthnClass";
     }
 }

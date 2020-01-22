@@ -18,7 +18,7 @@
                     <div class="list-group-item list-view-pf-stacked">
                         <div class="list-view-pf-main-info" onclick="fillAndSubmit('${authenticationSelection.authExecId}')">
                             <div class="list-view-pf-left">
-                                <span class="${authenticationSelection.iconCssClass}"></span>
+                                <span class="${properties['${authenticationSelection.iconCssClass}']!authenticationSelection.iconCssClass}"></span>
                             </div>
                             <div class="list-view-pf-body">
                                 <div class="list-view-pf-description">

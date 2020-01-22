@@ -119,7 +119,6 @@ public class PasswordFormFactory implements AuthenticatorFactory, DisplayTypeAut
 
     @Override
     public String getIconCssClass() {
-        // TODO:mposolda
-        return "fa fa-unlock list-view-pf-icon-lg";
+        return "kcAuthenticatorPasswordClass";
     }
 }
