@@ -13,19 +13,19 @@
     <#elseif section = "form">
 
         <form id="kc-select-credential-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
-            <div class="list-group list-view-pf">
+            <div class="${properties.kcSelectAuthListClass!}">
                 <#list auth.authenticationSelections as authenticationSelection>
-                    <div class="list-group-item list-view-pf-stacked">
-                        <div class="list-view-pf-main-info" onclick="fillAndSubmit('${authenticationSelection.authExecId}')">
-                            <div class="list-view-pf-left">
+                    <div class="${properties.kcSelectAuthListItemClass!}">
+                        <div class="${properties.kcSelectAuthListItemInfoClass!}" onclick="fillAndSubmit('${authenticationSelection.authExecId}')">
+                            <div class="${properties.kcSelectAuthListItemLeftClass!}">
                                 <span class="${properties['${authenticationSelection.iconCssClass}']!authenticationSelection.iconCssClass}"></span>
                             </div>
-                            <div class="list-view-pf-body">
-                                <div class="list-view-pf-description">
-                                    <div class="list-group-item-heading">
+                            <div class="${properties.kcSelectAuthListItemBodyClass!}">
+                                <div class="${properties.kcSelectAuthListItemDescriptionClass!}">
+                                    <div class="${properties.kcSelectAuthListItemHeadingClass!}">
                                         ${msg('${authenticationSelection.userDisplayName}')}
                                     </div>
-                                    <div class="list-group-item-text">
+                                    <div class="${properties.kcSelectAuthListItemHelpTextClass!}">
                                         ${msg('${authenticationSelection.userHelpText}')}
                                     </div>
                                 </div>
