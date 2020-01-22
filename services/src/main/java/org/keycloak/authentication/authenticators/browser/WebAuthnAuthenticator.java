@@ -187,7 +187,8 @@ public class WebAuthnAuthenticator implements Authenticator, CredentialValidator
     }
 
     public boolean requiresUser() {
-        return true;
+        // TODO:mposolda This is only temporary
+        return false;
     }
 
     public boolean configuredFor(KeycloakSession session, RealmModel realm, UserModel user) {

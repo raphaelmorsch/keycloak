@@ -93,14 +93,12 @@ public class WebAuthnAuthenticatorFactory implements AuthenticatorFactory {
 
     @Override
     public String getUserDisplayName() {
-        // TODO:mposolda localization
-        return "Security Key";
+        return "webauthn-security-key";
     }
 
     @Override
     public String getUserHelpText() {
-        // TODO:mposolda localization
-        return "Use your security key to log in.";
+        return "webauthn-security-key-help-text";
     }
 
     @Override

@@ -8,7 +8,7 @@
             }
         </script>
         <#if section = "header">
-            ${msg("selectAuthenticator")}
+            ${msg("loginChooseAuthenticator")}
         </#if>
     <#elseif section = "form">
 
@@ -23,10 +23,10 @@
                             <div class="list-view-pf-body">
                                 <div class="list-view-pf-description">
                                     <div class="list-group-item-heading">
-                                        ${authenticationSelection.userDisplayName}
+                                        ${msg('${authenticationSelection.userDisplayName}')}
                                     </div>
                                     <div class="list-group-item-text">
-                                        ${authenticationSelection.userHelpText}
+                                        ${msg('${authenticationSelection.userHelpText}')}
                                     </div>
                                 </div>
                             </div>

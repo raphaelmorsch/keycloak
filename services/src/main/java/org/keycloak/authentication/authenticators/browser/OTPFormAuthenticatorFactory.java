@@ -109,14 +109,12 @@ public class OTPFormAuthenticatorFactory implements AuthenticatorFactory, Displa
 
     @Override
     public String getUserDisplayName() {
-        // TODO:mposolda localization
-        return "Authenticator Application";
+        return "auth-otp-authenticator-app";
     }
 
     @Override
     public String getUserHelpText() {
-        // TODO:mposolda localization and remove A
-        return "Enter a verification code from authenticator applicationA.";
+        return "auth-otp-authenticator-app-help-text";
     }
 
     @Override

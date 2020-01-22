@@ -109,14 +109,12 @@ public class PasswordFormFactory implements AuthenticatorFactory, DisplayTypeAut
 
     @Override
     public String getUserDisplayName() {
-        // TODO:mposolda localization
-        return "Password";
+        return "auth-password-form";
     }
 
     @Override
     public String getUserHelpText() {
-        // TODO:mposolda localization
-        return "Log in by entering your password.";
+        return "auth-password-help-text";
     }
 
     @Override
