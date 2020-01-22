@@ -30,7 +30,6 @@ public class AuthenticationSelectionOption {
         return factory.getUserHelpText();
     }
 
-    // TODO:mposolda probably rename this
     public String getIconCssClass() {
         return factory.getIconCssClass();
     }
