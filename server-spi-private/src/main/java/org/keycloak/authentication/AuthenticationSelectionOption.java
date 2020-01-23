@@ -8,13 +8,11 @@ import org.keycloak.models.KeycloakSession;
 public class AuthenticationSelectionOption {
 
     private final AuthenticationExecutionModel authExec;
-    private final AuthenticatorFactory factory;
     private final CredentialTypeMetadata credentialTypeMetadata;
 
     public AuthenticationSelectionOption(KeycloakSession session, AuthenticationExecutionModel authExec) {
         this.authExec = authExec;
-        this.factory = (AuthenticatorFactory) session.getKeycloakSessionFactory().getProviderFactory(Authenticator.class, authExec.getAuthenticator());
-        Authenticator authenticator = this.factory.create(session);
+        Authenticator authenticator = session.getProvider(Authenticator.class, authExec.getAuthenticator());
         if (authenticator instanceof CredentialValidator) {
             CredentialProvider credentialProvider = ((CredentialValidator) authenticator).getCredentialProvider(session);
             credentialTypeMetadata = credentialProvider.getCredentialTypeMetadata();
@@ -33,15 +31,15 @@ public class AuthenticationSelectionOption {
     }
 
     public String getDisplayName() {
-        return credentialTypeMetadata == null ? factory.getDisplayType() : credentialTypeMetadata.getDisplayName();
+        return credentialTypeMetadata == null ? authExec.getAuthenticator() + "-display-name" : credentialTypeMetadata.getDisplayName();
     }
 
     public String getHelpText() {
-        return credentialTypeMetadata == null ? factory.getHelpText() : credentialTypeMetadata.getHelpText();
+        return credentialTypeMetadata == null ? authExec.getAuthenticator() + "-help-text" : credentialTypeMetadata.getHelpText();
     }
 
     public String getIconCssClass() {
-        // For now, we won't allo to retrieve "iconCssClass" from the AuthenticatorFactory. We will see in the future if we need
+        // For now, we won't allow to retrieve "iconCssClass" from the AuthenticatorFactory. We will see in the future if we need
         // this capability for authenticator factories, which authenticators don't implement credentialProvider
         return credentialTypeMetadata == null ? CredentialTypeMetadata.DEFAULT_ICON_CSS_CLASS : credentialTypeMetadata.getIconCssClass();
     }

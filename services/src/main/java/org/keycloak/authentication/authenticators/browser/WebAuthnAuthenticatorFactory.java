@@ -90,19 +90,4 @@ public class WebAuthnAuthenticatorFactory implements AuthenticatorFactory {
     public String getId() {
         return PROVIDER_ID;
     }
-
-    @Override
-    public String getUserDisplayName() {
-        return "webauthn-security-key";
-    }
-
-    @Override
-    public String getUserHelpText() {
-        return "webauthn-security-key-help-text";
-    }
-
-    @Override
-    public String getIconCssClass() {
-        return "kcAuthenticatorWebAuthnClass";
-    }
 }

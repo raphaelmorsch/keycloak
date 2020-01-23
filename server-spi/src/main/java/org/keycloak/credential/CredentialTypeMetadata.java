@@ -131,6 +131,10 @@ public class CredentialTypeMetadata {
         return category;
     }
 
+    public static CredentialTypeMetadataBuilder builder() {
+        return new CredentialTypeMetadataBuilder();
+    }
+
     // BUILDER
 
     public static class CredentialTypeMetadataBuilder {
@@ -167,7 +171,7 @@ public class CredentialTypeMetadata {
             return this;
         }
 
-        public CredentialTypeMetadataBuilder updateAction(boolean removeable) {
+        public CredentialTypeMetadataBuilder removeable(boolean removeable) {
             instance.removeable = removeable;
             return this;
         }

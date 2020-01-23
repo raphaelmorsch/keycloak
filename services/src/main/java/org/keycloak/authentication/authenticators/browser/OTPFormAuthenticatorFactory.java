@@ -106,19 +106,4 @@ public class OTPFormAuthenticatorFactory implements AuthenticatorFactory, Displa
     public List<ProviderConfigProperty> getConfigProperties() {
         return null;
     }
-
-    @Override
-    public String getUserDisplayName() {
-        return "auth-otp-authenticator-app";
-    }
-
-    @Override
-    public String getUserHelpText() {
-        return "auth-otp-authenticator-app-help-text";
-    }
-
-    @Override
-    public String getIconCssClass() {
-        return "kcAuthenticatorOTPClass";
-    }
 }

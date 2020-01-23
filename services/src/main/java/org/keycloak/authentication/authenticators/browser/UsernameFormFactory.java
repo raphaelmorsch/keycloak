@@ -110,14 +110,4 @@ public class UsernameFormFactory implements AuthenticatorFactory, DisplayTypeAut
         return false;
     }
 
-    @Override
-    public String getUserDisplayName() {
-        return "auth-username-form";
-    }
-
-    @Override
-    public String getUserHelpText() {
-        return "auth-username-help-text";
-    }
-
 }
