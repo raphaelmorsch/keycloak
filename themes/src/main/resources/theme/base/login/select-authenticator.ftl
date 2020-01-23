@@ -23,10 +23,10 @@
                             <div class="${properties.kcSelectAuthListItemBodyClass!}">
                                 <div class="${properties.kcSelectAuthListItemDescriptionClass!}">
                                     <div class="${properties.kcSelectAuthListItemHeadingClass!}">
-                                        ${msg('${authenticationSelection.userDisplayName}')}
+                                        ${msg('${authenticationSelection.displayName}')}
                                     </div>
                                     <div class="${properties.kcSelectAuthListItemHelpTextClass!}">
-                                        ${msg('${authenticationSelection.userHelpText}')}
+                                        ${msg('${authenticationSelection.helpText}')}
                                     </div>
                                 </div>
                             </div>
