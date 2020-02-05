@@ -20,6 +20,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.junit.Assert;
+import org.keycloak.common.util.Retry;
+import org.keycloak.testsuite.util.UIUtils;
+import org.keycloak.testsuite.util.WaitUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
@@ -41,9 +44,6 @@ public class LoginTotpPage extends LanguageComboboxAwarePage {
 
     @FindBy(className = "alert-error")
     private WebElement loginErrorMessage;
-
-    @FindBy(className = "card-pf-view-single-select")
-    private WebElement credentialCard;
 
     public void login(String totp) {
         otpInput.clear();
@@ -83,24 +83,50 @@ public class LoginTotpPage extends LanguageComboboxAwarePage {
 
 
     public List<String> getAvailableOtpCredentials() {
-
-        return driver.findElements(By.xpath("//div[contains(@class, 'card-pf-view-single-select')]//h2"))
+        return driver.findElements(getXPathForLookupAllCards())
                 .stream().map(WebElement::getText).collect(Collectors.toList());
     }
 
 
     public String getSelectedOtpCredential() {
-        Assert.assertFalse(credentialCard.getAttribute("class").contains("active"));
-        credentialCard.click();
-        Assert.assertTrue(credentialCard.getAttribute("class").contains("active"));
-        return credentialCard.findElement(By.tagName("h2")).getText();
+        try {
+            WebElement selected = driver.findElement(getXPathForLookupActiveCard());
+            return selected.getText();
+        } catch (NoSuchElementException nse) {
+            // No selected element found
+            return null;
+        }
+    }
+
+    private By getXPathForLookupAllCards() {
+        return By.xpath("//div[contains(@class, 'card-pf-view-single-select')]//h2");
+    }
+
+    private By getXPathForLookupActiveCard() {
+        return By.xpath("//div[contains(@class, 'card-pf-view-single-select active')]//h2");
+    }
+
+    private By getXPathForLookupCardWithName(String credentialName) {
+        return By.xpath("//div[contains(@class, 'card-pf-view-single-select')]//h2[normalize-space() = '"+ credentialName +"']");
     }
 
 
     public void selectOtpCredential(String credentialName) {
+        waitForElement(getXPathForLookupActiveCard());
+
         WebElement webElement = driver.findElement(
-                By.xpath("//div[contains(@class, 'card-pf-view-single-select')]//h2[normalize-space() = '"+ credentialName +"']"));
-        webElement.click();
+                getXPathForLookupCardWithName(credentialName));
+        UIUtils.clickLink(webElement);
+    }
+
+
+    // Workaround, but works with HtmlUnit (WaitUtils.waitForElement doesn't). Find better solution for the future...
+    private void waitForElement(By by) {
+        Retry.executeWithBackoff((currentCount) -> {
+
+            driver.findElement(by);
+
+        }, 10, 10);
     }
 
 }

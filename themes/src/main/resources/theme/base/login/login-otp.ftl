@@ -59,6 +59,11 @@
                   $('.card-pf-view-single-select').children().removeAttr('name');
                   $(this).addClass('active'); $(this).children().attr('name', 'selectedCredentialId'); }
                 });
+
+                var defaultCred = $('.card-pf-view-single-select')[0];
+                if (defaultCred) {
+                    defaultCred.click();
+                }
               });
             </script>
         </#if>
