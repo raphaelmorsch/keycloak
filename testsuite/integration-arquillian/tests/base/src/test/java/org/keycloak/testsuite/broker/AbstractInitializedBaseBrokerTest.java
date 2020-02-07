@@ -85,14 +85,6 @@ public abstract class AbstractInitializedBaseBrokerTest extends AbstractBaseBrok
         testContext.setInitialized(true);
     }
 
-    protected void logInWithBroker(BrokerConfiguration bc) {
-        log.debug("Clicking social " + bc.getIDPAlias());
-        loginPage.clickSocial(bc.getIDPAlias());
-        waitForPage(driver, "log in to", true);
-        log.debug("Logging in");
-        loginPage.login(bc.getUserLogin(), bc.getUserPassword());
-    }
-
     protected void updateExecutions(BiConsumer<AuthenticationExecutionInfoRepresentation, AuthenticationManagementResource> action) {
         AuthenticationManagementResource flows = adminClient.realm(bc.consumerRealmName()).flows();
 

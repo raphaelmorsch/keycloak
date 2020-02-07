@@ -186,24 +186,24 @@ public abstract class AbstractBaseBrokerTest extends AbstractKeycloakTest {
 
     protected void logInAsUserInIDP() {
         driver.navigate().to(getAccountUrl(bc.consumerRealmName()));
+        logInWithBroker(bc);
+    }
 
+    protected void logInWithBroker(BrokerConfiguration bc) {
         log.debug("Clicking social " + bc.getIDPAlias());
         loginPage.clickSocial(bc.getIDPAlias());
-
         waitForPage(driver, "log in to", true);
-
-        Assert.assertTrue("Driver should be on the provider realm page right now",
-                driver.getCurrentUrl().contains("/auth/realms/" + bc.providerRealmName() + "/"));
-
         log.debug("Logging in");
         loginPage.login(bc.getUserLogin(), bc.getUserPassword());
     }
 
-
     /** Logs in the IDP and updates account information */
     protected void logInAsUserInIDPForFirstTime() {
         logInAsUserInIDP();
+        updateAccountInformation();
+    }
 
+    protected void updateAccountInformation() {
         waitForPage(driver, "update account information", false);
 
         Assert.assertTrue(updateAccountInformationPage.isCurrent());
