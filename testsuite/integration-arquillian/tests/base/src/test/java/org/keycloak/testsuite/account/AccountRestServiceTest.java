@@ -17,18 +17,9 @@
 package org.keycloak.testsuite.account;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.jboss.arquillian.container.test.api.Deployer;
-import org.jboss.arquillian.container.test.api.Deployment;
-import org.jboss.arquillian.test.api.ArquillianResource;
-import org.jboss.shrinkwrap.api.ShrinkWrap;
-import org.jboss.shrinkwrap.api.spec.WebArchive;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
-import org.keycloak.Config;
 import org.keycloak.OAuth2Constants;
-import org.keycloak.authentication.authenticators.browser.WebAuthnAuthenticator;
 import org.keycloak.authentication.authenticators.browser.WebAuthnAuthenticatorFactory;
 import org.keycloak.authentication.authenticators.browser.WebAuthnPasswordlessAuthenticatorFactory;
 import org.keycloak.authentication.requiredactions.WebAuthnPasswordlessRegisterFactory;
@@ -43,11 +34,6 @@ import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.models.credential.WebAuthnCredentialModel;
 import org.keycloak.models.utils.DefaultAuthenticationFlows;
-import org.keycloak.provider.KeycloakDeploymentInfo;
-import org.keycloak.provider.ProviderFactory;
-import org.keycloak.provider.ProviderManager;
-import org.keycloak.provider.ProviderManagerRegistry;
-import org.keycloak.provider.Spi;
 import org.keycloak.representations.account.ClientRepresentation;
 import org.keycloak.representations.account.ConsentRepresentation;
 import org.keycloak.representations.account.ConsentScopeRepresentation;
@@ -62,8 +48,6 @@ import org.keycloak.representations.idm.ErrorRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.RequiredActionProviderRepresentation;
 import org.keycloak.representations.idm.RequiredActionProviderSimpleRepresentation;
-import org.keycloak.services.DefaultKeycloakSessionFactory;
-import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.services.resources.account.AccountCredentialResource;
 import org.keycloak.services.resources.account.AccountCredentialResource.PasswordUpdate;
@@ -78,14 +62,11 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -100,59 +81,6 @@ import static org.keycloak.common.Profile.Feature.ACCOUNT_API;
 @EnableFeature(value = Profile.Feature.WEB_AUTHN, skipRestart = true)
 @EnableFeature(value = ACCOUNT_API, skipRestart = true)
 public class AccountRestServiceTest extends AbstractRestServiceTest {
-
-    private final static String DEPLOYMENT_NAME = "webauthn.war";
-
-    @Deployment(name = DEPLOYMENT_NAME, managed = false)
-    public static WebArchive deploy() throws IOException {
-        return ShrinkWrap.create(WebArchive.class, DEPLOYMENT_NAME)
-                .addClass(WebAuthnAuthenticatorFactory.class)
-                .addClass(WebAuthnAuthenticator.class)
-                .addClass(AccountRestServiceTest.class)
-                .addClass(AbstractRestServiceTest.class);
-    }
-
-    @ArquillianResource
-    private Deployer deployer;
-
-    @Before
-    public void setUp() {
-        ProviderManager manager = new ProviderManager(KeycloakDeploymentInfo.create().services(),
-                getClass().getClassLoader(),
-                Config.scope().getArray("providers"));
-
-        System.out.println("FACTORIES");
-        manager.getLoadedFactories().forEach((provider, factory) -> System.out.println(provider + " //// " + factory));
-
-        Set<Spi> spis = new HashSet<>(manager.loadSpis());
-        spis.forEach(spi -> {
-            String provider = Config.getProvider(spi.getName());
-            if (provider == null) {
-                manager.load(spi).forEach(factory -> {
-                    Config.Scope scope = Config.scope(spi.getName(), factory.getId());
-                    System.out.println("FACT: " + factory.getId());
-                    factory.init(scope);
-                });
-            } else {
-                ProviderFactory factory = manager.load(spi, provider);
-                Config.Scope scope = Config.scope(spi.getName(), provider);
-                System.out.println("FACT ELSE: " + factory.getId());
-
-                factory.init(scope);
-            }
-        });
-
-        ProviderManagerRegistry registry = ProviderManagerRegistry.SINGLETON;
-        registry.deploy(manager);
-        deployer.deploy(DEPLOYMENT_NAME);
-
-        resetRealmSession("test");
-    }
-
-    @After
-    public void after() {
-        deployer.undeploy(DEPLOYMENT_NAME);
-    }
 
     @Test
     public void testGetProfile() throws IOException {
