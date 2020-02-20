@@ -10,7 +10,11 @@ import org.jboss.arquillian.test.spi.event.suite.After;
 import org.jboss.arquillian.test.spi.event.suite.AfterClass;
 import org.jboss.arquillian.test.spi.event.suite.Before;
 import org.jboss.arquillian.test.spi.event.suite.BeforeClass;
+import org.keycloak.Config;
 import org.keycloak.common.Profile;
+import org.keycloak.provider.KeycloakDeploymentInfo;
+import org.keycloak.provider.ProviderManager;
+import org.keycloak.provider.ProviderManagerRegistry;
 import org.keycloak.testsuite.ProfileAssume;
 import org.keycloak.testsuite.arquillian.SuiteContext;
 import org.keycloak.testsuite.arquillian.TestContext;
@@ -123,7 +127,12 @@ public class KeycloakContainerFeaturesController {
         updateFeatures.forEach(UpdateFeature::performAction);
 
         if (updateFeatures.stream().anyMatch(updateFeature -> !updateFeature.skipRestart)) {
-            restartAuthServer();
+            //restartAuthServer();
+            ProviderManager manager = new ProviderManager(KeycloakDeploymentInfo.create().services(),
+                    getClass().getClassLoader(),
+                    Config.scope().getArray("providers"));
+            ProviderManagerRegistry.SINGLETON.deploy(manager);
+
             testContextInstance.get().reconnectAdminClient();
         }
 
