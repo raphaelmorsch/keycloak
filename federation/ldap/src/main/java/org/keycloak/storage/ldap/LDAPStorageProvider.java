@@ -51,6 +51,7 @@ import org.keycloak.storage.StorageId;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.UserStorageProviderModel;
 import org.keycloak.storage.adapter.InMemoryUserAdapter;
+import org.keycloak.storage.adapter.UpdateOnlyChangeUserModelDelegate;
 import org.keycloak.storage.ldap.idm.model.LDAPObject;
 import org.keycloak.storage.ldap.idm.query.Condition;
 import org.keycloak.storage.ldap.idm.query.EscapeStrategy;
@@ -182,10 +183,20 @@ public class LDAPStorageProvider implements UserStorageProvider,
                 }
                 break;
             case WRITABLE:
-                proxied = new WritableLDAPUserModelDelegate(local, this, ldapObject);
+                if (model.isImportEnabled()) {
+                    proxied = new WritableLDAPUserModelDelegate(local, this, ldapObject);
+                } else {
+                    // Any attempt to write data, which are not supported by the LDAP schema, should fail
+                    proxied = new ReadOnlyUserModelDelegate(local, ModelException::new);
+                }
                 break;
             case UNSYNCED:
-                proxied = new UnsyncedLDAPUserModelDelegate(local, this);
+                if (model.isImportEnabled()) {
+                    proxied = new UnsyncedLDAPUserModelDelegate(local, this);
+                } else {
+                    // Any attempt to write data, which are not supported by the LDAP schema, should fail
+                    proxied = new ReadOnlyUserModelDelegate(local, ModelException::new);
+                }
         }
 
         List<ComponentModel> mappers = realm.getComponents(model.getId(), LDAPStorageMapper.class.getName());
@@ -193,6 +204,10 @@ public class LDAPStorageProvider implements UserStorageProvider,
         for (ComponentModel mapperModel : sortedMappers) {
             LDAPStorageMapper ldapMapper = mapperManager.getMapper(mapperModel);
             proxied = ldapMapper.proxy(ldapObject, proxied, realm);
+        }
+
+        if (!model.isImportEnabled()) {
+            proxied = new UpdateOnlyChangeUserModelDelegate(proxied);
         }
 
         userManager.setManagedProxiedUser(proxied, ldapObject);

@@ -46,6 +46,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+
 import org.keycloak.models.ModelException;
 
 /**
@@ -216,30 +219,35 @@ public class UserAttributeLDAPStorageMapper extends AbstractLDAPStorageMapper {
                 @Override
                 public void setUsername(String username) {
                     checkDuplicateUsername(userModelAttrName, username, realm, ldapProvider.getSession(), this);
-                    setLDAPAttribute(UserModel.USERNAME, username);
-                    super.setUsername(username);
+                    if (setLDAPAttribute(UserModel.USERNAME, username)) {
+                        super.setUsername(username);
+                    }
                 }
 
                 @Override
                 public void setEmail(String email) {
                     checkDuplicateEmail(userModelAttrName, email, realm, ldapProvider.getSession(), this);
 
-                    setLDAPAttribute(UserModel.EMAIL, email);
-                    super.setEmail(email);
+                    if (setLDAPAttribute(UserModel.EMAIL, email)) {
+                        super.setEmail(email);
+                    }
                 }
 
                 @Override
                 public void setLastName(String lastName) {
-                    setLDAPAttribute(UserModel.LAST_NAME, lastName);
-                    super.setLastName(lastName);
+                    if (setLDAPAttribute(UserModel.LAST_NAME, lastName)) {
+                        super.setLastName(lastName);
+                    }
                 }
 
                 @Override
                 public void setFirstName(String firstName) {
-                    setLDAPAttribute(UserModel.FIRST_NAME, firstName);
-                    super.setFirstName(firstName);
+                    if (setLDAPAttribute(UserModel.FIRST_NAME, firstName)) {
+                        super.setFirstName(firstName);
+                    }
                 }
 
+                // Returns true if the write of particular attribute should be propagated also to the underlying UserModel delegate
                 protected boolean setLDAPAttribute(String modelAttrName, Object value) {
                     if (modelAttrName.equalsIgnoreCase(userModelAttrName)) {
                         if (UserAttributeLDAPStorageMapper.logger.isTraceEnabled()) {
@@ -269,7 +277,8 @@ public class UserAttributeLDAPStorageMapper extends AbstractLDAPStorageMapper {
                             UserAttributeLDAPStorageMapper.logger.debugf("Skip writing model attribute '%s' to DB for user '%s' as it is mapped to binary LDAP attribute.", userModelAttrName, getUsername());
                             return false;
                         } else {
-                            return true;
+                            // Don't propagate write to the delegate UserModel if "Import Users" is OFF
+                            return ldapProvider.getModel().isImportEnabled();
                         }
                     }
 
@@ -431,6 +440,9 @@ public class UserAttributeLDAPStorageMapper extends AbstractLDAPStorageMapper {
         return parseBooleanParameter(mapperModel, READ_ONLY);
     }
 
+    private <T> void consume3(Consumer<T> consumer, T str) {
+        consumer.accept(str);
+    }
 
     protected void setPropertyOnUserModel(Property<Object> userModelProperty, UserModel user, String ldapAttrValue) {
         if (ldapAttrValue == null) {
