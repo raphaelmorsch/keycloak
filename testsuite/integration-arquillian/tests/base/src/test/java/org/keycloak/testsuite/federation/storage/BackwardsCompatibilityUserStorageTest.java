@@ -21,15 +21,26 @@ package org.keycloak.testsuite.federation.storage;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.List;
 
 import javax.ws.rs.core.Response;
 
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.container.test.api.TargetsContainer;
 import org.jboss.arquillian.graphene.page.Page;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.credential.CredentialModel;
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserCredentialModel;
+import org.keycloak.models.UserModel;
+import org.keycloak.models.cache.CachedUserModel;
+import org.keycloak.models.utils.TimeBasedOTP;
 import org.keycloak.representations.idm.ComponentRepresentation;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -37,10 +48,18 @@ import org.keycloak.storage.StorageId;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.testsuite.AbstractAuthTest;
 import org.keycloak.testsuite.admin.ApiUtil;
+import org.keycloak.testsuite.federation.BackwardsCompatibilityUserStorage;
 import org.keycloak.testsuite.federation.BackwardsCompatibilityUserStorageFactory;
+import org.keycloak.testsuite.federation.ldap.AbstractLDAPTest;
+import org.keycloak.testsuite.pages.AccountTotpPage;
 import org.keycloak.testsuite.pages.AppPage;
+import org.keycloak.testsuite.pages.LoginConfigTotpPage;
 import org.keycloak.testsuite.pages.LoginPage;
+import org.keycloak.testsuite.pages.LoginTotpPage;
+import org.keycloak.testsuite.runonserver.RunOnServerDeployment;
+import org.keycloak.testsuite.util.WaitUtils;
 
+import static org.keycloak.testsuite.arquillian.DeploymentTargetModifier.AUTH_SERVER_CURRENT;
 import static org.keycloak.testsuite.util.URLAssert.assertCurrentUrlDoesntStartWith;
 import static org.keycloak.testsuite.util.URLAssert.assertCurrentUrlStartsWith;
 
@@ -51,7 +70,34 @@ import static org.keycloak.testsuite.util.URLAssert.assertCurrentUrlStartsWith;
  */
 public class BackwardsCompatibilityUserStorageTest extends AbstractAuthTest {
 
+    @Deployment
+    @TargetsContainer(AUTH_SERVER_CURRENT)
+    public static WebArchive deploy() {
+        return RunOnServerDeployment.create(UserResource.class, BackwardsCompatibilityUserStorageTest.class)
+                .addPackages(true,
+                        "org.keycloak.testsuite",
+                        "org.keycloak.testsuite.federation.ldap");
+    }
+
     private String backwardsCompProviderId;
+
+    @Page
+    protected AppPage appPage;
+
+    @Page
+    protected LoginPage loginPage;
+
+    @Page
+    protected LoginTotpPage loginTotpPage;
+
+    @Page
+    protected AccountTotpPage accountTotpSetupPage;
+
+    @Page
+    protected LoginConfigTotpPage configureTotpRequiredActionPage;
+
+
+    private TimeBasedOTP totp = new TimeBasedOTP();
 
     @Before
     public void addProvidersBeforeTest() throws URISyntaxException, IOException {
@@ -72,13 +118,6 @@ public class BackwardsCompatibilityUserStorageTest extends AbstractAuthTest {
         getCleanup().addComponentId(id);
         return id;
     }
-
-
-    @Page
-    protected AppPage appPage;
-
-    @Page
-    protected LoginPage loginPage;
 
     private void loginSuccessAndLogout(String username, String password) {
         testRealmAccountPage.navigateTo();
@@ -103,7 +142,7 @@ public class BackwardsCompatibilityUserStorageTest extends AbstractAuthTest {
         loginBadPassword("tbrady");
     }
 
-    private void addUserAndResetPassword(String username, String password) {
+    private String addUserAndResetPassword(String username, String password) {
         // Save user and assert he is saved in the new storage
         UserRepresentation user = new UserRepresentation();
         user.setEnabled(true);
@@ -120,5 +159,116 @@ public class BackwardsCompatibilityUserStorageTest extends AbstractAuthTest {
         passwordRep.setTemporary(false);
 
         testRealmResource().users().get(userId).resetPassword(passwordRep);
+
+        return userId;
     }
+
+
+    @Test
+    public void testOTPUpdateAndLogin() {
+        String userId = addUserAndResetPassword("otp1", "pass");
+        getCleanup().addUserId(userId);
+
+        // Add required action to the user to reset OTP
+        UserResource user = testRealmResource().users().get(userId);
+        UserRepresentation userRep = user.toRepresentation();
+        userRep.setRequiredActions(Arrays.asList(UserModel.RequiredAction.CONFIGURE_TOTP.toString()));
+        user.update(userRep);
+
+        //WaitUtils.pause(10000000);
+
+        // Login as the user and setup OTP
+        testRealmAccountPage.navigateTo();
+        loginPage.login("otp1", "pass");
+
+        configureTotpRequiredActionPage.assertCurrent();
+        String totpSecret = configureTotpRequiredActionPage.getTotpSecret();
+        configureTotpRequiredActionPage.configure(totp.generateTOTP(totpSecret));
+        assertCurrentUrlStartsWith(testRealmAccountPage);
+
+        // Logout
+        testRealmAccountPage.logOut();
+
+        assertUserDontHaveDBCredentials();
+        assertUserHasOTPCredentialInUserStorage(true);
+
+        // Authenticate as the user with the hardcoded OTP. Should be supported
+        loginPage.login("otp1", "pass");
+        loginTotpPage.assertCurrent();
+        loginTotpPage.login("123456");
+
+        assertCurrentUrlStartsWith(testRealmAccountPage);
+        testRealmAccountPage.logOut();
+
+        // Authenticate as the user with bad OTP
+        loginPage.login("otp1", "pass");
+        loginTotpPage.assertCurrent();
+        loginTotpPage.login("7123456");
+        assertCurrentUrlDoesntStartWith(testRealmAccountPage);
+        Assert.assertNotNull(loginTotpPage.getError());
+
+        // Authenticate as the user with correct OTP
+        loginTotpPage.login(totp.generateTOTP(totpSecret));
+        assertCurrentUrlStartsWith(testRealmAccountPage);
+        testRealmAccountPage.logOut();
+    }
+
+    @Test
+    public void testOTPSetupThroughAccountMgmtAndLogin() {
+        String userId = addUserAndResetPassword("otp1", "pass");
+        getCleanup().addUserId(userId);
+
+        // Login as user to account mgmt
+        accountTotpSetupPage.open();
+        loginPage.login("otp1", "pass");
+
+        // Setup OTP
+        String totpSecret = accountTotpSetupPage.getTotpSecret();
+        accountTotpSetupPage.configure(totp.generateTOTP(totpSecret));
+
+        assertUserDontHaveDBCredentials();
+        assertUserHasOTPCredentialInUserStorage(true);
+
+        // Logout and assert user can login with hardcoded OTP
+        accountTotpSetupPage.logout();
+        loginPage.login("otp1", "pass");
+        loginTotpPage.login("123456");
+        assertCurrentUrlStartsWith(testRealmAccountPage);
+
+        // Logout and assert user can login with valid credential
+        accountTotpSetupPage.logout();
+        loginPage.login("otp1", "pass");
+        loginTotpPage.login(totp.generateTOTP(totpSecret));
+        assertCurrentUrlStartsWith(testRealmAccountPage);
+
+        // Delete OTP credential in account console
+        accountTotpSetupPage.removeTotp();
+        accountTotpSetupPage.logout();
+
+        assertUserDontHaveDBCredentials();
+        assertUserHasOTPCredentialInUserStorage(false);
+
+        // Assert user can login without OTP
+        loginSuccessAndLogout("otp1", "pass");
+    }
+
+
+    private void assertUserDontHaveDBCredentials() {
+        testingClient.server().run(session -> {
+            RealmModel realm1 = session.realms().getRealmByName("test");
+            UserModel user1 = session.users().getUserByUsername("otp1", realm1);
+            List<CredentialModel> keycloakDBCredentials = session.userCredentialManager().getStoredCredentials(realm1, user1);
+            Assert.assertTrue(keycloakDBCredentials.isEmpty());
+        });
+    }
+
+    private void assertUserHasOTPCredentialInUserStorage(boolean expectedUserHasOTP) {
+        boolean hasUserOTP = testingClient.server().fetch(session -> {
+            BackwardsCompatibilityUserStorageFactory storageFactory = (BackwardsCompatibilityUserStorageFactory) session.getKeycloakSessionFactory()
+                    .getProviderFactory(UserStorageProvider.class, BackwardsCompatibilityUserStorageFactory.PROVIDER_ID);
+            return storageFactory.hasUserOTP("otp1");
+        }, Boolean.class);
+        Assert.assertEquals(expectedUserHasOTP, hasUserOTP);
+    }
+
 }

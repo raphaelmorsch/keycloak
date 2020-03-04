@@ -45,4 +45,10 @@ public class BackwardsCompatibilityUserStorageFactory implements UserStorageProv
         return PROVIDER_ID;
     }
 
+    public boolean hasUserOTP(String username) {
+        BackwardsCompatibilityUserStorage.MyUser user = userPasswords.get(username);
+        if (user == null) return false;
+        return user.getOtp() != null;
+    }
+
 }
