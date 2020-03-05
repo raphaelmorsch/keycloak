@@ -207,13 +207,10 @@ public class BackwardsCompatibilityUserStorage implements UserLookupProvider, Us
     @Override
     public Set<String> getDisableableCredentialTypes(RealmModel realm, UserModel user) {
         Set<String> types = new HashSet<>();
-        types.add(CredentialModel.PASSWORD);
 
         MyUser myUser = getMyUser(user);
         if (myUser != null && myUser.otp != null) {
             types.add(CredentialModel.OTP);
-            types.add(CredentialModel.HOTP);
-            types.add(CredentialModel.TOTP);
         }
 
         return types;

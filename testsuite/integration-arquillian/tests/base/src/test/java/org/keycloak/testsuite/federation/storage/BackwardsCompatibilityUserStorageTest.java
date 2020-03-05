@@ -22,6 +22,7 @@ package org.keycloak.testsuite.federation.storage;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import javax.ws.rs.core.Response;
@@ -30,7 +31,6 @@ import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.container.test.api.TargetsContainer;
 import org.jboss.arquillian.graphene.page.Page;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.keycloak.admin.client.resource.UserResource;
@@ -47,6 +47,7 @@ import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.storage.StorageId;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.testsuite.AbstractAuthTest;
+import org.keycloak.testsuite.Assert;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.federation.BackwardsCompatibilityUserStorage;
 import org.keycloak.testsuite.federation.BackwardsCompatibilityUserStorageFactory;
@@ -169,25 +170,12 @@ public class BackwardsCompatibilityUserStorageTest extends AbstractAuthTest {
         String userId = addUserAndResetPassword("otp1", "pass");
         getCleanup().addUserId(userId);
 
-        // Add required action to the user to reset OTP
-        UserResource user = testRealmResource().users().get(userId);
-        UserRepresentation userRep = user.toRepresentation();
-        userRep.setRequiredActions(Arrays.asList(UserModel.RequiredAction.CONFIGURE_TOTP.toString()));
-        user.update(userRep);
+        // Setup OTP for the user
+        String totpSecret = setupOTPForUserWithRequiredAction(userId);
 
-        //WaitUtils.pause(10000000);
-
-        // Login as the user and setup OTP
-        testRealmAccountPage.navigateTo();
-        loginPage.login("otp1", "pass");
-
-        configureTotpRequiredActionPage.assertCurrent();
-        String totpSecret = configureTotpRequiredActionPage.getTotpSecret();
-        configureTotpRequiredActionPage.configure(totp.generateTOTP(totpSecret));
-        assertCurrentUrlStartsWith(testRealmAccountPage);
-
-        // Logout
-        testRealmAccountPage.logOut();
+        // Assert user has OTP in the userStorage
+        assertUserDontHaveDBCredentials();
+        assertUserHasOTPCredentialInUserStorage(true);
 
         assertUserDontHaveDBCredentials();
         assertUserHasOTPCredentialInUserStorage(true);
@@ -250,6 +238,57 @@ public class BackwardsCompatibilityUserStorageTest extends AbstractAuthTest {
 
         // Assert user can login without OTP
         loginSuccessAndLogout("otp1", "pass");
+    }
+
+    @Test
+    public void testDisableCredentialsInUserStorage() {
+        String userId = addUserAndResetPassword("otp1", "pass");
+        getCleanup().addUserId(userId);
+
+        // Setup OTP for the user
+        setupOTPForUserWithRequiredAction(userId);
+
+        // Assert user has OTP in the userStorage
+        assertUserDontHaveDBCredentials();
+        assertUserHasOTPCredentialInUserStorage(true);
+
+        UserResource user = testRealmResource().users().get(userId);
+
+        // Disable OTP credential for the user through REST endpoint
+        UserRepresentation userRep = user.toRepresentation();
+        Assert.assertNames(userRep.getDisableableCredentialTypes(), CredentialModel.OTP);
+
+        user.disableCredentialType(Collections.singletonList(CredentialModel.OTP));
+
+        // User don't have OTP credential in userStorage anymore
+        assertUserDontHaveDBCredentials();
+        assertUserHasOTPCredentialInUserStorage(false);
+
+        // Assert user can login without OTP
+        loginSuccessAndLogout("otp1", "pass");
+    }
+
+    // return created totpSecret
+    private String setupOTPForUserWithRequiredAction(String userId) {
+        // Add required action to the user to reset OTP
+        UserResource user = testRealmResource().users().get(userId);
+        UserRepresentation userRep = user.toRepresentation();
+        userRep.setRequiredActions(Arrays.asList(UserModel.RequiredAction.CONFIGURE_TOTP.toString()));
+        user.update(userRep);
+
+        // Login as the user and setup OTP
+        testRealmAccountPage.navigateTo();
+        loginPage.login("otp1", "pass");
+
+        configureTotpRequiredActionPage.assertCurrent();
+        String totpSecret = configureTotpRequiredActionPage.getTotpSecret();
+        configureTotpRequiredActionPage.configure(totp.generateTOTP(totpSecret));
+        assertCurrentUrlStartsWith(testRealmAccountPage);
+
+        // Logout
+        testRealmAccountPage.logOut();
+
+        return totpSecret;
     }
 
 
