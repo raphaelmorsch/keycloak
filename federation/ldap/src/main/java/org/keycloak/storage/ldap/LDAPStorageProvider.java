@@ -176,27 +176,15 @@ public class LDAPStorageProvider implements UserStorageProvider,
 
         switch (editMode) {
             case READ_ONLY:
-                if (model.isImportEnabled()) {
-                    proxied = new ReadonlyLDAPUserModelDelegate(local, this);
-                } else {
                     proxied = new ReadOnlyUserModelDelegate(local);
-                }
                 break;
             case WRITABLE:
-                if (model.isImportEnabled()) {
-                    proxied = new WritableLDAPUserModelDelegate(local, this, ldapObject);
-                } else {
+            case UNSYNCED:
+                if (!model.isImportEnabled()) {
                     // Any attempt to write data, which are not supported by the LDAP schema, should fail
                     proxied = new ReadOnlyUserModelDelegate(local, ModelException::new);
                 }
                 break;
-            case UNSYNCED:
-                if (model.isImportEnabled()) {
-                    proxied = new UnsyncedLDAPUserModelDelegate(local, this);
-                } else {
-                    // Any attempt to write data, which are not supported by the LDAP schema, should fail
-                    proxied = new ReadOnlyUserModelDelegate(local, ModelException::new);
-                }
         }
 
         List<ComponentModel> mappers = realm.getComponents(model.getId(), LDAPStorageMapper.class.getName());

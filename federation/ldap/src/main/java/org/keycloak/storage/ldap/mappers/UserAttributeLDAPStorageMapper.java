@@ -440,10 +440,6 @@ public class UserAttributeLDAPStorageMapper extends AbstractLDAPStorageMapper {
         return parseBooleanParameter(mapperModel, READ_ONLY);
     }
 
-    private <T> void consume3(Consumer<T> consumer, T str) {
-        consumer.accept(str);
-    }
-
     protected void setPropertyOnUserModel(Property<Object> userModelProperty, UserModel user, String ldapAttrValue) {
         if (ldapAttrValue == null) {
             userModelProperty.setValue(user, null);
