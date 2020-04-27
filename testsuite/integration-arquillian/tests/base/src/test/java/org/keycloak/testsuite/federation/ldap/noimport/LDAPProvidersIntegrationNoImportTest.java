@@ -17,6 +17,7 @@
 
 package org.keycloak.testsuite.federation.ldap.noimport;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.Response;
 
 import org.junit.Assert;
@@ -24,6 +25,7 @@ import org.junit.FixMethodOrder;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+import org.keycloak.admin.client.resource.ComponentResource;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.LDAPConstants;
 import org.keycloak.models.RealmModel;
@@ -33,6 +35,7 @@ import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.representations.idm.ComponentRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.storage.StorageId;
+import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.ldap.LDAPStorageProvider;
 import org.keycloak.storage.ldap.mappers.FullNameLDAPStorageMapper;
 import org.keycloak.storage.ldap.mappers.FullNameLDAPStorageMapperFactory;
@@ -155,8 +158,25 @@ public class LDAPProvidersIntegrationNoImportTest extends LDAPProvidersIntegrati
 
     @Test
     @Override
-    @Ignore // Unsynced mode doesn't have much sense in no-import
+    // Unsynced mode doesn't have much sense in no-import. So it is not allowed at the configuration level
     public void testUnsynced() throws Exception {
+        ComponentResource ldapProviderResource = testRealm().components().component(ldapModelId);
+        ComponentRepresentation ldapProviderRep = ldapProviderResource.toRepresentation();
+        String currentEditMode = ldapProviderRep.getConfig().getFirst(LDAPConstants.EDIT_MODE);
+        Assert.assertEquals(UserStorageProvider.EditMode.WRITABLE.toString(), currentEditMode);
+
+        // Try update editMode to UNSYNCED. It should not work as UNSYNCED with no-import is not allowed
+        ldapProviderRep.getConfig().putSingle(LDAPConstants.EDIT_MODE, UserStorageProvider.EditMode.UNSYNCED.toString());
+        try {
+            ldapProviderResource.update(ldapProviderRep);
+            Assert.fail("Not expected to successfully update provider");
+        } catch (BadRequestException bre) {
+            // Expected
+        }
+
+        // Try to set editMode to WRITABLE should work
+        ldapProviderRep.getConfig().putSingle(LDAPConstants.EDIT_MODE, currentEditMode);
+        ldapProviderResource.update(ldapProviderRep);
     }
 
 
