@@ -106,24 +106,16 @@ public class FullNameLDAPStorageMapper extends AbstractLDAPStorageMapper {
 
                 @Override
                 public void setFirstName(String firstName) {
-                    if (shouldPropagateWriteToDelegate()) {
-                        // Propagate write to the delegate UserModel just if "Import Users" is ON
-                        super.setFirstName(firstName);
-                    }
-
                     this.firstName = firstName;
                     setFullNameToLDAPObject();
+                    super.setFirstName(firstName);
                 }
 
                 @Override
                 public void setLastName(String lastName) {
-                    if (shouldPropagateWriteToDelegate()) {
-                        // Propagate write to the delegate UserModel just if "Import Users" is ON
-                        super.setLastName(lastName);
-                    }
-
                     this.lastName = lastName;
                     setFullNameToLDAPObject();
+                    super.setLastName(lastName);
                 }
 
                 private void setFullNameToLDAPObject() {
@@ -132,17 +124,11 @@ public class FullNameLDAPStorageMapper extends AbstractLDAPStorageMapper {
                         logger.tracef("Pushing full name attribute to LDAP. Full name: %s", fullName);
                     }
 
-                    ensureTransactionStarted();
+                    markUpdatedAttributeInTransaction(UserModel.FIRST_NAME);
+                    markUpdatedAttributeInTransaction(UserModel.LAST_NAME);
 
                     String ldapFullNameAttrName = getLdapFullNameAttrName();
                     ldapUser.setSingleAttribute(ldapFullNameAttrName, fullName);
-                }
-
-                private boolean shouldPropagateWriteToDelegate() {
-                    // Propagate write to the delegate UserModel just if "Import Users" is ON
-                    // or "write only" is true. In the second case, we have attribute mappers for firstName, lastName (usually "givenName" and "sn" LDAP attributes) and we need
-                    // propagate writing to those as well
-                    return ldapProvider.getModel().isImportEnabled() || isWriteOnly();
                 }
 
             };

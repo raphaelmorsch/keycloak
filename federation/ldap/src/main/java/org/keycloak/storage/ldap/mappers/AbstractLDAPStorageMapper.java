@@ -22,17 +22,13 @@ import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
-import org.keycloak.storage.ldap.LDAPConfig;
 import org.keycloak.storage.ldap.LDAPStorageProvider;
 import org.keycloak.storage.ldap.idm.model.LDAPObject;
-import org.keycloak.storage.ldap.idm.query.internal.LDAPQuery;
 import org.keycloak.storage.user.SynchronizationResult;
 
 import javax.naming.AuthenticationException;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 /**
  * Stateful per-request object
@@ -87,29 +83,5 @@ public abstract class AbstractLDAPStorageMapper implements LDAPStorageMapper {
     public void close() {
 
     }
-
-    /**
-     * Do specified action just if "Import Users" is ON
-     *
-     * @param consumer
-     */
-    protected <T> void ifImportUsersEnabled(Consumer<T> consumer, T arg) {
-        if (ldapProvider.getModel().isImportEnabled()) {
-            consumer.accept(arg);
-        }
-    }
-
-    /**
-     * Do specified action just if "Import Users" is ON
-     *
-     * @param consumer
-     */
-    protected <T1, T2> void ifImportUsersEnabled(BiConsumer<T1, T2> consumer, T1 arg1, T2 arg2) {
-        if (ldapProvider.getModel().isImportEnabled()) {
-            consumer.accept(arg1, arg2);
-        }
-    }
-
-
 
 }

@@ -240,8 +240,6 @@ public class LDAPProvidersIntegrationNoImportTest extends LDAPProvidersIntegrati
             fullnameUser.setLastName("Dee2");
         });
 
-        WaitUtils.pause(10000000);
-
         // Assert changed user available in Keycloak, but his firstName is null (due the fullnameMapper is write-only and firstName mapper is removed)
         testingClient.server().run(session -> {
             LDAPTestContext ctx = LDAPTestContext.init(session);

@@ -197,54 +197,47 @@ public class UserAttributeLDAPStorageMapper extends AbstractLDAPStorageMapper {
 
                 @Override
                 public void setSingleAttribute(String name, String value) {
-                    if (setLDAPAttribute(name, value)) {
-                        super.setSingleAttribute(name, value);
-                    }
+                    setLDAPAttribute(name, value);
+                    super.setSingleAttribute(name, value);
                 }
 
                 @Override
                 public void setAttribute(String name, List<String> values) {
-                    if (setLDAPAttribute(name, values)) {
-                        super.setAttribute(name, values);
-                    }
+                    setLDAPAttribute(name, values);
+                    super.setAttribute(name, values);
                 }
 
                 @Override
                 public void removeAttribute(String name) {
-                    if ( setLDAPAttribute(name, null)) {
-                        super.removeAttribute(name);
-                    }
+                    setLDAPAttribute(name, null);
+                    super.removeAttribute(name);
                 }
 
                 @Override
                 public void setUsername(String username) {
                     checkDuplicateUsername(userModelAttrName, username, realm, ldapProvider.getSession(), this);
-                    if (setLDAPAttribute(UserModel.USERNAME, username)) {
-                        super.setUsername(username);
-                    }
+                    setLDAPAttribute(UserModel.USERNAME, username);
+                    super.setUsername(username);
                 }
 
                 @Override
                 public void setEmail(String email) {
                     checkDuplicateEmail(userModelAttrName, email, realm, ldapProvider.getSession(), this);
 
-                    if (setLDAPAttribute(UserModel.EMAIL, email)) {
-                        super.setEmail(email);
-                    }
+                    setLDAPAttribute(UserModel.EMAIL, email);
+                    super.setEmail(email);
                 }
 
                 @Override
                 public void setLastName(String lastName) {
-                    if (setLDAPAttribute(UserModel.LAST_NAME, lastName)) {
-                        super.setLastName(lastName);
-                    }
+                    setLDAPAttribute(UserModel.LAST_NAME, lastName);
+                    super.setLastName(lastName);
                 }
 
                 @Override
                 public void setFirstName(String firstName) {
-                    if (setLDAPAttribute(UserModel.FIRST_NAME, firstName)) {
-                        super.setFirstName(firstName);
-                    }
+                    setLDAPAttribute(UserModel.FIRST_NAME, firstName);
+                    super.setFirstName(firstName);
                 }
 
                 // Returns true if the write of particular attribute should be propagated also to the underlying UserModel delegate
@@ -254,7 +247,7 @@ public class UserAttributeLDAPStorageMapper extends AbstractLDAPStorageMapper {
                             UserAttributeLDAPStorageMapper.logger.tracef("Pushing user attribute to LDAP. username: %s, Model attribute name: %s, LDAP attribute name: %s, Attribute value: %s", getUsername(), modelAttrName, ldapAttrName, value);
                         }
 
-                        ensureTransactionStarted();
+                        markUpdatedAttributeInTransaction(modelAttrName);
 
                         if (value == null) {
                             if (isMandatoryInLdap) {
@@ -277,8 +270,7 @@ public class UserAttributeLDAPStorageMapper extends AbstractLDAPStorageMapper {
                             UserAttributeLDAPStorageMapper.logger.debugf("Skip writing model attribute '%s' to DB for user '%s' as it is mapped to binary LDAP attribute.", userModelAttrName, getUsername());
                             return false;
                         } else {
-                            // Don't propagate write to the delegate UserModel if "Import Users" is OFF
-                            return ldapProvider.getModel().isImportEnabled();
+                            return true;
                         }
                     }
 
