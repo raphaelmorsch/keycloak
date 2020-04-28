@@ -90,15 +90,39 @@ public class FullNameLDAPStorageMapper extends AbstractLDAPStorageMapper {
 
             TxAwareLDAPUserModelDelegate txDelegate = new TxAwareLDAPUserModelDelegate(delegate, ldapProvider, ldapUser) {
 
+                // Per-transaction state. Useful due the fact that "setFirstName" and "setLastName" called within same transaction
+                private String firstName;
+                private String lastName;
+
+                @Override
+                public String getFirstName() {
+                    return firstName != null? firstName : super.getFirstName();
+                }
+
+                @Override
+                public String getLastName() {
+                    return lastName != null ? lastName : super.getLastName();
+                }
+
                 @Override
                 public void setFirstName(String firstName) {
-                    super.setFirstName(firstName);
+                    if (shouldPropagateWriteToDelegate()) {
+                        // Propagate write to the delegate UserModel just if "Import Users" is ON
+                        super.setFirstName(firstName);
+                    }
+
+                    this.firstName = firstName;
                     setFullNameToLDAPObject();
                 }
 
                 @Override
                 public void setLastName(String lastName) {
-                    super.setLastName(lastName);
+                    if (shouldPropagateWriteToDelegate()) {
+                        // Propagate write to the delegate UserModel just if "Import Users" is ON
+                        super.setLastName(lastName);
+                    }
+
+                    this.lastName = lastName;
                     setFullNameToLDAPObject();
                 }
 
@@ -112,6 +136,13 @@ public class FullNameLDAPStorageMapper extends AbstractLDAPStorageMapper {
 
                     String ldapFullNameAttrName = getLdapFullNameAttrName();
                     ldapUser.setSingleAttribute(ldapFullNameAttrName, fullName);
+                }
+
+                private boolean shouldPropagateWriteToDelegate() {
+                    // Propagate write to the delegate UserModel just if "Import Users" is ON
+                    // or "write only" is true. In the second case, we have attribute mappers for firstName, lastName (usually "givenName" and "sn" LDAP attributes) and we need
+                    // propagate writing to those as well
+                    return ldapProvider.getModel().isImportEnabled() || isWriteOnly();
                 }
 
             };
