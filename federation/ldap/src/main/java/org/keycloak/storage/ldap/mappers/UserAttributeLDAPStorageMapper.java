@@ -197,20 +197,23 @@ public class UserAttributeLDAPStorageMapper extends AbstractLDAPStorageMapper {
 
                 @Override
                 public void setSingleAttribute(String name, String value) {
-                    setLDAPAttribute(name, value);
-                    super.setSingleAttribute(name, value);
+                    if (setLDAPAttribute(name, value)) {
+                        super.setSingleAttribute(name, value);
+                    }
                 }
 
                 @Override
                 public void setAttribute(String name, List<String> values) {
-                    setLDAPAttribute(name, values);
-                    super.setAttribute(name, values);
+                    if (setLDAPAttribute(name, values)) {
+                        super.setAttribute(name, values);
+                    }
                 }
 
                 @Override
                 public void removeAttribute(String name) {
-                    setLDAPAttribute(name, null);
-                    super.removeAttribute(name);
+                    if (setLDAPAttribute(name, null)) {
+                        super.removeAttribute(name);
+                    }
                 }
 
                 @Override
