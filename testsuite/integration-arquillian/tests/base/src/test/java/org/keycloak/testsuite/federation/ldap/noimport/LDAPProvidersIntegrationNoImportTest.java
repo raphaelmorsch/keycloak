@@ -17,6 +17,8 @@
 
 package org.keycloak.testsuite.federation.ldap.noimport;
 
+import java.util.Collections;
+
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.Response;
 
@@ -26,6 +28,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import org.keycloak.admin.client.resource.ComponentResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.LDAPConstants;
 import org.keycloak.models.RealmModel;
@@ -41,6 +44,7 @@ import org.keycloak.storage.ldap.mappers.FullNameLDAPStorageMapper;
 import org.keycloak.storage.ldap.mappers.FullNameLDAPStorageMapperFactory;
 import org.keycloak.storage.ldap.mappers.LDAPStorageMapper;
 import org.keycloak.storage.ldap.mappers.UserAttributeLDAPStorageMapper;
+import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.federation.ldap.LDAPProvidersIntegrationTest;
 import org.keycloak.testsuite.federation.ldap.LDAPTestAsserts;
 import org.keycloak.testsuite.federation.ldap.LDAPTestContext;
@@ -261,6 +265,69 @@ public class LDAPProvidersIntegrationNoImportTest extends LDAPProvidersIntegrati
         Response response = testRealm().components().add(firstNameMapperRep);
         Assert.assertEquals(201, response.getStatus());
         response.close();
+    }
+
+    // Tests that attempt to change some user attributes, which are not mapped to LDAP, will fail
+    @Test
+    public void testImpossibleToChangeNonLDAPMappedAttributes() {
+        UserResource john = ApiUtil.findUserByUsernameId(testRealm(), "johnkeycloak");
+
+        UserRepresentation johnRep = john.toRepresentation();
+        String firstNameOrig = johnRep.getFirstName();
+        String lastNameOrig = johnRep.getLastName();
+        String postalCodeOrig = johnRep.getAttributes().get("postal_code").get(0);
+
+        try {
+            // Attempt to disable user should fail
+            try {
+                johnRep.setFirstName("John2");
+                johnRep.setLastName("Doe2");
+                johnRep.setEnabled(false);
+
+                john.update(johnRep);
+                Assert.fail("Not supposed to successfully update 'enabled' state of the user");
+            } catch (BadRequestException bre) {
+                // Expected
+            }
+
+            // Attempt to set requiredAction to the user should fail
+            try {
+                johnRep = john.toRepresentation();
+                johnRep.setRequiredActions(Collections.singletonList(UserModel.RequiredAction.CONFIGURE_TOTP.toString()));
+                john.update(johnRep);
+                Assert.fail("Not supposed to successfully add requiredAction to the user");
+            } catch (BadRequestException bre) {
+                // Expected
+            }
+
+            // Attempt to add some new attribute should fail
+            try {
+                johnRep = john.toRepresentation();
+                johnRep.singleAttribute("foo", "bar");
+                john.update(johnRep);
+                Assert.fail("Not supposed to successfully add attribute to the user");
+            } catch (BadRequestException bre) {
+                // Expected
+            }
+
+            // Attempt to update firstName, lastName and postal_code should be successful. All those attributes are mapped to LDAP
+            johnRep = john.toRepresentation();
+            johnRep.setFirstName("John2");
+            johnRep.setLastName("Doe2");
+            johnRep.singleAttribute("postal_code", "654321");
+            john.update(johnRep);
+
+            johnRep = john.toRepresentation();
+            Assert.assertEquals("John2", johnRep.getFirstName());
+            Assert.assertEquals("Doe2", johnRep.getLastName());
+            Assert.assertEquals("654321", johnRep.getAttributes().get("postal_code").get(0));
+        } finally {
+            // Revert
+            johnRep.setFirstName(firstNameOrig);
+            johnRep.setLastName(lastNameOrig);
+            johnRep.singleAttribute("postal_code", postalCodeOrig);
+            john.update(johnRep);
+        }
     }
 
 }
