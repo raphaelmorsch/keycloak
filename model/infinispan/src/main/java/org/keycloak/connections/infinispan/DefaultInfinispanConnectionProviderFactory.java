@@ -30,6 +30,7 @@ import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.eviction.EvictionStrategy;
 import org.infinispan.eviction.EvictionType;
+import org.infinispan.jboss.marshalling.core.JBossUserMarshaller;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.remoting.transport.jgroups.JGroupsTransport;
@@ -191,6 +192,11 @@ public class DefaultInfinispanConnectionProviderFactory implements InfinispanCon
           .allowDuplicateDomains(allowDuplicateJMXDomains)
           .enable();
 
+        // For Infinispan 10, we go with the JBoss marshalling.
+        // TODO: This should be replaced later with the marshalling recommended by infinispan. Probably protostream.
+        // See https://infinispan.org/docs/stable/titles/developing/developing.html#marshalling for the details
+        gcb.serialization().marshaller(new JBossUserMarshaller());
+
         cacheManager = new DefaultCacheManager(gcb.build());
         containerManaged = false;
 
@@ -344,10 +350,12 @@ public class DefaultInfinispanConnectionProviderFactory implements InfinispanCon
 
         cb.transaction().lockingMode(LockingMode.PESSIMISTIC);
 
-        cb.memory()
-                .evictionStrategy(EvictionStrategy.REMOVE)
-                .evictionType(EvictionType.COUNT)
-                .size(maxEntries);
+        // TODO:mposolda figure and uncomment
+//
+//        cb.memory()
+//                .evictionStrategy(EvictionStrategy.REMOVE)
+//                .evictionType(EvictionType.COUNT)
+//                .size(maxEntries);
 
         return cb.build();
     }
@@ -421,12 +429,13 @@ public class DefaultInfinispanConnectionProviderFactory implements InfinispanCon
     protected Configuration getKeysCacheConfig() {
         ConfigurationBuilder cb = new ConfigurationBuilder();
 
-        cb.memory()
-                .evictionStrategy(EvictionStrategy.REMOVE)
-                .evictionType(EvictionType.COUNT)
-                .size(InfinispanConnectionProvider.KEYS_CACHE_DEFAULT_MAX);
-
-        cb.expiration().maxIdle(InfinispanConnectionProvider.KEYS_CACHE_MAX_IDLE_SECONDS, TimeUnit.SECONDS);
+        // TODO:mposolda figure and uncomment
+//        cb.memory()
+//                .evictionStrategy(EvictionStrategy.REMOVE)
+//                .evictionType(EvictionType.COUNT)
+//                .size(InfinispanConnectionProvider.KEYS_CACHE_DEFAULT_MAX);
+//
+//        cb.expiration().maxIdle(InfinispanConnectionProvider.KEYS_CACHE_MAX_IDLE_SECONDS, TimeUnit.SECONDS);
         return cb.build();
     }
 
