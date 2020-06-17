@@ -124,7 +124,6 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
         ClusterExecutor clusterExecutor = workCache.getCacheManager().executor()
                 .singleNodeSubmission(3);
 
-
         int errors = 0;
         int segmentToLoad = 0;
 
@@ -151,7 +150,7 @@ public class InfinispanCacheInitializer extends BaseCacheInitializer {
 
                 List<CompletableFuture<Void>> futures = new LinkedList<>();
                 final Queue<SessionLoader.WorkerResult> results = new ConcurrentLinkedQueue<>();
-
+            
                 CompletableFuture<Void> completableFuture = null;
                 for (Integer segment : segments) {
                     SessionLoader.WorkerContext workerCtx = sessionLoader.computeWorkerContext(loaderCtx, segment, segment - segmentToLoad, previousResult);

@@ -39,6 +39,7 @@ import java.util.Set;
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
+
 public class SessionInitializerWorker implements Function<EmbeddedCacheManager, SessionLoader.WorkerResult>, Serializable {
 
     private static final Logger log = Logger.getLogger(SessionInitializerWorker.class);
