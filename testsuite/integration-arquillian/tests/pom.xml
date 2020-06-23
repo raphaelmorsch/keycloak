@@ -1795,6 +1795,12 @@
                     <scope>provided</scope>
                 </dependency>
 
+                <!-- Needed for infinispan statistics -->
+                <dependency>
+                    <groupId>org.eclipse.microprofile.metrics</groupId>
+                    <artifactId>microprofile-metrics-api</artifactId>
+                </dependency>
+
             </dependencies>
 
             <dependencyManagement>
