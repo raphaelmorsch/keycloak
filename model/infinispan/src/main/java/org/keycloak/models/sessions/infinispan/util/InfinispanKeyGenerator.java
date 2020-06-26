@@ -27,6 +27,7 @@ import org.infinispan.affinity.KeyAffinityService;
 import org.infinispan.affinity.KeyAffinityServiceFactory;
 import org.infinispan.affinity.KeyGenerator;
 import org.jboss.logging.Logger;
+import org.keycloak.common.util.Time;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.sessions.StickySessionEncoderProvider;
@@ -42,7 +43,38 @@ public class InfinispanKeyGenerator {
     private final Map<String, KeyAffinityService> keyAffinityServices = new ConcurrentHashMap<>();
 
 
+    private static final int KEYS_COUNT = 1000000;
+
     public String generateKeyString(KeycloakSession session, Cache<String, ?> cache) {
+
+        long time1 = Time.currentTimeMillis();
+
+        String cacheName = cache.getName();
+
+        for (int i=0 ; i<KEYS_COUNT ; i++) {
+            KeyAffinityService<String> keyAffinityService = keyAffinityServices.get(cacheName);
+            if (keyAffinityService == null) {
+                keyAffinityService = createKeyAffinityService(cache, new StringKeyGenerator());
+                keyAffinityServices.put(cacheName, keyAffinityService);
+
+                log.debugf("Registered key affinity service for cache '%s'", cacheName);
+            }
+
+            String key = keyAffinityService.getKeyForAddress(cache.getCacheManager().getAddress());
+        }
+
+        long time2 = Time.currentTimeMillis();
+
+        for (int i=0 ; i<KEYS_COUNT ; i++) {
+            String key = new StringKeyGenerator().getKey();
+        }
+
+        long time3 = Time.currentTimeMillis();
+
+        log.infof("Generate %d key with keyAffinityService took %d ms", KEYS_COUNT, time2 - time1);
+        log.infof("Generate %d key without keyAffinityService took %d ms", KEYS_COUNT, time3 - time2);
+
+
         return generateKey(session, cache, new StringKeyGenerator());
     }
 
