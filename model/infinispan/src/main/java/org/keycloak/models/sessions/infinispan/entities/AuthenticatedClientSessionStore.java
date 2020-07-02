@@ -20,6 +20,7 @@ import org.keycloak.models.sessions.infinispan.util.KeycloakMarshallUtil;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.Serializable;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,8 +32,9 @@ import org.infinispan.commons.marshall.SerializeWith;
  *
  * @author hmlnarik
  */
+// TODO:mposolda serializable
 @SerializeWith(AuthenticatedClientSessionStore.ExternalizerImpl.class)
-public class AuthenticatedClientSessionStore {
+public class AuthenticatedClientSessionStore implements Serializable {
 
     /**
      * Maps client UUID to client session ID.

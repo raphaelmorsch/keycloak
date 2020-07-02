@@ -52,9 +52,15 @@
             <artifactId>infinispan-cachestore-remote</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.infinispan.protostream</groupId>
+            <artifactId>protostream-processor</artifactId>
+            <version>4.3.3.Final</version>
+            <scope>provided</scope>
+        </dependency>
+        <!--<dependency>
             <groupId>org.infinispan</groupId>
             <artifactId>infinispan-jboss-marshalling</artifactId>
-        </dependency>
+        </dependency>-->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

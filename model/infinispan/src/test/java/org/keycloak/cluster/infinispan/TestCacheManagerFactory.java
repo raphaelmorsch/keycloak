@@ -22,11 +22,12 @@ import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.cache.StoreConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
-import org.infinispan.jboss.marshalling.core.JBossUserMarshaller;
+//import org.infinispan.jboss.marshalling.core.JBossUserMarshaller;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.persistence.remote.configuration.ExhaustedAction;
 import org.infinispan.persistence.remote.configuration.RemoteStoreConfigurationChildBuilder;
+import org.keycloak.cluster.infinispan.test.BookInitializer;
 import org.keycloak.connections.infinispan.InfinispanConnectionProvider;
 
 /**
@@ -40,10 +41,14 @@ class TestCacheManagerFactory {
         System.setProperty("jgroups.tcp.port", "53715");
         GlobalConfigurationBuilder gcb = new GlobalConfigurationBuilder();
 
+        // TODO:mposolda remove?
         // For Infinispan 10, we go with the JBoss marshalling.
         // TODO: This should be replaced later with the marshalling recommended by infinispan. Probably protostream.
         // See https://infinispan.org/docs/stable/titles/developing/developing.html#marshalling for the details
-        gcb.serialization().marshaller(new JBossUserMarshaller());
+        //gcb.serialization().marshaller(new JBossUserMarshaller());
+
+        gcb.serialization()
+                .addContextInitializers(new BookInitializer());
 
         boolean clustered = true;
         boolean async = false;
@@ -71,9 +76,10 @@ class TestCacheManagerFactory {
     private <T extends StoreConfigurationBuilder<?, T> & RemoteStoreConfigurationChildBuilder<T>> Configuration getCacheBackedByRemoteStore(int threadId, String cacheName, Class<T> builderClass) {
         ConfigurationBuilder cacheConfigBuilder = new ConfigurationBuilder();
 
-        String host = "localhost";
-        int port = threadId==1 ? 12232 : 13232;
-        //int port = 11222;
+        //String host = "localhost";
+        //int port = threadId==1 ? 12232 : 13232;
+        String host = threadId==1 ? "jdg1" : "jdg2";
+        int port = 11222;
 
         return cacheConfigBuilder.statistics().enable()
                 .persistence().addStore(builderClass)
@@ -83,9 +89,11 @@ class TestCacheManagerFactory {
                 .preload(false)
                 .shared(true)
                 .remoteCacheName(cacheName)
-                .rawValues(true)
+                // TODO:mposolda Is changing this OK?
+                .rawValues(false)
                 .forceReturnValues(false)
-                .marshaller(KeycloakHotRodMarshallerFactory.class.getName())
+                // TODO:mposolda
+                //.marshaller(KeycloakHotRodMarshallerFactory.class.getName())
                 .protocolVersion(ProtocolVersion.PROTOCOL_VERSION_29)
                 //.maxBatchSize(5)
                 .addServer()

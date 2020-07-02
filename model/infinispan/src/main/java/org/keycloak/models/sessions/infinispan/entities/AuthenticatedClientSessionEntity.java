@@ -20,6 +20,7 @@ package org.keycloak.models.sessions.infinispan.entities;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.Serializable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -36,7 +37,8 @@ import java.util.UUID;
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
 @SerializeWith(AuthenticatedClientSessionEntity.ExternalizerImpl.class)
-public class AuthenticatedClientSessionEntity extends SessionEntity {
+// TODO:mposolda serializable
+public class AuthenticatedClientSessionEntity extends SessionEntity implements Serializable {
 
     public static final Logger logger = Logger.getLogger(AuthenticatedClientSessionEntity.class);
 

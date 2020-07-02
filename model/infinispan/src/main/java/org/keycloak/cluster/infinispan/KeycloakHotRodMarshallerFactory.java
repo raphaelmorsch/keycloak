@@ -17,17 +17,53 @@
 
 package org.keycloak.cluster.infinispan;
 
-import org.infinispan.jboss.marshalling.commons.GenericJBossMarshaller;
+//import org.infinispan.jboss.marshalling.commons.GenericJBossMarshaller;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+
+import org.infinispan.commons.configuration.ClassWhiteList;
+//import org.infinispan.jboss.marshalling.commons.GenericJBossMarshaller;
+import org.jboss.logging.Logger;
+import org.keycloak.models.sessions.infinispan.changes.SessionEntityWrapper;
+import org.keycloak.models.sessions.infinispan.entities.AuthenticatedClientSessionEntity;
+import org.keycloak.models.sessions.infinispan.entities.AuthenticatedClientSessionStore;
+import org.keycloak.models.sessions.infinispan.entities.SessionEntity;
+import org.keycloak.models.sessions.infinispan.entities.UserSessionEntity;
 
 /**
+ * TODO:mposolda remove this class?
+ *
  * Needed on Wildfly, so that remoteStore (hotRod client) can find our classes
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
 public class KeycloakHotRodMarshallerFactory {
 
-    public static GenericJBossMarshaller getInstance() {
-        return new GenericJBossMarshaller(KeycloakHotRodMarshallerFactory.class.getClassLoader());
-    }
+    // TODO:mposolda remove this class entirely?
+//    public static final Logger logger = Logger.getLogger(KeycloakHotRodMarshallerFactory.class);
+//
+//    public static GenericJBossMarshaller getInstance() {
+//        List<String> whiteListClasses = Arrays.asList(
+//                SessionEntityWrapper.class.getName(),
+//                UUID.class.getName(),
+//                UserSessionEntity.class.getName(),
+//                SessionEntity.class.getName(),
+//                AuthenticatedClientSessionEntity.class.getName(),
+//                SessionEntityWrapper.ExternalizerImpl.class.getName(),
+//                UserSessionEntity.ExternalizerImpl.class.getName(),
+//                AuthenticatedClientSessionEntity.ExternalizerImpl.class.getName(),
+//                AuthenticatedClientSessionStore.class.getName(),
+//                AuthenticatedClientSessionStore.ExternalizerImpl.class.getName()
+//                );
+//
+//        ClassWhiteList whiteList = new ClassWhiteList(whiteListClasses, Collections.emptyList());
+//        logger.info("ADDING CLASSES TO WHITELIST");
+//
+//
+//        return new GenericJBossMarshaller(KeycloakHotRodMarshallerFactory.class.getClassLoader(), whiteList);
+//    }
 
 }

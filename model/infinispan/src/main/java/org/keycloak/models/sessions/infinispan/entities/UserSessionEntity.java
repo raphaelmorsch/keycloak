@@ -29,6 +29,7 @@ import org.keycloak.models.sessions.infinispan.util.KeycloakMarshallUtil;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.Serializable;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,7 +41,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
  */
 @SerializeWith(UserSessionEntity.ExternalizerImpl.class)
-public class UserSessionEntity extends SessionEntity {
+// TODO:mposolda serializable
+public class UserSessionEntity extends SessionEntity implements Serializable {
 
     public static final Logger logger = Logger.getLogger(UserSessionEntity.class);
 

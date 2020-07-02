@@ -1,0 +1,7 @@
+package org.keycloak.cluster.infinispan.test.Book;
+
+message Book {
+    optional string title = 1;
+    optional string description = 2;
+    optional int32 publicationYear = 3; // no native Date type available in Protobuf
+}

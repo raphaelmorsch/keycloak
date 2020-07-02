@@ -20,6 +20,7 @@ package org.keycloak.models.sessions.infinispan.changes;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -35,8 +36,9 @@ import org.jboss.logging.Logger;
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
+// TODO:mposolda serializable
 @SerializeWith(SessionEntityWrapper.ExternalizerImpl.class)
-public class SessionEntityWrapper<S extends SessionEntity> {
+public class SessionEntityWrapper<S extends SessionEntity> implements Serializable {
 
     private static final Logger log = Logger.getLogger(SessionEntityWrapper.class);
 
