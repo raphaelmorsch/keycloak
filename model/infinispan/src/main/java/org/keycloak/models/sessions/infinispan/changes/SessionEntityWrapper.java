@@ -158,6 +158,9 @@ public class SessionEntityWrapper<S extends SessionEntity> {
 
         @Override
         public void writeObject(ObjectOutput output, SessionEntityWrapper obj) throws IOException {
+            // TODO:mposolda remove this
+            log.info("Serializing SessionEntityWrapper with ExternalizerImpl");
+
             output.writeByte(VERSION_1);
 
             final boolean forTransport = obj.isForTransport();
@@ -175,6 +178,9 @@ public class SessionEntityWrapper<S extends SessionEntity> {
 
         @Override
         public SessionEntityWrapper readObject(ObjectInput input) throws IOException, ClassNotFoundException {
+            // TODO:mposolda remove this
+            log.info("DeSerializing SessionEntityWrapper with ExternalizerImpl");
+
             byte version = input.readByte();
 
             if (version != VERSION_1) {
