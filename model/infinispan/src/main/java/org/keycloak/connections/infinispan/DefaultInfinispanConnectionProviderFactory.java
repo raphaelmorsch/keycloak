@@ -356,22 +356,7 @@ public class DefaultInfinispanConnectionProviderFactory implements InfinispanCon
                 .evictionType(EvictionType.COUNT)
                 .size(maxEntries);
 
-        // TODO: Remove this
-        if (!containerManaged) {
-            addDataContainerConfig(cb);
-        }
-
         return cb.build();
-    }
-
-    // TODO: This method is temporary workaround needed due the WFLY-13603. It should not be needed after upgrade to Wildfly bigger than 20
-    private void addDataContainerConfig(ConfigurationBuilder cb) {
-        try {
-            Class<? extends Builder<?>> clazz = (Class<? extends Builder<?>>) Class.forName("org.wildfly.clustering.infinispan.spi.DataContainerConfigurationBuilder");
-            cb.addModule(clazz);
-        } catch (ClassNotFoundException cnfe) {
-            throw new RuntimeException(cnfe);
-        }
     }
 
     // Used for cross-data centers scenario. Usually integration with external JDG server, which itself handles communication between DCs.
@@ -449,11 +434,6 @@ public class DefaultInfinispanConnectionProviderFactory implements InfinispanCon
                 .size(InfinispanConnectionProvider.KEYS_CACHE_DEFAULT_MAX);
 
         cb.expiration().maxIdle(InfinispanConnectionProvider.KEYS_CACHE_MAX_IDLE_SECONDS, TimeUnit.SECONDS);
-
-        // TODO: Remove this
-        if (!containerManaged) {
-            addDataContainerConfig(cb);
-        }
 
         return cb.build();
     }
