@@ -67,7 +67,8 @@
                             </target>
                         </configuration>
                     </execution>
-                    <execution>
+                    <!-- TODO:mposolda -->
+                    <!--<execution>
                         <id>configure-infinispan</id>
                         <phase>process-resources</phase>
                         <goals>
@@ -104,7 +105,7 @@
                                 <ant antfile="infinispan.xml" target="prepare-docker-config" />
                             </target>
                         </configuration>
-                    </execution>
+                    </execution>-->
                 </executions>
             </plugin>
         </plugins>

@@ -187,6 +187,10 @@ public class KeycloakDeployment {
                     registerNodeUrl = authUrlBuilder.clone().path(ServiceUrlConstants.CLIENTS_MANAGEMENT_REGISTER_NODE_PATH).build(getRealm()).toString();
                     unregisterNodeUrl = authUrlBuilder.clone().path(ServiceUrlConstants.CLIENTS_MANAGEMENT_UNREGISTER_NODE_PATH).build(getRealm()).toString();
                     jwksUrl = config.getJwksUri();
+                    // Fallback in case of server access over http. It is needed due the KEYCLOAK-15779 change
+                    if (jwksUrl == null) {
+                        jwksUrl = KeycloakUriBuilder.fromUri(config.getIssuer()).path("/protocol/openid-connect/certs").build().toString();
+                    }
 
                     log.infov("Loaded URLs from {0}", discoveryUrl);
                 } catch (Exception e) {

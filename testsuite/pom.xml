@@ -46,6 +46,7 @@
         <module>db-allocator-plugin</module>
         <module>integration-arquillian</module>
         <module>utils</module>
+        <module>performance</module> <!-- TODO:mposolda remove -->
     </modules>
 
     <profiles>

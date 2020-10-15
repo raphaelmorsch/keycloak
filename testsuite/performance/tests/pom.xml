@@ -318,6 +318,9 @@
                         
                         <param>${trustStoreArg}</param>
                         <param>${trustStorePasswordArg}</param>
+
+                        <!-- Uncomment in case of debugging needed -->
+                        <!--<param>-agentlib:jdwp=transport=dt_socket,address=8787,server=y,suspend=y</param>-->
                     </jvmArgs>
                 </configuration>
 
