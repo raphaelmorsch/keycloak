@@ -79,14 +79,16 @@ public class PropertyMapper {
     static PropertyMapper IDENTITY = new PropertyMapper(null, null, null, null, null) {
         @Override
         public ConfigValue getOrDefault(String name, ConfigSourceInterceptorContext context, ConfigValue current) {
-            if (current == null) {
-                ConfigValue.builder().withName(name)
-                        .withValue(getBuiltTimeProperty(PropertyMappers.toCLIFormat(name))
-                                .orElseGet(() -> getBuiltTimeProperty(name)
-                                        .orElse(null))).build();
-            }
+            String buildTimeValue = getBuiltTimeProperty(PropertyMappers.toCLIFormat(name))
+                    .orElseGet(() -> getBuiltTimeProperty(name)
+                            .orElse(null));
 
-            return current;
+            if (buildTimeValue != null) {
+                return ConfigValue.builder().withName(name)
+                        .withValue(buildTimeValue).build();
+            } else {
+                return current;
+            }
         }
     };
 
@@ -131,15 +133,15 @@ public class PropertyMapper {
     }
 
     ConfigValue getOrDefault(String name, ConfigSourceInterceptorContext context, ConfigValue current) {
+        Optional<ConfigValue> buildConfig = getBuiltTimeValue(from, context);
+        if (buildConfig.isPresent()) {
+            return buildConfig.get();
+        }
+
         // try to obtain the value for the property we want to map
         ConfigValue config = context.proceed(from);
 
         if (config == null) {
-            Optional<ConfigValue> buildConfig = getBuiltTimeValue(from, context);
-
-            if (buildConfig.isPresent()) {
-                return buildConfig.get();
-            }
 
             if (mapFrom != null) {
                 // if the property we want to map depends on another one, we use the value from the other property to call the mapper

@@ -59,7 +59,7 @@ public class ConfigArgsConfigSource extends PropertiesConfigSource {
         if (!propertyName.startsWith(NS_KEYCLOAK_PREFIX)) {
             return null;
         }
-        
+
         return super.getValue(propertyName);
     }
 

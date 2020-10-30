@@ -160,14 +160,12 @@ public class KeycloakRecorder {
                                 "--" + PropertyMappers.toCLIFormat(propertyName).substring(3) + "=" + value.getValue();
 
                         if (configHelpText.contains(currentProp)) {
-                            LOGGER.warnf("The new value [%s] of the property [%s] in [%s] differs from the value [%s] set into the server image. The new value will override the value set into the server image.",
+                            LOGGER.warnf("The new value [%s] of the property [%s] in [%s] differs from the value [%s] set into the server image. The new value will be ignored.",
                                     value.getValue(), propertyName, value.getConfigSourceName(), buildValue);
-                            configHelpText = configHelpText.replaceAll(currentProp, newProp);
                         } else if (!configHelpText
                                 .contains("--" + PropertyMappers.toCLIFormat(propertyName).substring(3))) {
-                            LOGGER.warnf("The new value [%s] of the property [%s] in [%s] differs from the value [%s] set into the server image. The new value will override the value set into the server image.",
+                            LOGGER.warnf("The new value [%s] of the property [%s] in [%s] differs from the value [%s] set into the server image. The new value will be ignored.",
                                     value.getValue(), propertyName, value.getConfigSourceName(), buildValue);
-                            configHelpText += " " + newProp;
                         }
                     } else if (!BUILD_TIME_PROPERTIES.keySet().stream()
                             .anyMatch(new Predicate<String>() {
