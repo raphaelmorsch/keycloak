@@ -20,6 +20,7 @@ package org.keycloak.events.jpa;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jboss.logging.Logger;
+import org.keycloak.common.util.Time;
 import org.keycloak.events.Event;
 import org.keycloak.events.EventQuery;
 import org.keycloak.events.EventStoreProvider;
@@ -28,10 +29,13 @@ import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.events.admin.AdminEventQuery;
 import org.keycloak.events.admin.AuthDetails;
 import org.keycloak.events.admin.OperationType;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.utils.KeycloakModelUtils;
 
 import javax.persistence.EntityManager;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -45,10 +49,12 @@ public class JpaEventStoreProvider implements EventStoreProvider {
     };
     private static final Logger logger = Logger.getLogger(JpaEventStoreProvider.class);
 
+    private final KeycloakSession session;
     private final EntityManager em;
     private final int maxDetailLength;
 
-    public JpaEventStoreProvider(EntityManager em, int maxDetailLength) {
+    public JpaEventStoreProvider(KeycloakSession session, EntityManager em, int maxDetailLength) {
+        this.session = session;
         this.em = em;
         this.maxDetailLength = maxDetailLength;
     }
@@ -71,6 +77,43 @@ public class JpaEventStoreProvider implements EventStoreProvider {
     @Override
     public void clear(String realmId, long olderThan) {
         em.createQuery("delete from EventEntity where realmId = :realmId and time < :time").setParameter("realmId", realmId).setParameter("time", olderThan).executeUpdate();
+    }
+
+    @Override
+    public void clearExpiredEvents() {
+        // By default, realm provider is always "jpa", so we can optimize and delete all events in single SQL, assuming that realms are saved in the DB as well.
+        // Fallback to model API just with different realm provider than "jpa" (This is never the case in standard Keycloak installations)
+        int i = 0;
+        long currentTimeMillis = Time.currentTimeMillis();
+        if (KeycloakModelUtils.isRealmProviderJpa(session)) {
+            boolean eventsToDeleteExists = true;
+            int numDeleted = 0;
+            while (eventsToDeleteExists) {
+                i++;
+                List<String> idsToDelete = em.createQuery("select ev.id from EventEntity ev, RealmEntity realm " +
+                        "where realm.id = ev.realmId and realm.eventsEnabled = true and realm.eventsExpiration > 0 and ev.time + realm.eventsExpiration * 1000 < :timeMs")
+                        .setParameter("timeMs", currentTimeMillis)
+                        .setMaxResults(1000)
+                        .getResultList();
+                if (idsToDelete.isEmpty()) {
+                    eventsToDeleteExists = false;
+                } else {
+                    numDeleted += em.createQuery("delete from EventEntity evt where evt.id in :ids")
+                            .setParameter("ids", idsToDelete)
+                            .executeUpdate();
+                    logger.tracef("Cleared %d expired events in the iteration %d", numDeleted, i);
+                }
+            }
+
+            logger.debugf("Cleared %d expired events in all realms", numDeleted);
+        } else {
+            session.realms().getRealmsStream().forEach(realm -> {
+                if (realm.isEventsEnabled() && realm.getEventsExpiration() > 0) {
+                    long olderThan = Time.currentTimeMillis() - realm.getEventsExpiration() * 1000;
+                    clear(realm.getId(), olderThan);
+                }
+            });
+        }
     }
 
     @Override
