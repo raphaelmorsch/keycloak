@@ -201,6 +201,7 @@ public class EventStoreProviderTest extends AbstractEventsTest {
         testing().onEvent(create(System.currentTimeMillis(), EventType.LOGIN, "realmId", "clientId", "userId", "127.0.0.1", "error"));
         testing().onEvent(create(System.currentTimeMillis(), EventType.LOGIN, "realmId", "clientId", "userId", "127.0.0.1", "error"));
         testing().onEvent(create(System.currentTimeMillis() - 300000, EventType.LOGIN, "realmId2", "clientId", "userId", "127.0.0.1", "error"));
+        testing().onEvent(create(System.currentTimeMillis(), EventType.LOGIN, "realmId2", "clientId", "userId", "127.0.0.1", "error"));
 
         // Set expiration of events for "realmId" .
         RealmRepresentation realm = realmsResouce().realm("realmId").toRepresentation();
@@ -209,18 +210,18 @@ public class EventStoreProviderTest extends AbstractEventsTest {
 
         // The first 2 events from realmId will be deleted
         testing().clearExpiredEvents();
-        Assert.assertEquals(3, testing().queryEvents(null, null, null, null, null, null, null, null, null).size());
+        Assert.assertEquals(4, testing().queryEvents(null, null, null, null, null, null, null, null, null).size());
 
         // Set expiration of events for realmId2 as well
         RealmRepresentation realm2 = realmsResouce().realm("realmId2").toRepresentation();
         realm2.setEventsExpiration(100);
         realmsResouce().realm("realmId2").update(realm2);
 
-        // The event from "realmId2" will be deleted now
+        // The first event from "realmId2" will be deleted now
         testing().clearExpiredEvents();
-        Assert.assertEquals(2, testing().queryEvents(null, null, null, null, null, null, null, null, null).size());
+        Assert.assertEquals(3, testing().queryEvents(null, null, null, null, null, null, null, null, null).size());
 
-        // set time offset to the future. The remaining 2 events from "realmId" should be expired now
+        // set time offset to the future. The remaining 2 events from "realmId" and 1 event from "realmId2" should be expired now
         setTimeOffset(150);
         testing().clearExpiredEvents();
         Assert.assertEquals(0, testing().queryEvents(null, null, null, null, null, null, null, null, null).size());

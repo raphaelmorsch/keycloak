@@ -83,28 +83,22 @@ public class JpaEventStoreProvider implements EventStoreProvider {
     public void clearExpiredEvents() {
         // By default, realm provider is always "jpa", so we can optimize and delete all events in single SQL, assuming that realms are saved in the DB as well.
         // Fallback to model API just with different realm provider than "jpa" (This is never the case in standard Keycloak installations)
-        int i = 0;
+        int numDeleted = 0;
         long currentTimeMillis = Time.currentTimeMillis();
         if (KeycloakModelUtils.isRealmProviderJpa(session)) {
-            boolean eventsToDeleteExists = true;
-            int numDeleted = 0;
-            while (eventsToDeleteExists) {
-                i++;
-                List<String> idsToDelete = em.createQuery("select ev.id from EventEntity ev, RealmEntity realm " +
-                        "where realm.id = ev.realmId and realm.eventsEnabled = true and realm.eventsExpiration > 0 and ev.time + realm.eventsExpiration * 1000 < :timeMs")
-                        .setParameter("timeMs", currentTimeMillis)
-                        .setMaxResults(1000)
-                        .getResultList();
-                if (idsToDelete.isEmpty()) {
-                    eventsToDeleteExists = false;
-                } else {
-                    numDeleted += em.createQuery("delete from EventEntity evt where evt.id in :ids")
-                            .setParameter("ids", idsToDelete)
+
+            // Group realms by expiration times. This will be effective if different realms have same/similar event expiration times, which will probably be the case in most environments
+            List<Long> eventExpirations = em.createQuery("select distinct realm.eventsExpiration from RealmEntity realm").getResultList();
+            for (Long expiration : eventExpirations) {
+                if (expiration > 0) {
+                    int currentNumDeleted = em.createQuery("delete from EventEntity where realmId in (select realm.id from RealmEntity realm where realm.eventsExpiration = :expiration) and time < :eventTime")
+                            .setParameter("expiration", expiration)
+                            .setParameter("eventTime", currentTimeMillis - (expiration * 1000))
                             .executeUpdate();
-                    logger.tracef("Cleared %d expired events in the iteration %d", numDeleted, i);
+                    logger.tracef("Deleted %d events for the expiration %d", currentNumDeleted, expiration);
+                    numDeleted += currentNumDeleted;
                 }
             }
-
             logger.debugf("Cleared %d expired events in all realms", numDeleted);
         } else {
             session.realms().getRealmsStream().forEach(realm -> {
