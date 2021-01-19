@@ -18,6 +18,7 @@
 package org.keycloak.models.sessions.infinispan.initializer;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.infinispan.Cache;
@@ -25,21 +26,35 @@ import org.infinispan.client.hotrod.ProtocolVersion;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.commons.api.BasicCache;
+import org.infinispan.commons.time.TimeService;
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
+import org.infinispan.factories.GlobalComponentRegistry;
+import org.infinispan.factories.impl.BasicComponentRegistry;
+import org.infinispan.factories.impl.ComponentRef;
+import org.infinispan.manager.CacheContainer;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.remoting.transport.jgroups.JGroupsTransport;
+import org.jboss.logging.Logger;
 import org.jgroups.JChannel;
 import org.junit.Ignore;
+import org.keycloak.cluster.infinispan.ConcurrencyJDGCacheReplaceTest;
 import org.keycloak.common.util.Time;
 import org.keycloak.connections.infinispan.InfinispanConnectionProvider;
+import org.keycloak.models.sessions.infinispan.CacheDecorators;
 import org.keycloak.models.sessions.infinispan.changes.SessionEntityWrapper;
 import org.keycloak.models.sessions.infinispan.entities.AuthenticatedClientSessionEntity;
 import org.keycloak.models.sessions.infinispan.entities.UserSessionEntity;
+import org.keycloak.models.sessions.infinispan.stream.Mappers;
+import org.keycloak.models.sessions.infinispan.stream.SessionPredicate;
+
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Test concurrent writes to distributed cache with usage of atomic replace
@@ -48,6 +63,8 @@ import java.util.UUID;
  */
 @Ignore
 public class DistributedCacheConcurrentWritesTest {
+
+    protected static final Logger logger = Logger.getLogger(DistributedCacheConcurrentWritesTest.class);
 
     private static final int BATCHES_PER_WORKER = 1000;
     private static final int ITEMS_IN_BATCH = 100;
@@ -61,7 +78,59 @@ public class DistributedCacheConcurrentWritesTest {
 //        BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache2 = createRemoteCache("node2");
 
         try {
-            testConcurrentPut(cache1, cache2);
+//            testConcurrentPut(cache1, cache2);
+
+            SessionEntityWrapper<UserSessionEntity> session = createEntityInstance("123");
+            SessionEntityWrapper<UserSessionEntity> session2 = createEntityInstance("234");
+            SessionEntityWrapper<UserSessionEntity> session3 = createEntityInstance("345");
+            SessionEntityWrapper<UserSessionEntity> session4 = createEntityInstance("456");
+            SessionEntityWrapper<UserSessionEntity> session5 = createEntityInstance("567");
+
+            cache1.put("123", session, 10, TimeUnit.SECONDS, 9, TimeUnit.SECONDS);
+            cache1.put("234", session2, 10, TimeUnit.SECONDS, 9, TimeUnit.SECONDS);
+            cache1.put("345", session3, 10, TimeUnit.SECONDS, 9, TimeUnit.SECONDS);
+            cache1.put("456", session4, 10, TimeUnit.SECONDS, 9, TimeUnit.SECONDS);
+            cache1.put("567", session5, 10, TimeUnit.SECONDS, 9, TimeUnit.SECONDS);
+
+            //pause(8000);
+            Time.setOffset(8);
+
+            logger.infof("123 exists: %b, 234 exists: %b, 345 exists: %b, 456 exists: %b, 567 exists: %b", cache1.containsKey("123"), cache1.containsKey("234"), cache1.containsKey("345"), cache1.containsKey("456"), cache1.containsKey("567"));
+
+//            cache2.get("123");
+//            cache2.get("234");
+//            cache2.get("345");
+//            cache2.get("456");
+//            cache2.get("567");
+
+            cache1.replace("123", session5, 10, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
+            cache1.replace("234", session2, 10, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
+
+//            List cacheEntries = (List) CacheDecorators.localCache((Cache<String, SessionEntityWrapper<UserSessionEntity>>) cache1).keySet().stream().filter(key -> key.equals("123"))
+//                    .collect(Collectors.toList());
+
+                    //.collect(Collectors.toMap(sessionEntityWrapper -> sessionEntityWrapper.getEntity().getId(), Function.identity()));
+                   //.collect(Collectors.toList());
+
+            // pause(3000);
+            Time.setOffset(11);
+
+            logger.infof("123 exists: %b, 234 exists: %b, 345 exists: %b, 456 exists: %b, 567 exists: %b", cache1.containsKey("123"), cache1.containsKey("234"), cache1.containsKey("345"), cache1.containsKey("456"), cache1.containsKey("567"));
+
+
+//            for (int i=0 ; i<1 ; i++) {
+//                pause(i, 6000, cache1);
+//            }
+//
+//            logger.info("REPLACING 456");
+//            cache1.replace("456", session2, 10, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
+//
+//            for (int i=5 ; i<35 ; i++) {
+//                pause(i, 1000, cache1);
+//            }
+
+            logger.info("FINISH");
+
         } finally {
 
             // Kill JVM
@@ -71,6 +140,14 @@ public class DistributedCacheConcurrentWritesTest {
             stopMgr(cache2);
 
             System.out.println("Managers killed");
+        }
+    }
+
+    private static void pause(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ie) {
+            throw new RuntimeException(ie);
         }
     }
 
@@ -194,8 +271,12 @@ public class DistributedCacheConcurrentWritesTest {
         gcb = gcb.clusteredDefault();
         gcb.transport().clusterName("test-clustering");
         gcb.transport().nodeName(nodeName);
-        gcb.jmx().domain(InfinispanConnectionProvider.JMX_DOMAIN).enable();
-        EmbeddedCacheManager cacheManager = new DefaultCacheManager(gcb.build());
+
+        //gcb.jmx().domain(InfinispanConnectionProvider.JMX_DOMAIN).enable();
+        EmbeddedCacheManager cacheManager = new DefaultCacheManager(gcb.build(), false);
+        TimeService timeService = new ControlledTimeService();
+        replaceComponent(cacheManager,  TimeService.class, timeService, true);
+        cacheManager.start();
 
         ConfigurationBuilder distConfigBuilder = new ConfigurationBuilder();
         distConfigBuilder.clustering().cacheMode(CacheMode.DIST_SYNC);
@@ -245,5 +326,45 @@ public class DistributedCacheConcurrentWritesTest {
             Map<String, String> stats = ((RemoteCache) cache).stats().getStatsMap();
             System.out.println("Stats: " + stats);
         }
+    }
+
+
+    /**
+     * Replaces a component in a running cache manager (global component registry)
+     *
+     * @param cacheMgr       cache in which to replace component
+     * @param componentType        component type of which to replace
+     * @param replacementComponent new instance
+     * @param rewire               if true, ComponentRegistry.rewire() is called after replacing.
+     *
+     * @return the original component that was replaced
+     */
+    public static <T> T replaceComponent(EmbeddedCacheManager cacheMgr, Class<T> componentType, T replacementComponent,
+                                         boolean rewire) {
+        return replaceComponent(cacheMgr, componentType, componentType.getName(), replacementComponent, rewire);
+    }
+
+    /**
+     * Same as {@link TestingUtil#replaceComponent(CacheContainer, Class, Object, boolean)} except that you can provide
+     * an optional name, to replace specifically named components.
+     *
+     * @param cacheContainer       cache in which to replace component
+     * @param componentType        component type of which to replace
+     * @param name                 name of the component
+     * @param replacementComponent new instance
+     * @param rewire               if true, ComponentRegistry.rewire() is called after replacing.
+     *
+     * @return the original component that was replaced
+     */
+    public static <T> T replaceComponent(EmbeddedCacheManager cacheMgr, Class<T> componentType, String name, T replacementComponent, boolean rewire) {
+        GlobalComponentRegistry cr = cacheMgr.getGlobalComponentRegistry();
+        BasicComponentRegistry bcr = cr.getComponent(BasicComponentRegistry.class);
+        ComponentRef<T> old = bcr.getComponent(componentType);
+        bcr.replaceComponent(name, replacementComponent, true);
+        if (rewire) {
+            cr.rewire();
+            cr.rewireNamedRegistries();
+        }
+        return old != null ? old.wired() : null;
     }
 }
