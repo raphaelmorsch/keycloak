@@ -16,39 +16,29 @@
  *
  */
 
-package org.keycloak.models.sessions.infinispan.initializer;
+package org.keycloak.testsuite.util;
 
-import java.time.Instant;
-import java.util.concurrent.TimeUnit;
-
-import org.infinispan.util.EmbeddedTimeService;
-import org.keycloak.common.util.Time;
+import org.junit.rules.ExternalResource;
+import org.keycloak.testsuite.AbstractKeycloakTest;
 
 /**
- * Infinispan TimeService, which delegates to Keycloak Time.currentTime to figure current time. Useful for testing purposes.
- *
- * TODO:mposolda remove this
- *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public class ControlledTimeService extends EmbeddedTimeService {
+public class InfinispanTestTimeServiceRule extends ExternalResource {
 
-    private long getCurrentTimeMillis() {
-        return Time.currentTimeMillis();
+    private final AbstractKeycloakTest test;
+
+    public InfinispanTestTimeServiceRule(AbstractKeycloakTest test) {
+        this.test = test;
     }
 
     @Override
-    public long wallClockTime() {
-        return getCurrentTimeMillis();
+    protected void before() throws Throwable {
+        test.getTestingClient().testing().setTestingInfinispanTimeService();
     }
 
     @Override
-    public long time() {
-        return TimeUnit.MILLISECONDS.toNanos(getCurrentTimeMillis());
-    }
-
-    @Override
-    public Instant instant() {
-        return Instant.ofEpochMilli(getCurrentTimeMillis());
+    protected void after() {
+        test.getTestingClient().testing().revertTestingInfinispanTimeService();
     }
 }

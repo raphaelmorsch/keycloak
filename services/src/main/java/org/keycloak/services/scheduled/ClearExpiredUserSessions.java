@@ -31,10 +31,11 @@ public class ClearExpiredUserSessions implements ScheduledTask {
 
     @Override
     public void run(KeycloakSession session) {
+        session.authenticationSessions().removeAllExpired(session);
+
         UserSessionProvider sessions = session.sessions();
         session.realms().getRealmsStream().forEach(realm -> {
             sessions.removeExpired(realm);
-            session.authenticationSessions().removeExpired(realm);
             session.getProvider(UserSessionPersisterProvider.class).removeExpired(realm);
         });
     }

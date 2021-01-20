@@ -196,6 +196,16 @@ public interface TestingResource {
     @Produces(MediaType.APPLICATION_JSON)
     void removeExpired(@QueryParam("realm") final String realm);
 
+    @POST
+    @Path("/set-testing-infinispan-time-service")
+    @Produces(MediaType.APPLICATION_JSON)
+    void setTestingInfinispanTimeService();
+
+    @POST
+    @Path("/revert-testing-infinispan-time-service")
+    @Produces(MediaType.APPLICATION_JSON)
+    void revertTestingInfinispanTimeService();
+
     @GET
     @Path("/get-client-sessions-count")
     @Produces(MediaType.APPLICATION_JSON)

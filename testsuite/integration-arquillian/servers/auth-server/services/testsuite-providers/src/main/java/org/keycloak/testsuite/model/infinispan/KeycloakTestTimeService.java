@@ -16,7 +16,7 @@
  *
  */
 
-package org.keycloak.models.sessions.infinispan.initializer;
+package org.keycloak.testsuite.model.infinispan;
 
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
@@ -27,11 +27,9 @@ import org.keycloak.common.util.Time;
 /**
  * Infinispan TimeService, which delegates to Keycloak Time.currentTime to figure current time. Useful for testing purposes.
  *
- * TODO:mposolda remove this
- *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public class ControlledTimeService extends EmbeddedTimeService {
+public class KeycloakTestTimeService extends EmbeddedTimeService {
 
     private long getCurrentTimeMillis() {
         return Time.currentTimeMillis();
