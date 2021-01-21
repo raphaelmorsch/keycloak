@@ -138,6 +138,14 @@ public interface UserSessionProvider extends Provider {
     void removeUserSession(RealmModel realm, UserSessionModel session);
     void removeUserSessions(RealmModel realm, UserModel user);
 
+    /**
+     * Remove expired events in all the realms.
+     * Implementation doesn't need to propagate removal of expired userSessions to userSessionPersister. Cleanup on persister will be called separately
+     */
+    default void removeAllExpired(KeycloakSession session) {
+        session.realms().getRealmsStream().forEach(this::removeExpired);
+    }
+
     /** Implementation doesn't need to propagate removal of expired userSessions to userSessionPersister. Cleanup on persister will be called separately **/
     void removeExpired(RealmModel realm);
     void removeUserSessions(RealmModel realm);
