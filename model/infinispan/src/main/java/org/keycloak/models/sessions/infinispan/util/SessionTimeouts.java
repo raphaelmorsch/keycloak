@@ -1,0 +1,205 @@
+/*
+ * Copyright 2020 Red Hat, Inc. and/or its affiliates
+ * and other contributors as indicated by the @author tags.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+package org.keycloak.models.sessions.infinispan.util;
+
+import org.keycloak.common.util.Time;
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.sessions.infinispan.entities.AuthenticatedClientSessionEntity;
+import org.keycloak.models.sessions.infinispan.entities.LoginFailureEntity;
+import org.keycloak.models.sessions.infinispan.entities.UserSessionEntity;
+import org.keycloak.models.utils.SessionTimeoutHelper;
+
+/**
+ * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ */
+public class SessionTimeouts {
+
+    /**
+     * Get the maximum lifespan, which this userSession can remain in the infinispan cache.
+     * Returned value will be used as "lifespan" when calling put/replace operation in the infinispan cache for this entity
+     *
+     * @param realm
+     * @param userSessionEntity
+     * @return
+     */
+    public static Long getUserSessionLifespanMs(RealmModel realm, UserSessionEntity userSessionEntity) {
+        int timeSinceSessionStart = Time.currentTime() - userSessionEntity.getStarted();
+
+        int sessionMaxLifespan = realm.getSsoSessionMaxLifespan();
+        if (userSessionEntity.isRememberMe()) {
+            sessionMaxLifespan = Math.max(realm.getSsoSessionMaxLifespanRememberMe(), sessionMaxLifespan);
+        }
+
+        long timeToExpire = sessionMaxLifespan - timeSinceSessionStart;
+        return timeToExpire * 1000;
+    }
+
+
+    /**
+     * Get the maximum idle time for this userSession.
+     * Returned value will be used when as "maxIdleTime" when calling put/replace operation in the infinispan cache for this entity
+     *
+     * @param realm
+     * @param userSessionEntity
+     * @return
+     */
+    public static Long getUserSessionMaxIdleMs(RealmModel realm, UserSessionEntity userSessionEntity) {
+        int timeSinceLastRefresh = Time.currentTime() - userSessionEntity.getLastSessionRefresh();
+
+        int sessionIdleMs = realm.getSsoSessionIdleTimeout();
+        if (userSessionEntity.isRememberMe()) {
+            sessionIdleMs = Math.max(realm.getSsoSessionIdleTimeoutRememberMe(), sessionIdleMs);
+        }
+
+        long maxIdleTime = sessionIdleMs - timeSinceLastRefresh + SessionTimeoutHelper.PERIODIC_CLEANER_IDLE_TIMEOUT_WINDOW_SECONDS;
+        return maxIdleTime * 1000;
+    }
+
+
+    /**
+     * Get the maximum lifespan, which this clientSession can remain in the infinispan cache.
+     * Returned value will be used as "lifespan" when calling put/replace operation in the infinispan cache for this entity
+     *
+     * This will be effectively used just for the "detached" clientSession (those without userSession) as usually clientSessions will be removed
+     * once the particular userSession is removed
+     *
+     * @param realm
+     * @param clientSessionEntity
+     * @return
+     */
+    public static Long getClientSessionLifespanMs(RealmModel realm, AuthenticatedClientSessionEntity clientSessionEntity) {
+        int timeSinceTimestampUpdate = Time.currentTime() - clientSessionEntity.getTimestamp();
+
+        int sessionMaxLifespan = Math.max(realm.getSsoSessionMaxLifespan(), realm.getSsoSessionMaxLifespanRememberMe());
+
+        long timeToExpire = sessionMaxLifespan - timeSinceTimestampUpdate;
+        return timeToExpire * 1000;
+    }
+
+
+    /**
+     * Not using maxIdle for detached client sessions (backwards compatibility with the background cleaner threads, which were used for cleanup of detached client sessions)
+     *
+     * @param realm
+     * @param clientSessionEntity
+     * @return
+     */
+    public static Long getClientSessionMaxIdleMs(RealmModel realm, AuthenticatedClientSessionEntity clientSessionEntity) {
+        return -1l;
+    }
+
+
+    /**
+     * Get the maximum lifespan, which this offline userSession can remain in the infinispan cache.
+     * Returned value will be used as "lifespan" when calling put/replace operation in the infinispan cache for this entity
+     *
+     * @param realm
+     * @param userSessionEntity
+     * @return
+     */
+    public static Long getOfflineSessionLifespanMs(RealmModel realm, UserSessionEntity userSessionEntity) {
+        // By default, this is disabled, so offlineSessions have just "maxIdle"
+        if (!realm.isOfflineSessionMaxLifespanEnabled()) return -1l;
+
+        int timeSinceSessionStart = Time.currentTime() - userSessionEntity.getStarted();
+
+        int sessionMaxLifespan = realm.getOfflineSessionMaxLifespan();
+
+        long timeToExpire = sessionMaxLifespan - timeSinceSessionStart;
+        return timeToExpire * 1000;
+    }
+
+
+    /**
+     * Get the maximum idle time for this offline userSession.
+     * Returned value will be used when as "maxIdleTime" when calling put/replace operation in the infinispan cache for this entity
+     *
+     * @param realm
+     * @param userSessionEntity
+     * @return
+     */
+    public static Long getOfflineSessionMaxIdleMs(RealmModel realm, UserSessionEntity userSessionEntity) {
+        int timeSinceLastRefresh = Time.currentTime() - userSessionEntity.getLastSessionRefresh();
+
+        int sessionIdleMs = realm.getOfflineSessionIdleTimeout();
+
+        long maxIdleTime = sessionIdleMs - timeSinceLastRefresh + SessionTimeoutHelper.PERIODIC_CLEANER_IDLE_TIMEOUT_WINDOW_SECONDS;
+        return maxIdleTime * 1000;
+    }
+
+    /**
+     * Get the maximum lifespan, which this offline clientSession can remain in the infinispan cache.
+     * Returned value will be used as "lifespan" when calling put/replace operation in the infinispan cache for this entity
+     *
+     * This will be effectively used just for the "detached" clientSession (those without userSession) as usually clientSessions will be removed
+     * once the particular userSession is removed
+     *
+     * @param realm
+     * @param authenticatedClientSessionEntity
+     * @return
+     */
+    public static Long getOfflineClientSessionLifespanMs(RealmModel realm, AuthenticatedClientSessionEntity authenticatedClientSessionEntity) {
+        int timeSinceTimestampUpdate = Time.currentTime() - authenticatedClientSessionEntity.getTimestamp();
+
+        int sessionMaxLifespan = realm.getOfflineSessionIdleTimeout();
+        if (realm.isOfflineSessionMaxLifespanEnabled() && realm.getOfflineSessionMaxLifespan() > sessionMaxLifespan) {
+            sessionMaxLifespan = realm.getOfflineSessionMaxLifespan();
+        }
+
+        long timeToExpire = sessionMaxLifespan - timeSinceTimestampUpdate;
+        return timeToExpire * 1000;
+    }
+
+    /**
+     * Not using maxIdle for detached offline client sessions (backwards compatibility with the background cleaner threads, which were used for cleanup of detached client sessions)
+     *
+     * @param realm
+     * @param authenticatedClientSessionEntity
+     * @return
+     */
+    public static Long getOfflineClientSessionMaxIdleMs(RealmModel realm, AuthenticatedClientSessionEntity authenticatedClientSessionEntity) {
+        return -1l;
+    }
+
+
+    /**
+     * Not using lifespan for detached login failure  (backwards compatibility with the background cleaner threads, which were used for cleanup of detached login failures)
+     *
+     * @param realm
+     * @param loginFailureEntity
+     * @return
+     */
+    public static Long getLoginFailuresLifespanMs(RealmModel realm, LoginFailureEntity loginFailureEntity) {
+        return -1l;
+    }
+
+
+    /**
+     * Not using maxIdle for detached login failure  (backwards compatibility with the background cleaner threads, which were used for cleanup of detached login failures)
+     *
+     * @param realm
+     * @param loginFailureEntity
+     * @return
+     */
+    public static Long getLoginFailuresMaxIdleMs(RealmModel realm, LoginFailureEntity loginFailureEntity) {
+        return -1l;
+    }
+
+
+}
