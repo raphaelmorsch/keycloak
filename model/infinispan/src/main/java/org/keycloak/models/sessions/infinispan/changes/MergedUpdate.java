@@ -25,7 +25,7 @@ import org.keycloak.models.sessions.infinispan.entities.SessionEntity;
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<S> {
+public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<S> {
 
     private final List<SessionUpdateTask<S>> childUpdates = new LinkedList<>();
     private CacheOperation operation;

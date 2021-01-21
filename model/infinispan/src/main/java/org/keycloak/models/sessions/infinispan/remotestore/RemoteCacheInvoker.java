@@ -32,6 +32,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.connections.infinispan.TopologyInfo;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.sessions.infinispan.changes.MergedUpdate;
 import org.keycloak.models.sessions.infinispan.changes.SessionEntityWrapper;
 import org.keycloak.models.sessions.infinispan.changes.SessionUpdateTask;
 import org.keycloak.models.sessions.infinispan.entities.SessionEntity;
@@ -57,7 +58,7 @@ public class RemoteCacheInvoker {
     }
 
 
-    public <K, V extends SessionEntity> void runTask(KeycloakSession kcSession, RealmModel realm, String cacheName, K key, SessionUpdateTask<V> task, SessionEntityWrapper<V> sessionWrapper) {
+    public <K, V extends SessionEntity> void runTask(KeycloakSession kcSession, RealmModel realm, String cacheName, K key, MergedUpdate<V> task, SessionEntityWrapper<V> sessionWrapper) {
         RemoteCacheContext context = remoteCaches.get(cacheName);
         if (context == null) {
             return;
@@ -104,7 +105,7 @@ public class RemoteCacheInvoker {
     }
 
 
-    private <K, V extends SessionEntity> void runOnRemoteCache(TopologyInfo topology, RemoteCache<K, SessionEntityWrapper<V>> remoteCache, long maxIdleMs, K key, SessionUpdateTask<V> task, SessionEntityWrapper<V> sessionWrapper) {
+    private <K, V extends SessionEntity> void runOnRemoteCache(TopologyInfo topology, RemoteCache<K, SessionEntityWrapper<V>> remoteCache, long maxIdleMs, K key, MergedUpdate<V> task, SessionEntityWrapper<V> sessionWrapper) {
         final V session = sessionWrapper.getEntity();
         SessionUpdateTask.CacheOperation operation = task.getOperation(session);
 

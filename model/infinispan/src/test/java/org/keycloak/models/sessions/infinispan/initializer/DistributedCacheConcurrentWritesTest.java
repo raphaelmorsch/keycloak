@@ -18,7 +18,6 @@
 package org.keycloak.models.sessions.infinispan.initializer;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.infinispan.Cache;
@@ -41,20 +40,15 @@ import org.infinispan.remoting.transport.jgroups.JGroupsTransport;
 import org.jboss.logging.Logger;
 import org.jgroups.JChannel;
 import org.junit.Ignore;
-import org.keycloak.cluster.infinispan.ConcurrencyJDGCacheReplaceTest;
 import org.keycloak.common.util.Time;
 import org.keycloak.connections.infinispan.InfinispanConnectionProvider;
-import org.keycloak.models.sessions.infinispan.CacheDecorators;
 import org.keycloak.models.sessions.infinispan.changes.SessionEntityWrapper;
 import org.keycloak.models.sessions.infinispan.entities.AuthenticatedClientSessionEntity;
 import org.keycloak.models.sessions.infinispan.entities.UserSessionEntity;
-import org.keycloak.models.sessions.infinispan.stream.Mappers;
-import org.keycloak.models.sessions.infinispan.stream.SessionPredicate;
+import org.keycloak.models.sessions.infinispan.util.SessionExpireListeners;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Test concurrent writes to distributed cache with usage of atomic replace
@@ -72,6 +66,9 @@ public class DistributedCacheConcurrentWritesTest {
     public static void main(String[] args) throws Exception {
         BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache1 = createCache("node1");
         BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache2 = createCache("node2");
+
+        ((Cache) cache1).addListener(new SessionExpireListeners("cache1"));
+        ((Cache) cache2).addListener(new SessionExpireListeners("cache2"));
 
         // NOTE: This setup requires infinispan servers to be up and running on localhost:12232 and localhost:13232
 //        BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache1 = createRemoteCache("node1");
