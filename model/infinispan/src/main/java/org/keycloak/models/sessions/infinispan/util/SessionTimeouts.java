@@ -31,6 +31,11 @@ import org.keycloak.models.utils.SessionTimeoutHelper;
 public class SessionTimeouts {
 
     /**
+     * This indicates that entry is already expired and should be removed from the cache
+     */
+    public static final long ENTRY_EXPIRED_FLAG = -2l;
+
+    /**
      * Get the maximum lifespan, which this userSession can remain in the infinispan cache.
      * Returned value will be used as "lifespan" when calling put/replace operation in the infinispan cache for this entity
      *
@@ -47,6 +52,12 @@ public class SessionTimeouts {
         }
 
         long timeToExpire = sessionMaxLifespan - timeSinceSessionStart;
+
+        // Indication that entry should be expired
+        if (timeToExpire <=0) {
+            timeToExpire = ENTRY_EXPIRED_FLAG;
+        }
+
         return timeToExpire * 1000;
     }
 
@@ -68,6 +79,12 @@ public class SessionTimeouts {
         }
 
         long maxIdleTime = sessionIdleMs - timeSinceLastRefresh + SessionTimeoutHelper.PERIODIC_CLEANER_IDLE_TIMEOUT_WINDOW_SECONDS;
+
+        // Indication that entry should be expired
+        if (maxIdleTime <=0) {
+            maxIdleTime = ENTRY_EXPIRED_FLAG;
+        }
+
         return maxIdleTime * 1000;
     }
 
@@ -89,6 +106,12 @@ public class SessionTimeouts {
         int sessionMaxLifespan = Math.max(realm.getSsoSessionMaxLifespan(), realm.getSsoSessionMaxLifespanRememberMe());
 
         long timeToExpire = sessionMaxLifespan - timeSinceTimestampUpdate;
+
+        // Indication that entry should be expired
+        if (timeToExpire <=0) {
+            timeToExpire = ENTRY_EXPIRED_FLAG;
+        }
+
         return timeToExpire * 1000;
     }
 
@@ -122,6 +145,12 @@ public class SessionTimeouts {
         int sessionMaxLifespan = realm.getOfflineSessionMaxLifespan();
 
         long timeToExpire = sessionMaxLifespan - timeSinceSessionStart;
+
+        // Indication that entry should be expired
+        if (timeToExpire <=0) {
+            timeToExpire = ENTRY_EXPIRED_FLAG;
+        }
+
         return timeToExpire * 1000;
     }
 
@@ -140,6 +169,12 @@ public class SessionTimeouts {
         int sessionIdleMs = realm.getOfflineSessionIdleTimeout();
 
         long maxIdleTime = sessionIdleMs - timeSinceLastRefresh + SessionTimeoutHelper.PERIODIC_CLEANER_IDLE_TIMEOUT_WINDOW_SECONDS;
+
+        // Indication that entry should be expired
+        if (maxIdleTime <=0) {
+            maxIdleTime = ENTRY_EXPIRED_FLAG;
+        }
+
         return maxIdleTime * 1000;
     }
 
@@ -163,6 +198,12 @@ public class SessionTimeouts {
         }
 
         long timeToExpire = sessionMaxLifespan - timeSinceTimestampUpdate;
+
+        // Indication that entry should be expired
+        if (timeToExpire <=0) {
+            timeToExpire = ENTRY_EXPIRED_FLAG;
+        }
+
         return timeToExpire * 1000;
     }
 

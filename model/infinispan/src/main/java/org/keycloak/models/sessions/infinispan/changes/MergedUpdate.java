@@ -20,12 +20,16 @@ package org.keycloak.models.sessions.infinispan.changes;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.jboss.logging.Logger;
 import org.keycloak.models.sessions.infinispan.entities.SessionEntity;
+import org.keycloak.models.sessions.infinispan.util.SessionTimeouts;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
 public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<S> {
+
+    private static final Logger logger = Logger.getLogger(InfinispanChangelogBasedTransaction.class);
 
     private final List<SessionUpdateTask<S>> childUpdates = new LinkedList<>();
     private CacheOperation operation;
@@ -39,6 +43,12 @@ public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<
         this.crossDCMessageStatus = crossDCMessageStatus;
         this.lifespanMs = lifespanMs;
         this.maxIdleTimeMs = maxIdleTimeMs;
+
+        if (this.lifespanMs == SessionTimeouts.ENTRY_EXPIRED_FLAG || this.maxIdleTimeMs == SessionTimeouts.ENTRY_EXPIRED_FLAG) {
+            this.operation = CacheOperation.REMOVE;
+            // TODO:mposolda
+            logger.info("Entry '%s' is expired. Will remove it from the cache");
+        }
     }
 
     @Override
