@@ -67,8 +67,8 @@ public class DistributedCacheConcurrentWritesTest {
         BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache1 = createCache("node1");
         BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache2 = createCache("node2");
 
-        ((Cache) cache1).addListener(new SessionExpireListeners("cache1"));
-        ((Cache) cache2).addListener(new SessionExpireListeners("cache2"));
+//        ((Cache) cache1).addListener(new SessionExpireListeners("cache1"));
+//        ((Cache) cache2).addListener(new SessionExpireListeners("cache2"));
 
         // NOTE: This setup requires infinispan servers to be up and running on localhost:12232 and localhost:13232
 //        BasicCache<String, SessionEntityWrapper<UserSessionEntity>> cache1 = createRemoteCache("node1");

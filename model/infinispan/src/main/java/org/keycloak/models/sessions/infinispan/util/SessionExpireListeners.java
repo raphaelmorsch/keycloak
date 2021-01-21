@@ -57,7 +57,7 @@ public class SessionExpireListeners {
         @CacheEntryExpired
         public void cacheEntryExpired(CacheEntryExpiredEvent<String, SessionEntityWrapper<UserSessionEntity>> event) {
             // TODO:mposolda trace
-            logger.infof("Expired session from the cache '%s' . Session: %s", event.getValue());
+            logger.infof("Expired session from the cache '%s' . Session ID: %s", event.getCache().getName(), event.getKey());
 
             UserSessionEntity userSessionEntity = event.getValue().getEntity();
 
@@ -86,7 +86,7 @@ public class SessionExpireListeners {
         @CacheEntryExpired
         public void cacheEntryExpired(CacheEntryExpiredEvent<String, SessionEntityWrapper<AuthenticatedClientSessionEntity>> event) {
             // TODO:mposolda trace
-            logger.infof("Expired session from the cache '%s' . Session: %s", event.getValue());
+            logger.infof("Expired session from the cache '%s' . Session ID: %s", event.getCache().getName(), event.getKey());
 
             // RemoteCache is not null. Otherwise this listener is not added
             remoteCache.remove(event.getKey());

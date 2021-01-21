@@ -55,7 +55,7 @@ public class SessionTimeouts {
 
         // Indication that entry should be expired
         if (timeToExpire <=0) {
-            timeToExpire = ENTRY_EXPIRED_FLAG;
+            return ENTRY_EXPIRED_FLAG;
         }
 
         return timeToExpire * 1000;
@@ -82,7 +82,7 @@ public class SessionTimeouts {
 
         // Indication that entry should be expired
         if (maxIdleTime <=0) {
-            maxIdleTime = ENTRY_EXPIRED_FLAG;
+            return ENTRY_EXPIRED_FLAG;
         }
 
         return maxIdleTime * 1000;
@@ -109,7 +109,7 @@ public class SessionTimeouts {
 
         // Indication that entry should be expired
         if (timeToExpire <=0) {
-            timeToExpire = ENTRY_EXPIRED_FLAG;
+            return ENTRY_EXPIRED_FLAG;
         }
 
         return timeToExpire * 1000;
@@ -148,7 +148,7 @@ public class SessionTimeouts {
 
         // Indication that entry should be expired
         if (timeToExpire <=0) {
-            timeToExpire = ENTRY_EXPIRED_FLAG;
+            return ENTRY_EXPIRED_FLAG;
         }
 
         return timeToExpire * 1000;
@@ -172,7 +172,7 @@ public class SessionTimeouts {
 
         // Indication that entry should be expired
         if (maxIdleTime <=0) {
-            maxIdleTime = ENTRY_EXPIRED_FLAG;
+            return ENTRY_EXPIRED_FLAG;
         }
 
         return maxIdleTime * 1000;
@@ -201,7 +201,7 @@ public class SessionTimeouts {
 
         // Indication that entry should be expired
         if (timeToExpire <=0) {
-            timeToExpire = ENTRY_EXPIRED_FLAG;
+            return ENTRY_EXPIRED_FLAG;
         }
 
         return timeToExpire * 1000;

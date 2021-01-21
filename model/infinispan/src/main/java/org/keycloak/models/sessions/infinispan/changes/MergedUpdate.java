@@ -29,7 +29,7 @@ import org.keycloak.models.sessions.infinispan.util.SessionTimeouts;
  */
 public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<S> {
 
-    private static final Logger logger = Logger.getLogger(InfinispanChangelogBasedTransaction.class);
+    private static final Logger logger = Logger.getLogger(MergedUpdate.class);
 
     private final List<SessionUpdateTask<S>> childUpdates = new LinkedList<>();
     private CacheOperation operation;
@@ -46,7 +46,7 @@ public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<
 
         if (this.lifespanMs == SessionTimeouts.ENTRY_EXPIRED_FLAG || this.maxIdleTimeMs == SessionTimeouts.ENTRY_EXPIRED_FLAG) {
             this.operation = CacheOperation.REMOVE;
-            // TODO:mposolda
+            // TODO:mposolda Probably remove this entirely
             logger.info("Entry '%s' is expired. Will remove it from the cache");
         }
     }

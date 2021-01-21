@@ -196,6 +196,9 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
                 CacheDecorators.skipCacheStore(cache)
                         .getAdvancedCache().withFlags(Flag.IGNORE_RETURN_VALUES)
                         .put(key, sessionWrapper, task.getLifespanMs(), TimeUnit.MILLISECONDS, task.getMaxIdleTimeMs(), TimeUnit.MILLISECONDS);
+
+                // TODO:mposolda
+                logger.infof("Added entity '%s' to the cache '%s' . Lifespan: %d ms, MaxIdle: %d ms", key, cache.getName(), task.getLifespanMs(), task.getMaxIdleTimeMs());
                 break;
             case ADD_IF_ABSENT:
                 SessionEntityWrapper<V> existing = CacheDecorators.skipCacheStore(cache).putIfAbsent(key, sessionWrapper, task.getLifespanMs(), TimeUnit.MILLISECONDS, task.getMaxIdleTimeMs(), TimeUnit.MILLISECONDS);
@@ -206,6 +209,9 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
                     task.runUpdate(existing.getEntity());
 
                     replace(key, task, existing, task.getLifespanMs(), task.getMaxIdleTimeMs());
+                } else {
+                    // TODO:mposolda
+                    logger.infof("Add_if_absent successfully called for entity '%s' to the cache '%s' . Lifespan: %d ms, MaxIdle: %d ms", key, cache.getName(), task.getLifespanMs(), task.getMaxIdleTimeMs());
                 }
                 break;
             case REPLACE:
@@ -248,9 +254,10 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
 
                 task.runUpdate(session);
             } else {
-                if (logger.isTraceEnabled()) {
-                    logger.tracef("Replace SUCCESS for entity: %s . old version: %s, new version: %s", key, oldVersionEntity.getVersion(), newVersionEntity.getVersion());
-                }
+                // TODO:mposolda
+                //if (logger.isTraceEnabled()) {
+                    logger.infof("Replace SUCCESS for entity: %s . old version: %s, new version: %s, Lifespan: %d ms, MaxIdle: %d ms", key, oldVersionEntity.getVersion(), newVersionEntity.getVersion(), task.getLifespanMs(), task.getMaxIdleTimeMs());
+                //}
             }
         }
 
