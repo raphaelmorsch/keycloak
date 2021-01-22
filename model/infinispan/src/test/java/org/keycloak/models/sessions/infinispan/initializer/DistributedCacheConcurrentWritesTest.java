@@ -256,6 +256,8 @@ public class DistributedCacheConcurrentWritesTest {
     public static BasicCache<String, SessionEntityWrapper<UserSessionEntity>> createCache(String nodeName) {
         EmbeddedCacheManager mgr = createManager(nodeName);
         Cache<String, SessionEntityWrapper<UserSessionEntity>> cache = mgr.getCache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME);
+
+        cache.addListener(new SessionExpireListeners.UserSessionCacheListener(null, null));
         return cache;
     }
 
@@ -342,10 +344,10 @@ public class DistributedCacheConcurrentWritesTest {
     }
 
     /**
-     * Same as {@link TestingUtil#replaceComponent(CacheContainer, Class, Object, boolean)} except that you can provide
+     * Same as {@link #replaceComponent(EmbeddedCacheManager, Class, Object, boolean)} except that you can provide
      * an optional name, to replace specifically named components.
      *
-     * @param cacheContainer       cache in which to replace component
+     * @param cacheMgr             cache in which to replace component
      * @param componentType        component type of which to replace
      * @param name                 name of the component
      * @param replacementComponent new instance

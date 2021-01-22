@@ -18,13 +18,22 @@
 
 package org.keycloak.testsuite.util;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.jboss.logging.Logger;
 import org.junit.rules.ExternalResource;
 import org.keycloak.testsuite.AbstractKeycloakTest;
+import org.keycloak.testsuite.arquillian.ContainerInfo;
+import org.keycloak.testsuite.arquillian.CrossDCTestEnricher;
+
+import static org.keycloak.testsuite.arquillian.CrossDCTestEnricher.forAllBackendNodesStream;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
 public class InfinispanTestTimeServiceRule extends ExternalResource {
+
+    private static final Logger log = Logger.getLogger(InfinispanTestTimeServiceRule.class);
 
     private final AbstractKeycloakTest test;
 
@@ -34,11 +43,37 @@ public class InfinispanTestTimeServiceRule extends ExternalResource {
 
     @Override
     protected void before() throws Throwable {
-        test.getTestingClient().testing().setTestingInfinispanTimeService();
+        if (!this.test.getTestContext().getSuiteContext().isAuthServerCrossDc()) {
+            // No cross-dc environment
+            test.getTestingClient().testing().setTestingInfinispanTimeService();
+        } else {
+            AtomicInteger count = new AtomicInteger(0);
+            // Cross-dc environment - Set on all started nodes
+            forAllBackendNodesStream()
+                    .filter(ContainerInfo::isStarted)
+                    .map(CrossDCTestEnricher.getBackendTestingClients()::get)
+                    .forEach(testingClient -> {
+                        testingClient.testing().setTestingInfinispanTimeService();
+                        count.incrementAndGet();
+                    });
+
+            //
+            log.infof("Totally set infinispanTimeService rule in %d servers", count.get());
+        }
     }
 
     @Override
     protected void after() {
-        test.getTestingClient().testing().revertTestingInfinispanTimeService();
+        if (!this.test.getTestContext().getSuiteContext().isAuthServerCrossDc()) {
+            // No cross-dc environment
+            test.getTestingClient().testing().revertTestingInfinispanTimeService();
+        } else {
+            // Cross-dc environment - Revert on all started nodes
+            forAllBackendNodesStream()
+                    .filter(ContainerInfo::isStarted)
+                    .map(CrossDCTestEnricher.getBackendTestingClients()::get)
+                    .forEach(testingClient -> testingClient.testing().revertTestingInfinispanTimeService());
+
+        }
     }
 }
