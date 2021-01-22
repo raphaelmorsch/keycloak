@@ -43,12 +43,6 @@ public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<
         this.crossDCMessageStatus = crossDCMessageStatus;
         this.lifespanMs = lifespanMs;
         this.maxIdleTimeMs = maxIdleTimeMs;
-
-        if (this.lifespanMs == SessionTimeouts.ENTRY_EXPIRED_FLAG || this.maxIdleTimeMs == SessionTimeouts.ENTRY_EXPIRED_FLAG) {
-            this.operation = CacheOperation.REMOVE;
-            // TODO:mposolda Probably remove this entirely
-            logger.info("Entry '%s' is expired. Will remove it from the cache");
-        }
     }
 
     @Override
@@ -86,7 +80,15 @@ public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<
         S session = sessionWrapper.getEntity();
         for (SessionUpdateTask<S> child : childUpdates) {
             if (result == null) {
-                result = new MergedUpdate<>(child.getOperation(session), child.getCrossDCMessageStatus(sessionWrapper), lifespanMs, maxIdleTimeMs);
+                CacheOperation operation = child.getOperation(session);
+
+                if (lifespanMs == SessionTimeouts.ENTRY_EXPIRED_FLAG || maxIdleTimeMs == SessionTimeouts.ENTRY_EXPIRED_FLAG) {
+                    operation = CacheOperation.REMOVE;
+                    // TODO:mposolda Probably remove this entirely
+                    logger.infof("Entry '%s' is expired. Will remove it from the cache", sessionWrapper);
+                }
+
+                result = new MergedUpdate<>(operation, child.getCrossDCMessageStatus(sessionWrapper), lifespanMs, maxIdleTimeMs);
                 result.childUpdates.add(child);
             } else {
 

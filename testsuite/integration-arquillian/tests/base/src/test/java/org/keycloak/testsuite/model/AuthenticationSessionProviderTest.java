@@ -46,8 +46,6 @@ import static org.hamcrest.core.IsNull.notNullValue;
 import static org.hamcrest.core.IsNull.nullValue;
 import static org.junit.Assert.assertThat;
 import org.keycloak.models.Constants;
-import org.keycloak.models.RoleModel;
-import org.keycloak.testsuite.util.AssertAdminEvents;
 import org.keycloak.testsuite.util.InfinispanTestTimeServiceRule;
 
 import static org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude.AuthServer.REMOTE;

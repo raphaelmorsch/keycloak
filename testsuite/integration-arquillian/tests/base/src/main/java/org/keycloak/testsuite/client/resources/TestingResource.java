@@ -196,6 +196,10 @@ public interface TestingResource {
     @Produces(MediaType.APPLICATION_JSON)
     void removeExpired(@QueryParam("realm") final String realm);
 
+    /**
+     * Will set {@link org.keycloak.testsuite.model.infinispan.KeycloakTestTimeService} to the infinispan CacheManager before the test.
+     * This will allow infinispan expiration to be aware of Keycloak {@link org.keycloak.common.util.Time#setOffset}
+     */
     @POST
     @Path("/set-testing-infinispan-time-service")
     @Produces(MediaType.APPLICATION_JSON)
