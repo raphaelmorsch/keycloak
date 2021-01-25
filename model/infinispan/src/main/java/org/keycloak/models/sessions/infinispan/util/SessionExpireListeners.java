@@ -59,17 +59,17 @@ public class SessionExpireListeners {
             // TODO:mposolda trace
             logger.infof("Expired session from the cache '%s' . Session ID: %s", event.getCache().getName(), event.getKey());
 
-            UserSessionEntity userSessionEntity = event.getValue().getEntity();
-
-            // Propagate removal of expired session to remoteCache
-            if (remoteCache != null) {
-                remoteCache.remove(event.getKey());
-            }
-
-            // Remove expired client sessions
-            userSessionEntity.getAuthenticatedClientSessions().forEach((clientUUID, clientSessionId) -> {
-                clientSessionCache.removeAsync(clientSessionId);
-            });
+//            UserSessionEntity userSessionEntity = event.getValue().getEntity();
+//
+//            // Propagate removal of expired session to remoteCache
+//            if (remoteCache != null) {
+//                remoteCache.remove(event.getKey());
+//            }
+//
+//            // Remove expired client sessions
+//            userSessionEntity.getAuthenticatedClientSessions().forEach((clientUUID, clientSessionId) -> {
+//                clientSessionCache.removeAsync(clientSessionId);
+//            });
         }
 
     }
@@ -89,7 +89,7 @@ public class SessionExpireListeners {
             logger.infof("Expired client session from the cache '%s' . Session ID: %s", event.getCache().getName(), event.getKey());
 
             // RemoteCache is not null. Otherwise this listener is not added
-            remoteCache.remove(event.getKey());
+//            remoteCache.remove(event.getKey());
         }
 
     }

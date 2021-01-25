@@ -115,6 +115,14 @@ public class SessionExpirationCrossDCTest extends AbstractAdminCrossDCTest {
 
     @After
     public void afterTest() {
+        // Expire all sessions
+        setTimeOffset(1500);
+        getTestingClientForStartedNodeInDc(0).testing().cache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME).processExpiration();
+        getTestingClientForStartedNodeInDc(0).testing().cache(InfinispanConnectionProvider.CLIENT_SESSION_CACHE_NAME).processExpiration();
+        getTestingClientForStartedNodeInDc(0).testing().cache(InfinispanConnectionProvider.OFFLINE_USER_SESSION_CACHE_NAME).processExpiration();
+        getTestingClientForStartedNodeInDc(0).testing().cache(InfinispanConnectionProvider.OFFLINE_CLIENT_SESSION_CACHE_NAME).processExpiration();
+        resetTimeOffset();
+
         revertInfinispanTestTimeServiceOnAllStartedAuthServers();
     }
 
@@ -299,7 +307,7 @@ public class SessionExpirationCrossDCTest extends AbstractAdminCrossDCTest {
 
         // Remove expired in DC0
         getTestingClientForStartedNodeInDc(0).testing().cache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME).processExpiration();
-        //getTestingClientForStartedNodeInDc(0).testing().cache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME).processExpiration();
+        getTestingClientForStartedNodeInDc(0).testing().cache(InfinispanConnectionProvider.CLIENT_SESSION_CACHE_NAME).processExpiration();
 
         // Assert sessions removed on node1 and node2 and on remote caches.
         assertStatisticsExpected("After remove expired - 2", InfinispanConnectionProvider.USER_SESSION_CACHE_NAME, InfinispanConnectionProvider.CLIENT_SESSION_CACHE_NAME, cacheDc1Statistics, cacheDc2Statistics, channelStatisticsCrossDc,
@@ -346,6 +354,7 @@ public class SessionExpirationCrossDCTest extends AbstractAdminCrossDCTest {
 
         // Remove expired in DC0
         getTestingClientForStartedNodeInDc(0).testing().cache(InfinispanConnectionProvider.OFFLINE_USER_SESSION_CACHE_NAME).processExpiration();
+        getTestingClientForStartedNodeInDc(0).testing().cache(InfinispanConnectionProvider.OFFLINE_CLIENT_SESSION_CACHE_NAME).processExpiration();
 
         // Assert sessions removed on node1 and node2 and on remote caches.
         assertStatisticsExpected("After remove expired - 2", InfinispanConnectionProvider.OFFLINE_USER_SESSION_CACHE_NAME, InfinispanConnectionProvider.OFFLINE_CLIENT_SESSION_CACHE_NAME,
@@ -572,7 +581,6 @@ public class SessionExpirationCrossDCTest extends AbstractAdminCrossDCTest {
 
         // Trigger removeExpired
         getTestingClientForStartedNodeInDc(0).testing().cache(InfinispanConnectionProvider.CLIENT_SESSION_CACHE_NAME).processExpiration();
-        getTestingClientForStartedNodeInDc(1).testing().cache(InfinispanConnectionProvider.CLIENT_SESSION_CACHE_NAME).processExpiration();
 
         // Ensure clientSessions were removed
         assertStatisticsExpected("After remove expired", InfinispanConnectionProvider.USER_SESSION_CACHE_NAME, InfinispanConnectionProvider.CLIENT_SESSION_CACHE_NAME,
@@ -603,7 +611,6 @@ public class SessionExpirationCrossDCTest extends AbstractAdminCrossDCTest {
 
         // Trigger removeExpired
         getTestingClientForStartedNodeInDc(0).testing().cache(InfinispanConnectionProvider.OFFLINE_CLIENT_SESSION_CACHE_NAME).processExpiration();
-        getTestingClientForStartedNodeInDc(1).testing().cache(InfinispanConnectionProvider.OFFLINE_CLIENT_SESSION_CACHE_NAME).processExpiration();
 
         // Ensure clientSessions were removed
         assertStatisticsExpected("After remove expired", InfinispanConnectionProvider.OFFLINE_USER_SESSION_CACHE_NAME, InfinispanConnectionProvider.OFFLINE_CLIENT_SESSION_CACHE_NAME,

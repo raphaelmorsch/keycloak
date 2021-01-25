@@ -61,16 +61,16 @@ public class ConcurrencyJDGCachePutTest {
 
         // Create caches, listeners and finally worker threads
         Worker worker1 = createWorker(1);
-        Worker worker2 = createWorker(2);
+       // Worker worker2 = createWorker(2);
 
         long start = System.currentTimeMillis();
 
         // Start and join workers
         worker1.start();
-        worker2.start();
+        //worker2.start();
 
         worker1.join();
-        worker2.join();
+        //worker2.join();
 
         long took = System.currentTimeMillis() - start;
 
@@ -96,7 +96,7 @@ public class ConcurrencyJDGCachePutTest {
 
         // Finish JVM
         worker1.cache.getCacheManager().stop();
-        worker2.cache.getCacheManager().stop();
+        //worker2.cache.getCacheManager().stop();
     }
 
     private static Worker createWorker(int threadId) {

@@ -19,11 +19,16 @@ package org.keycloak.cluster.infinispan;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.infinispan.Cache;
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.context.Flag;
+import org.infinispan.persistence.remote.configuration.RemoteStoreConfigurationBuilder;
 import org.jboss.logging.Logger;
 import org.junit.Assert;
 import org.keycloak.common.util.Time;
@@ -32,6 +37,7 @@ import org.keycloak.models.sessions.infinispan.changes.SessionEntityWrapper;
 import org.keycloak.models.sessions.infinispan.entities.AuthenticatedClientSessionEntity;
 import org.keycloak.models.sessions.infinispan.entities.UserSessionEntity;
 import org.keycloak.models.sessions.infinispan.initializer.DistributedCacheConcurrentWritesTest;
+import org.keycloak.models.sessions.infinispan.util.InfinispanUtil;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
@@ -41,7 +47,7 @@ public class ConcurrencyDistributedRemoveSessionTest {
 
     protected static final Logger logger = Logger.getLogger(ConcurrencyJDGRemoveSessionTest.class);
 
-    private static final int ITERATIONS = 10000;
+    private static final int ITERATIONS = 5;
 
     private static final AtomicInteger errorsCounter = new AtomicInteger(0);
 
@@ -54,65 +60,85 @@ public class ConcurrencyDistributedRemoveSessionTest {
     private static final UUID CLIENT_1_UUID = UUID.randomUUID();
 
     public static void main(String[] args) throws Exception {
-        Cache<String, SessionEntityWrapper<UserSessionEntity>> cache1 = DistributedCacheConcurrentWritesTest.createManager("node1").getCache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME);
-        Cache<String, SessionEntityWrapper<UserSessionEntity>> cache2 = DistributedCacheConcurrentWritesTest.createManager("node2").getCache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME);
+        Cache<String, SessionEntityWrapper<UserSessionEntity>> cache1 = new TestCacheManagerFactory().createManager(1, InfinispanConnectionProvider.USER_SESSION_CACHE_NAME, RemoteStoreConfigurationBuilder.class).getCache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME);
+        //Cache<String, SessionEntityWrapper<UserSessionEntity>> cache2 = DistributedCacheConcurrentWritesTest.createManager("node2").getCache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME);
 
         // Create caches, listeners and finally worker threads
-        Thread worker1 = createWorker(cache1, 1);
-        Thread worker2 = createWorker(cache2, 2);
-        Thread worker3 = createWorker(cache1, 1);
-        Thread worker4 = createWorker(cache2, 2);
+//        Thread worker1 = createWorker(cache1, 1);
+//        Thread worker2 = createWorker(cache2, 2);
+//        Thread worker3 = createWorker(cache1, 1);
+//        Thread worker4 = createWorker(cache2, 2);
+
+        RemoteCache remoteCache = InfinispanUtil.getRemoteCache(cache1);
 
         // Create 100 initial sessions
         for (int i=0 ; i<ITERATIONS ; i++) {
-            String sessionId = String.valueOf(i);
+            String sessionId = String.valueOf(new Random().nextInt(50));
             SessionEntityWrapper<UserSessionEntity> wrappedSession = createSessionEntity(sessionId);
-            cache1.put(sessionId, wrappedSession);
+
+            // Add to normal cache only
+            cache1.getAdvancedCache()
+                    .withFlags(Flag.IGNORE_RETURN_VALUES, Flag.SKIP_CACHE_LOAD, Flag.SKIP_CACHE_STORE)
+                    .put(sessionId, wrappedSession, 20, TimeUnit.SECONDS, 10, TimeUnit.SECONDS);
+
+            // Add to remoteCache only
+            remoteCache.put(sessionId, wrappedSession, 100, TimeUnit.SECONDS, 50, TimeUnit.SECONDS);
+
 
             removalCounts.put(sessionId, new AtomicInteger(0));
         }
 
-        logger.info("SESSIONS CREATED");
+        //logger.infof("SESSIONS CREATED, cache1.size: %d, remoteCache.size: %d", cache1.getAdvancedCache().withFlags(Flag.SKIP_CACHE_LOAD).size(), remoteCache.size());
+        logger.infof("SESSIONS CREATED, cache1.size: %d, remoteCache.size: %d", cache1.size(), remoteCache.size());
 
         // Create 100 initial sessions
-        for (int i=0 ; i<ITERATIONS ; i++) {
-            String sessionId = String.valueOf(i);
-            SessionEntityWrapper loadedWrapper = cache2.get(sessionId);
-            Assert.assertNotNull("Loaded wrapper for key " + sessionId, loadedWrapper);
-        }
-
-        logger.info("SESSIONS AVAILABLE ON DC2");
-
-
-        long start = System.currentTimeMillis();
+//        for (int i=0 ; i<ITERATIONS ; i++) {
+//            String sessionId = String.valueOf(i);
+//            SessionEntityWrapper loadedWrapper = cache2.get(sessionId);
+//            Assert.assertNotNull("Loaded wrapper for key " + sessionId, loadedWrapper);
+//        }
+//
+//        logger.info("SESSIONS AVAILABLE ON DC2");
+//
+//
+//        long start = System.currentTimeMillis();
 
         try {
-            worker1.start();
-            worker2.start();
-            worker3.start();
-            worker4.start();
+            logger.info("Waiting...");
+            Thread.sleep(12000);
+            logger.info("Waiting finished");
 
-            worker1.join();
-            worker2.join();
-            worker3.join();
-            worker4.join();
+            cache1.getAdvancedCache().getExpirationManager().processExpiration();
+            logger.infof("SESSIONS AFTER WAIT, cache1.size: %d, remoteCache.size: %d", cache1.size(), remoteCache.size());
+            logger.infof("SESSIONS AFTER WAIT, cache1.size: %d, remoteCache.size: %d", cache1.getAdvancedCache().withFlags(Flag.SKIP_CACHE_LOAD).size(), remoteCache.size());
+            logger.infof("SESSIONS AFTER WAIT, cache1.size: %d, remoteCache.size: %d", cache1.size(), remoteCache.size());
 
-            logger.info("SESSIONS REMOVED");
+//            worker1.start();
+//            worker2.start();
+//            worker3.start();
+//            worker4.start();
 
-            Map<Integer, Integer> histogram = new HashMap<>();
-            for (Map.Entry<String, AtomicInteger> entry : removalCounts.entrySet()) {
-                int count = entry.getValue().get();
+//            worker1.join();
+//            worker2.join();
+//            worker3.join();
+//            worker4.join();
 
-                int current = histogram.get(count) == null ? 0 : histogram.get(count);
-                current++;
-                histogram.put(count, current);
-            }
-
-            logger.infof("Histogram: %s", histogram.toString());
-            logger.infof("Errors: %d", errorsCounter.get());
-
-            long took = System.currentTimeMillis() - start;
-            logger.infof("took %d ms", took);
+//            logger.info("SESSIONS REMOVED");
+//
+//            Map<Integer, Integer> histogram = new HashMap<>();
+//            for (Map.Entry<String, AtomicInteger> entry : removalCounts.entrySet()) {
+//                int count = entry.getValue().get();
+//
+//                int current = histogram.get(count) == null ? 0 : histogram.get(count);
+//                current++;
+//                histogram.put(count, current);
+//            }
+//
+//            logger.infof("Histogram: %s", histogram.toString());
+//            logger.infof("Errors: %d", errorsCounter.get());
+//
+//            long took = System.currentTimeMillis() - start;
+//            logger.infof("took %d ms", took);
 
 
         } finally {
@@ -120,7 +146,7 @@ public class ConcurrencyDistributedRemoveSessionTest {
 
             // Finish JVM
             cache1.getCacheManager().stop();
-            cache2.getCacheManager().stop();
+            //cache2.getCacheManager().stop();
         }
     }
 
