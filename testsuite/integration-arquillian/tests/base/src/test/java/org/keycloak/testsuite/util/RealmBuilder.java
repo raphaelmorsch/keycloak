@@ -53,6 +53,15 @@ public class RealmBuilder {
         this.rep = rep;
     }
 
+    /**
+     * ID of the realm. If it is not set, it will be ranomly assigned by Keycloak during realm creation (usually randomly generated)
+     *
+     */
+    public RealmBuilder id(String id) {
+        rep.setId(id);
+        return this;
+    }
+
     public RealmBuilder name(String name) {
         rep.setRealm(name);
         return this;
