@@ -115,8 +115,7 @@ public class DeviceEndpoint extends AuthorizationEndpointBase implements RealmRe
         // So back button doesn't work
         CacheControlUtil.noBackButtonCacheControlHeader();
 
-        OIDCAdvancedConfigWrapper oidcAdvancedConfigWrapper = OIDCAdvancedConfigWrapper.fromClientModel(client);
-        if (!oidcAdvancedConfigWrapper.isOAuth2DeviceAuthorizationGrantEnabled()) {
+        if (!realm.getOAuth2DeviceConfig().isOAuth2DeviceAuthorizationGrantEnabled(client)) {
             event.error(Errors.NOT_ALLOWED);
             throw new ErrorResponseException(OAuthErrorException.INVALID_GRANT,
                 "Client not allowed for OAuth 2.0 Device Authorization Grant", Response.Status.BAD_REQUEST);
@@ -328,8 +327,7 @@ public class DeviceEndpoint extends AuthorizationEndpointBase implements RealmRe
             throw new ErrorPageException(session, null, Response.Status.BAD_REQUEST, Messages.CLIENT_DISABLED);
         }
 
-        OIDCAdvancedConfigWrapper oidcAdvancedConfigWrapper = OIDCAdvancedConfigWrapper.fromClientModel(client);
-        if (!oidcAdvancedConfigWrapper.isOAuth2DeviceAuthorizationGrantEnabled()) {
+        if (!realm.getOAuth2DeviceConfig().isOAuth2DeviceAuthorizationGrantEnabled(client)) {
             event.error(Errors.NOT_ALLOWED);
             throw new ErrorPageException(session, null, Response.Status.BAD_REQUEST,
                 Messages.OAUTH2_DEVICE_AUTHORIZATION_GRANT_DISABLED);
@@ -356,60 +354,14 @@ public class DeviceEndpoint extends AuthorizationEndpointBase implements RealmRe
         return client;
     }
 
-    public AuthenticationSessionModel createAuthenticationSession(ClientModel client) {
-        return createAuthenticationSession(client, (AuthorizationEndpointRequest) null);
-    }
-
-    public AuthenticationSessionModel createAuthenticationSession(ClientModel client, AuthorizationEndpointRequest request) {
-        String state = null;
-
-        if (request != null) {
-            state = request.getState();
-        }
-
-        AuthenticationSessionModel authenticationSession = super.createAuthenticationSession(client, state);
+    protected AuthenticationSessionModel createAuthenticationSession(ClientModel client) {
+        AuthenticationSessionModel authenticationSession = super.createAuthenticationSession(client, null);
 
         authenticationSession.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
         authenticationSession.setAction(AuthenticationSessionModel.Action.AUTHENTICATE.name());
         authenticationSession.setClientNote(OIDCLoginProtocol.ISSUER,
             Urls.realmIssuer(session.getContext().getUri().getBaseUri(), realm.getName()));
 
-        if (request != null) {
-            if (request.getNonce() != null)
-                authenticationSession.setClientNote(OIDCLoginProtocol.NONCE_PARAM, request.getNonce());
-            if (request.getMaxAge() != null)
-                authenticationSession.setClientNote(OIDCLoginProtocol.MAX_AGE_PARAM, String.valueOf(request.getMaxAge()));
-            if (request.getScope() != null)
-                authenticationSession.setClientNote(OIDCLoginProtocol.SCOPE_PARAM, request.getScope());
-            if (request.getLoginHint() != null)
-                authenticationSession.setClientNote(OIDCLoginProtocol.LOGIN_HINT_PARAM, request.getLoginHint());
-            if (request.getPrompt() != null)
-                authenticationSession.setClientNote(OIDCLoginProtocol.PROMPT_PARAM, request.getPrompt());
-            if (request.getIdpHint() != null)
-                authenticationSession.setClientNote(AdapterConstants.KC_IDP_HINT, request.getIdpHint());
-            if (request.getClaims() != null)
-                authenticationSession.setClientNote(OIDCLoginProtocol.CLAIMS_PARAM, request.getClaims());
-            if (request.getAcr() != null)
-                authenticationSession.setClientNote(OIDCLoginProtocol.ACR_PARAM, request.getAcr());
-            if (request.getDisplay() != null)
-                authenticationSession.setAuthNote(OAuth2Constants.DISPLAY, request.getDisplay());
-
-            if (request.getAdditionalReqParams() != null) {
-                for (String paramName : request.getAdditionalReqParams().keySet()) {
-                    authenticationSession.setClientNote(LOGIN_SESSION_NOTE_ADDITIONAL_REQ_PARAMS_PREFIX + paramName,
-                        request.getAdditionalReqParams().get(paramName));
-                }
-            }
-        }
-
         return authenticationSession;
-    }
-
-    private SessionCodeChecks checksForCode(String authSessionId, String code, String execution, String clientId, String tabId,
-        String flowPath) {
-        SessionCodeChecks res = new SessionCodeChecks(realm, session.getContext().getUri(), httpRequest, clientConnection,
-            session, event, authSessionId, code, execution, clientId, tabId, flowPath);
-        res.initialVerify();
-        return res;
     }
 }

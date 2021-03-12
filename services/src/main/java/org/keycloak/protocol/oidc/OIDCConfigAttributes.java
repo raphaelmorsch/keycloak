@@ -62,8 +62,6 @@ public final class OIDCConfigAttributes {
 
     public static final String USE_REFRESH_TOKEN_FOR_CLIENT_CREDENTIALS_GRANT = "client_credentials.use_refresh_token";
 
-    public static final String OAUTH2_DEVICE_AUTHORIZATION_GRANT_ENABLED = "oauth2.device.authorization.grant.enabled";
-
     private OIDCConfigAttributes() {
     }
 

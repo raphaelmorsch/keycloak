@@ -36,8 +36,10 @@ public final class OAuth2DeviceConfig implements Serializable {
     public static String OAUTH2_DEVICE_CODE_LIFESPAN = "oauth2DeviceCodeLifespan";
     public static String OAUTH2_DEVICE_POLLING_INTERVAL = "oauth2DevicePollingInterval";
 
+    // client attribute names
     public static String OAUTH2_DEVICE_CODE_LIFESPAN_PER_CLIENT = "oauth2.device.code.lifespan";
     public static String OAUTH2_DEVICE_POLLING_INTERVAL_PER_CLIENT = "oauth2.device.polling.interval";
+    public static final String OAUTH2_DEVICE_AUTHORIZATION_GRANT_ENABLED = "oauth2.device.authorization.grant.enabled";
 
     private transient Supplier<RealmModel> realm;
 
@@ -105,6 +107,11 @@ public final class OAuth2DeviceConfig implements Serializable {
         }
 
         return getPoolingInterval();
+    }
+
+    public boolean isOAuth2DeviceAuthorizationGrantEnabled(ClientModel client) {
+        String enabled = client.getAttribute(OAUTH2_DEVICE_AUTHORIZATION_GRANT_ENABLED);
+        return Boolean.parseBoolean(enabled);
     }
 
     private RealmModel getRealm() {

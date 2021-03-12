@@ -175,8 +175,7 @@ public class DeviceGrantType {
     }
 
     public Response oauth2DeviceFlow() {
-        OIDCAdvancedConfigWrapper oidcAdvancedConfigWrapper = OIDCAdvancedConfigWrapper.fromClientModel(client);
-        if (!oidcAdvancedConfigWrapper.isOAuth2DeviceAuthorizationGrantEnabled()) {
+        if (!realm.getOAuth2DeviceConfig().isOAuth2DeviceAuthorizationGrantEnabled(client)) {
             event.error(Errors.NOT_ALLOWED);
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_GRANT,
                 "Client not allowed OAuth 2.0 Device Authorization Grant", Response.Status.BAD_REQUEST);

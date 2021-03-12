@@ -220,16 +220,6 @@ public class OIDCAdvancedConfigWrapper {
         setAttribute(OIDCConfigAttributes.BACKCHANNEL_LOGOUT_REVOKE_OFFLINE_TOKENS, val);
     }
 
-    public boolean isOAuth2DeviceAuthorizationGrantEnabled() {
-        String enabled = getAttribute(OIDCConfigAttributes.OAUTH2_DEVICE_AUTHORIZATION_GRANT_ENABLED);
-        return Boolean.parseBoolean(enabled);
-    }
-
-    public void setOAuth2DeviceAuthorizationGrantEnabled(boolean oauth2DeviceAuthorizationGrantEnabled) {
-        setAttribute(OIDCConfigAttributes.OAUTH2_DEVICE_AUTHORIZATION_GRANT_ENABLED,
-            Boolean.toString(oauth2DeviceAuthorizationGrantEnabled));
-    }
-
     private String getAttribute(String attrKey) {
         if (clientModel != null) {
             return clientModel.getAttribute(attrKey);

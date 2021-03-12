@@ -36,7 +36,6 @@ public interface ClientModel extends ClientScopeModel, RoleContainerModel,  Prot
     String PRIVATE_KEY = "privateKey";
     String PUBLIC_KEY = "publicKey";
     String X509CERTIFICATE = "X509Certificate";
-    String OAUTH2_DEVICE_AUTHORIZATION_GRANT_ENABLED = "oauth2.device.authorization.grant.enabled";
 
     public static class SearchableFields {
         public static final SearchableModelField<ClientModel> ID                = new SearchableModelField<>("id", String.class);
