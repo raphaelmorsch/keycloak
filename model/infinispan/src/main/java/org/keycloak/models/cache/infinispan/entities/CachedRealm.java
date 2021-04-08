@@ -105,6 +105,7 @@ public class CachedRealm extends AbstractExtendableRevisioned {
     protected LazyLoader<RealmModel, CibaConfig> cibaConfig;
     protected int actionTokenGeneratedByAdminLifespan;
     protected int actionTokenGeneratedByUserLifespan;
+    protected int requestUriLifespan;
     protected int notBefore;
     protected PasswordPolicy passwordPolicy;
     protected OTPPolicy otpPolicy;
@@ -224,6 +225,7 @@ public class CachedRealm extends AbstractExtendableRevisioned {
         accessCodeLifespanLogin = model.getAccessCodeLifespanLogin();
         actionTokenGeneratedByAdminLifespan = model.getActionTokenGeneratedByAdminLifespan();
         actionTokenGeneratedByUserLifespan = model.getActionTokenGeneratedByUserLifespan();
+        requestUriLifespan = model.getRequestUriLifespan();
         notBefore = model.getNotBefore();
         passwordPolicy = model.getPasswordPolicy();
         otpPolicy = model.getOTPPolicy();
@@ -510,6 +512,10 @@ public class CachedRealm extends AbstractExtendableRevisioned {
 
     public int getActionTokenGeneratedByUserLifespan() {
         return actionTokenGeneratedByUserLifespan;
+    }
+
+    public int getRequestUriLifespan() {
+        return requestUriLifespan;
     }
 
     /**

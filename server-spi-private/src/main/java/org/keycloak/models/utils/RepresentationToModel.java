@@ -258,9 +258,12 @@ public class RepresentationToModel {
 
         // OAuth 2.0 Device Authorization Grant
         OAuth2DeviceConfig deviceConfig = newRealm.getOAuth2DeviceConfig();
-
         deviceConfig.setOAuth2DeviceCodeLifespan(rep.getOAuth2DeviceCodeLifespan());
         deviceConfig.setOAuth2DevicePollingInterval(rep.getOAuth2DevicePollingInterval());
+
+        if (rep.getRequestUriLifespan() != null)
+            newRealm.setRequestUriLifespan(rep.getRequestUriLifespan());
+        else newRealm.setRequestUriLifespan(60);
 
         if (rep.getSslRequired() != null)
             newRealm.setSslRequired(SslRequired.valueOf(rep.getSslRequired().toUpperCase()));
@@ -1178,6 +1181,9 @@ public class RepresentationToModel {
         if (rep.isAdminEventsDetailsEnabled() != null)
             realm.setAdminEventsDetailsEnabled(rep.isAdminEventsDetailsEnabled());
 
+        if (rep.getRequestUriLifespan() != null) {
+            realm.setRequestUriLifespan(rep.getRequestUriLifespan());
+        }
 
         if (rep.getPasswordPolicy() != null)
             realm.setPasswordPolicy(PasswordPolicy.parse(session, rep.getPasswordPolicy()));

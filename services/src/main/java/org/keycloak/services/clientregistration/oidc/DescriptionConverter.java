@@ -203,6 +203,10 @@ public class DescriptionConverter {
             }
         }
 
+        if (clientOIDC.getRequirePushedAuthorizationRequests() != null) {
+            configWrapper.setRequiredPushedAuthorizationRequests(clientOIDC.getRequirePushedAuthorizationRequests());
+        }
+
         return client;
     }
 
@@ -339,6 +343,7 @@ public class DescriptionConverter {
         response.setBackchannelLogoutUri(config.getBackchannelLogoutUrl());
         response.setBackchannelLogoutSessionRequired(config.isBackchannelLogoutSessionRequired());
         response.setBackchannelLogoutSessionRequired(config.getBackchannelLogoutRevokeOfflineTokens());
+        response.setRequirePushedAuthorizationRequests(config.getRequiredPushedAuthorizationRequests());
 
         if (client.getAttributes() != null) {
             String mode = client.getAttributes().get(CibaConfig.CIBA_BACKCHANNEL_TOKEN_DELIVERY_MODE_PER_CLIENT);

@@ -66,6 +66,8 @@ public final class OIDCConfigAttributes {
 
     public static final String ID_TOKEN_AS_DETACHED_SIGNATURE  = "id.token.as.detached.signature";
 
+    public static final String REQUIRE_PUSHED_AUTHORIZATION_REQUESTS = "require.pushed.authorization.requests";
+
     private OIDCConfigAttributes() {
     }
 

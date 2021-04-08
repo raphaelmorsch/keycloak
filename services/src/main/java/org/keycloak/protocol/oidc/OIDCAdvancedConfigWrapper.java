@@ -19,7 +19,6 @@ package org.keycloak.protocol.oidc;
 
 import org.keycloak.authentication.authenticators.client.X509ClientAuthenticator;
 import org.keycloak.jose.jws.Algorithm;
-import org.keycloak.models.CibaConfig;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.Constants;
 import org.keycloak.representations.idm.ClientRepresentation;
@@ -229,6 +228,16 @@ public class OIDCAdvancedConfigWrapper {
     public void setBackchannelLogoutRevokeOfflineTokens(boolean backchannelLogoutRevokeOfflineTokens) {
         String val = String.valueOf(backchannelLogoutRevokeOfflineTokens);
         setAttribute(OIDCConfigAttributes.BACKCHANNEL_LOGOUT_REVOKE_OFFLINE_TOKENS, val);
+    }
+
+    public boolean getRequiredPushedAuthorizationRequests() {
+        String requiredPushedAuthorizationRequests = getAttribute(OIDCConfigAttributes.REQUIRE_PUSHED_AUTHORIZATION_REQUESTS);
+        return Boolean.parseBoolean(requiredPushedAuthorizationRequests);
+    }
+
+    public void setRequiredPushedAuthorizationRequests(boolean requiredPushedAuthorizationRequests) {
+        String val = String.valueOf(requiredPushedAuthorizationRequests);
+        setAttribute(OIDCConfigAttributes.REQUIRE_PUSHED_AUTHORIZATION_REQUESTS, val);
     }
 
     private String getAttribute(String attrKey) {

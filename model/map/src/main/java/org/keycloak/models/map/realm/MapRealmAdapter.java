@@ -72,6 +72,8 @@ public abstract class MapRealmAdapter<K> extends AbstractRealmModel<MapRealmEnti
     private static final String MINIMUM_QUICK_LOGIN_WAIT_SECONDS = "minimumQuickLoginWaitSeconds";
     private static final String MAX_DELTA_SECONDS = "maxDeltaTimeSeconds";
     private static final String FAILURE_FACTOR = "failureFactor";
+    private static final String REQUEST_URI_LIFESPAN = "requestUriLifespan";
+
 
     private PasswordPolicy passwordPolicy;
 
@@ -429,6 +431,16 @@ public abstract class MapRealmAdapter<K> extends AbstractRealmModel<MapRealmEnti
         if (actionTokenType != null && ! actionTokenType.isEmpty() && seconds != null) {
             setAttribute(ACTION_TOKEN_GENERATED_BY_USER_LIFESPAN + "." + actionTokenType, seconds);
         }
+    }
+
+    @Override
+    public int getRequestUriLifespan() {
+        return getAttribute(REQUEST_URI_LIFESPAN, 60);
+    }
+
+    @Override
+    public void setRequestUriLifespan(int seconds) {
+        setAttribute(REQUEST_URI_LIFESPAN, seconds);
     }
 
     @Override

@@ -130,6 +130,9 @@ public class OIDCClientRepresentation {
 
     private String backchannel_authentication_request_signing_alg;
 
+    // PAR request
+    private Boolean require_pushed_authorization_requests;
+
     public List<String> getRedirectUris() {
         return redirect_uris;
     }
@@ -506,5 +509,13 @@ public class OIDCClientRepresentation {
 
     public void setBackchannelAuthenticationRequestSigningAlg(String backchannel_authentication_request_signing_alg) {
         this.backchannel_authentication_request_signing_alg = backchannel_authentication_request_signing_alg;
+    }
+
+    public Boolean getRequirePushedAuthorizationRequests() {
+        return require_pushed_authorization_requests;
+    }
+
+    public void setRequirePushedAuthorizationRequests(Boolean require_pushed_authorization_requests) {
+        this.require_pushed_authorization_requests = require_pushed_authorization_requests;
     }
 }
