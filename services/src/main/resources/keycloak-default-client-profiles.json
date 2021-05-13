@@ -1,12 +1,98 @@
 {
   "profiles": [
     {
-      "name": "global-default-profile",
-      "description": "The global default profile for enforcing basic security level to clients.",
+      "name": "fapi-1-baseline",
+      "description": "Client profile, which enforce clients to conform \"Financial-grade API Security Profile 1.0 - Part 1: Baseline\" specification.",
       "executors": [
         {
           "executor": "secure-session-enforce-executor",
           "configuration": {}
+        },
+        {
+          "executor": "pkce-enforce-executor",
+          "configuration": {
+            "is-augment": "true"
+          }
+        },
+        {
+          "executor": "secure-client-authn-executor",
+          "configuration": {
+            "client-authns": [
+              "client-jwt",
+              "client-secret-jwt",
+              "client-x509"
+            ],
+            "is-augment": false
+          }
+        },
+        {
+          "executor": "secure-clienturi-enforce-executor",
+          "configuration": {}
+        },
+        {
+          "executor": "consent-required-executor",
+          "configuration": {}
+        }
+      ]
+    },
+    {
+      "name": "fapi-1-advanced",
+      "description": "Client profile, which enforce clients to conform \"Financial-grade API Security Profile 1.0 - Part 2: Advanced\" specification.",
+      "executors": [
+        {
+          "executor": "secure-session-enforce-executor",
+          "configuration": {}
+        },
+        {
+          "executor": "confidentialclient-accept-executor",
+          "configuration": {}
+        },
+        {
+          "executor": "secure-client-authn-executor",
+          "configuration": {
+            "client-authns": [
+              "client-jwt",
+              "client-x509"
+            ],
+            "is-augment": false
+          }
+        },
+        {
+          "executor": "secure-clienturi-enforce-executor",
+          "configuration": {}
+        },
+        {
+          "executor": "secure-reqobj-executor",
+          "configuration": {
+            "available-period": "3600",
+            "verify-nbf": "true"
+          }
+        },
+        {
+          "executor": "secure-responsetype-executor",
+          "configuration": {}
+        },
+        {
+          "executor": "securesignalg-enforce-executor",
+          "configuration": {
+            "default-algorithm": "PS256"
+          }
+        },
+        {
+          "executor": "securesignalgjwt-enforce-executor",
+          "configuration": {
+            "require-client-assertion": false
+          }
+        },
+        {
+          "executor": "consent-required-executor",
+          "configuration": {}
+        },
+        {
+          "executor": "holder-of-key-enforce-executor",
+          "configuration": {
+            "is-augment": "true"
+          }
         }
       ]
     }

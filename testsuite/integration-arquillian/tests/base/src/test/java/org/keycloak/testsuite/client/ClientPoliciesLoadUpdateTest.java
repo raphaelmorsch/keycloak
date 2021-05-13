@@ -44,8 +44,10 @@ import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPoliciesUtil;
 import org.keycloak.services.clientpolicy.condition.ClientAccessTypeConditionFactory;
 import org.keycloak.services.clientpolicy.condition.ClientRolesConditionFactory;
+import org.keycloak.services.clientpolicy.executor.ConsentRequiredExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.PKCEEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureClientAuthEnforceExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.SecureClientRegisteringUriEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureSessionEnforceExecutorFactory;
 import org.keycloak.testsuite.Assert;
 import org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude;
@@ -77,14 +79,20 @@ public class ClientPoliciesLoadUpdateTest extends AbstractClientPoliciesTest {
         ClientProfilesRepresentation actualProfilesRep = getProfilesWithGlobals();
 
         // same profiles
-        assertExpectedProfiles(actualProfilesRep, Arrays.asList("global-default-profile"), Collections.emptyList());
+        assertExpectedProfiles(actualProfilesRep, Arrays.asList("fapi-1-baseline", "fapi-1-advanced"), Collections.emptyList());
 
-        // each profile
-        ClientProfileRepresentation actualProfileRep =  getProfileRepresentation(actualProfilesRep, "global-default-profile", true);
-        assertExpectedProfile(actualProfileRep, "global-default-profile", "The global default profile for enforcing basic security level to clients.");
+        // each profile - fapi-1-baseline
+        ClientProfileRepresentation actualProfileRep =  getProfileRepresentation(actualProfilesRep, "fapi-1-baseline", true);
+        assertExpectedProfile(actualProfileRep, "fapi-1-baseline", "Client profile, which enforce clients to conform \"Financial-grade API Security Profile 1.0 - Part 1: Baseline\" specification.");
 
-        // each executor
-        assertExpectedExecutors(Arrays.asList(SecureSessionEnforceExecutorFactory.PROVIDER_ID), actualProfileRep);
+        // Test some executor
+        assertExpectedExecutors(Arrays.asList(SecureSessionEnforceExecutorFactory.PROVIDER_ID, PKCEEnforceExecutorFactory.PROVIDER_ID, SecureClientAuthEnforceExecutorFactory.PROVIDER_ID,
+                SecureClientRegisteringUriEnforceExecutorFactory.PROVIDER_ID, ConsentRequiredExecutorFactory.PROVIDER_ID), actualProfileRep);
+        assertExpectedSecureSessionEnforceExecutor(actualProfileRep);
+
+        // TODO:mposolda Test client authn executor
+
+        // TODO:mposolda Test for advanced?
 
         // Check the "get" request without globals. Assert nothing loaded
         actualProfilesRep = getProfilesWithoutGlobals();
@@ -110,7 +118,7 @@ public class ClientPoliciesLoadUpdateTest extends AbstractClientPoliciesTest {
 
         assertExpectedLoadedPolicies((ClientPoliciesRepresentation reps)->{
             ClientPolicyRepresentation rep =  getPolicyRepresentation(reps, "new-policy");
-            assertExpectedPolicy("new-policy", "duplicated profiles are ignored.", true, Arrays.asList("global-default-profile", "ordinal-test-profile", "lack-of-builtin-field-test-profile"),
+            assertExpectedPolicy("new-policy", "duplicated profiles are ignored.", true, Arrays.asList("ordinal-test-profile", "lack-of-builtin-field-test-profile"),
                     rep);
         });
 
@@ -148,7 +156,7 @@ public class ClientPoliciesLoadUpdateTest extends AbstractClientPoliciesTest {
 
         assertExpectedLoadedPolicies((ClientPoliciesRepresentation reps)->{
             ClientPolicyRepresentation rep =  getPolicyRepresentation(reps, "new-policy");
-            assertExpectedPolicy("new-policy", modifiedPolicyDescription, false, Arrays.asList("global-default-profile", "ordinal-test-profile", "lack-of-builtin-field-test-profile"),
+            assertExpectedPolicy("new-policy", modifiedPolicyDescription, false, Arrays.asList("ordinal-test-profile", "lack-of-builtin-field-test-profile"),
                     rep);
         });
 
@@ -198,7 +206,7 @@ public class ClientPoliciesLoadUpdateTest extends AbstractClientPoliciesTest {
     public void testOverwriteBuiltinProfileNotAllowed() throws Exception {
         // register profiles
         String json = (new ClientProfilesBuilder()).addProfile(
-                (new ClientProfileBuilder()).createProfile("global-default-profile", "Pershyy Profil")
+                (new ClientProfileBuilder()).createProfile("fapi-1-baseline", "Pershyy Profil")
                         .addExecutor(SecureClientAuthEnforceExecutorFactory.PROVIDER_ID,
                                 createSecureClientAuthEnforceExecutorConfig(Boolean.TRUE,
                                         Arrays.asList(JWTClientAuthenticator.PROVIDER_ID, JWTClientSecretAuthenticator.PROVIDER_ID, X509ClientAuthenticator.PROVIDER_ID),
@@ -305,7 +313,7 @@ public class ClientPoliciesLoadUpdateTest extends AbstractClientPoliciesTest {
                         Boolean.TRUE)
                     .addCondition(ClientRolesConditionFactory.PROVIDER_ID, 
                         createClientRolesConditionConfig(Arrays.asList(SAMPLE_CLIENT_ROLE)))
-                        .addProfile("global-default-profile")
+                        .addProfile("fapi-1-baseline")
                     .toRepresentation();
 
         ClientPolicyRepresentation loadedPolicyRep = 

@@ -113,6 +113,7 @@ import org.keycloak.testsuite.util.MutualTLSUtils;
 import org.keycloak.testsuite.util.OAuthClient;
 import org.keycloak.testsuite.util.RoleBuilder;
 import org.keycloak.testsuite.util.ServerURLs;
+import org.keycloak.testsuite.util.WaitUtils;
 import org.keycloak.util.JsonSerialization;
 
 /**
