@@ -31,8 +31,14 @@
     </ul>
 
     <ul class="nav nav-tabs nav-tabs-pf">
-        <li class="active"><a href="#/realms/{{realm.realm}}/client-policies/policies">{{:: 'client-profiles-form-view' | translate}}</a></li>
-        <li><a href="#/realms/{{realm.realm}}/client-policies/policies-json">{{:: 'client-profiles-json-editor' | translate}}</a></li>
+        <li class="active">
+            <a href="#/realms/{{realm.realm}}/client-policies/policies">{{:: 'client-profiles-form-view' | translate}}</a>
+            <kc-tooltip>{{:: 'client-policies-form-view.tooltip' | translate}}</kc-tooltip>
+        </li>
+        <li>
+            <a href="#/realms/{{realm.realm}}/client-policies/policies-json">{{:: 'client-profiles-json-editor' | translate}}</a>
+            <kc-tooltip>{{:: 'client-policies-json-editor.tooltip' | translate}}</kc-tooltip>
+        </li>
     </ul>
 
     <form class="form-horizontal" name="realmForm" novalidate>
