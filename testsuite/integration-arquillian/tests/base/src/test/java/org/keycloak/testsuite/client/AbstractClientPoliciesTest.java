@@ -172,6 +172,9 @@ public abstract class AbstractClientPoliciesTest extends AbstractKeycloakTest {
     protected static final String PROFILE_NAME = "MyProfile";
     protected static final String SAMPLE_CLIENT_ROLE = "sample-client-role";
 
+    protected static final String FAPI1_BASELINE_PROFILE_NAME = "fapi-1-baseline";
+    protected static final String FAPI1_ADVANCED_PROFILE_NAME = "fapi-1-advanced";
+
     protected static final String ERR_MSG_MISSING_NONCE = "Missing parameter: nonce";
     protected static final String ERR_MSG_MISSING_STATE = "Missing parameter: state";
     protected static final String ERR_MSG_CLIENT_REG_FAIL = "Failed to send request";
@@ -190,11 +193,14 @@ public abstract class AbstractClientPoliciesTest extends AbstractKeycloakTest {
 
     @Before
     public void before() throws Exception {
+        setInitialAccessTokenForDynamicClientRegistration();
+    }
+
+    protected void setInitialAccessTokenForDynamicClientRegistration() {
         // get initial access token for Dynamic Client Registration with authentication
         reg = ClientRegistration.create().url(suiteContext.getAuthServerInfo().getContextRoot() + "/auth", REALM_NAME).build();
         ClientInitialAccessPresentation token = adminClient.realm(REALM_NAME).clientInitialAccess().create(new ClientInitialAccessCreatePresentation(0, 10));
         reg.auth(Auth.token(token));
-
     }
 
     @After
@@ -283,11 +289,11 @@ public abstract class AbstractClientPoliciesTest extends AbstractKeycloakTest {
         ClientProfilesRepresentation actualProfilesRep = getProfilesWithGlobals();
 
         // same profiles
-        assertExpectedProfiles(actualProfilesRep, Arrays.asList("fapi-1-baseline", "fapi-1-advanced"), Arrays.asList("ordinal-test-profile", "lack-of-builtin-field-test-profile"));
+        assertExpectedProfiles(actualProfilesRep, Arrays.asList(FAPI1_BASELINE_PROFILE_NAME, FAPI1_ADVANCED_PROFILE_NAME), Arrays.asList("ordinal-test-profile", "lack-of-builtin-field-test-profile"));
 
         // each profile - fapi-1-baseline
-        ClientProfileRepresentation actualProfileRep =  getProfileRepresentation(actualProfilesRep, "fapi-1-baseline", true);
-        assertExpectedProfile(actualProfileRep, "fapi-1-baseline", "Client profile, which enforce clients to conform \"Financial-grade API Security Profile 1.0 - Part 1: Baseline\" specification.");
+        ClientProfileRepresentation actualProfileRep =  getProfileRepresentation(actualProfilesRep, FAPI1_BASELINE_PROFILE_NAME, true);
+        assertExpectedProfile(actualProfileRep, FAPI1_BASELINE_PROFILE_NAME, "Client profile, which enforce clients to conform \"Financial-grade API Security Profile 1.0 - Part 1: Baseline\" specification.");
 
         // each executor
         assertExpectedExecutors(Arrays.asList(SecureSessionEnforceExecutorFactory.PROVIDER_ID, PKCEEnforcerExecutorFactory.PROVIDER_ID, SecureClientAuthenticatorExecutorFactory.PROVIDER_ID,

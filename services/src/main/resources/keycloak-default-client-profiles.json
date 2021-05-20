@@ -22,7 +22,7 @@
               "client-secret-jwt",
               "client-x509"
             ],
-            "default-client-authenticator": "client-secret-jwt"
+            "default-client-authenticator": "client-jwt"
           }
         },
         {

@@ -79,11 +79,11 @@ public class ClientPoliciesLoadUpdateTest extends AbstractClientPoliciesTest {
         ClientProfilesRepresentation actualProfilesRep = getProfilesWithGlobals();
 
         // same profiles
-        assertExpectedProfiles(actualProfilesRep, Arrays.asList("fapi-1-baseline", "fapi-1-advanced"), Collections.emptyList());
+        assertExpectedProfiles(actualProfilesRep, Arrays.asList(FAPI1_BASELINE_PROFILE_NAME, FAPI1_ADVANCED_PROFILE_NAME), Collections.emptyList());
 
         // each profile - fapi-1-baseline
-        ClientProfileRepresentation actualProfileRep =  getProfileRepresentation(actualProfilesRep, "fapi-1-baseline", true);
-        assertExpectedProfile(actualProfileRep, "fapi-1-baseline", "Client profile, which enforce clients to conform \"Financial-grade API Security Profile 1.0 - Part 1: Baseline\" specification.");
+        ClientProfileRepresentation actualProfileRep =  getProfileRepresentation(actualProfilesRep, FAPI1_BASELINE_PROFILE_NAME, true);
+        assertExpectedProfile(actualProfileRep, FAPI1_BASELINE_PROFILE_NAME, "Client profile, which enforce clients to conform \"Financial-grade API Security Profile 1.0 - Part 1: Baseline\" specification.");
 
         // Test some executor
         assertExpectedExecutors(Arrays.asList(SecureSessionEnforceExecutorFactory.PROVIDER_ID, PKCEEnforcerExecutorFactory.PROVIDER_ID, SecureClientAuthenticatorExecutorFactory.PROVIDER_ID,
@@ -205,7 +205,7 @@ public class ClientPoliciesLoadUpdateTest extends AbstractClientPoliciesTest {
         // register profiles
         String json =
                 (new ClientProfilesBuilder()).addProfile(
-                    (new ClientProfileBuilder()).createProfile("fapi-1-baseline", "Pershyy Profil")
+                    (new ClientProfileBuilder()).createProfile(FAPI1_BASELINE_PROFILE_NAME, "Pershyy Profil")
                         .addExecutor(SecureClientAuthenticatorExecutorFactory.PROVIDER_ID,
                                 createSecureClientAuthenticatorExecutorConfig(
                                         Arrays.asList(JWTClientAuthenticator.PROVIDER_ID, JWTClientSecretAuthenticator.PROVIDER_ID, X509ClientAuthenticator.PROVIDER_ID),
@@ -312,7 +312,7 @@ public class ClientPoliciesLoadUpdateTest extends AbstractClientPoliciesTest {
                         Boolean.TRUE)
                     .addCondition(ClientRolesConditionFactory.PROVIDER_ID, 
                         createClientRolesConditionConfig(Arrays.asList(SAMPLE_CLIENT_ROLE)))
-                        .addProfile("fapi-1-baseline")
+                        .addProfile(FAPI1_BASELINE_PROFILE_NAME)
                     .toRepresentation();
 
         ClientPolicyRepresentation loadedPolicyRep = 
