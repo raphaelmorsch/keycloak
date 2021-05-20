@@ -125,7 +125,7 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
 
     @Test
     public void testFAPIBaselineClientAuthenticator() throws Exception {
-        setupPolicyFAPIBaselineForAllClient(POLICY_NAME);
+        setupPolicyFAPIBaselineForAllClient();
 
         // Try to register client with clientIdAndSecret - should fail
         try {
@@ -172,7 +172,7 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
 
     @Test
     public void testFAPIBaselineOIDCClientRegistration() throws Exception {
-        setupPolicyFAPIBaselineForAllClient(POLICY_NAME);
+        setupPolicyFAPIBaselineForAllClient();
 
         // Try to register client with clientIdAndSecret - should fail
         try {
@@ -221,7 +221,7 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
 
     @Test
     public void testFAPIBaselineRedirectUri() throws Exception {
-        setupPolicyFAPIBaselineForAllClient(POLICY_NAME);
+        setupPolicyFAPIBaselineForAllClient();
 
         // Try to register redirect_uri like "http://hostname.com" - should fail
         try {
@@ -254,7 +254,7 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
 
     @Test
     public void testFAPIBaselineConfidentialClientLogin() throws Exception {
-        setupPolicyFAPIBaselineForAllClient(POLICY_NAME);
+        setupPolicyFAPIBaselineForAllClient();
 
         // Register client (default authenticator)
         String clientUUID = createClientByAdmin("foo", (ClientRepresentation clientRep) -> {
@@ -283,9 +283,9 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
 
     @Test
     public void testFAPIBaselinePublicClientLogin() throws Exception {
-        setupPolicyFAPIBaselineForAllClient(POLICY_NAME);
+        setupPolicyFAPIBaselineForAllClient();
 
-        // Register client (default authenticator)
+        // Register client as public client
         String clientUUID = createClientByAdmin("foo", (ClientRepresentation clientRep) -> {
             clientRep.setPublicClient(true);
         });
@@ -306,6 +306,111 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         // Check PKCE with S256, redirectUri and nonce/state set. Login should be successful
         successfulLoginAndLogout("foo", true, null, codeVerifier);
     }
+
+
+    @Test
+    public void testFAPIAdvancedClientRegistration() throws Exception {
+        // Set "advanced" policy
+        setupPolicyFAPIAdvancedForAllClient();
+
+        // Register client with clientIdAndSecret - should fail
+        try {
+            createClientByAdmin("invalid", (ClientRepresentation clientRep) -> {
+                clientRep.setClientAuthenticatorType(ClientIdAndSecretAuthenticator.PROVIDER_ID);
+            });
+            fail();
+        } catch (ClientPolicyException e) {
+            assertEquals(OAuthErrorException.INVALID_CLIENT_METADATA, e.getMessage());
+        }
+
+        // Register client with signedJWT - should fail
+        try {
+            createClientByAdmin("invalid", (ClientRepresentation clientRep) -> {
+                clientRep.setClientAuthenticatorType(JWTClientSecretAuthenticator.PROVIDER_ID);
+            });
+            fail();
+        } catch (ClientPolicyException e) {
+            assertEquals(OAuthErrorException.INVALID_CLIENT_METADATA, e.getMessage());
+        }
+
+        // Register client with privateKeyJWT, but unsecured redirectUri - should fail
+        try {
+            createClientByAdmin("invalid", (ClientRepresentation clientRep) -> {
+                clientRep.setClientAuthenticatorType(JWTClientAuthenticator.PROVIDER_ID);
+                clientRep.setRedirectUris(Collections.singletonList("http://foo"));
+            });
+            fail();
+        } catch (ClientPolicyException e) {
+            assertEquals(OAuthErrorException.INVALID_CLIENT_METADATA, e.getMessage());
+        }
+
+        // Try to register client with "client-jwt" - should pass
+        String clientUUID = createClientByAdmin("client-jwt", (ClientRepresentation clientRep) -> {
+            clientRep.setClientAuthenticatorType(JWTClientAuthenticator.PROVIDER_ID);
+        });
+        ClientRepresentation client = getClientByAdmin(clientUUID);
+        Assert.assertEquals(JWTClientAuthenticator.PROVIDER_ID, client.getClientAuthenticatorType());
+
+        // Try to register client with "client-x509" - should pass
+        clientUUID = createClientByAdmin("client-x509", (ClientRepresentation clientRep) -> {
+            clientRep.setClientAuthenticatorType(X509ClientAuthenticator.PROVIDER_ID);
+        });
+        client = getClientByAdmin(clientUUID);
+        Assert.assertEquals(X509ClientAuthenticator.PROVIDER_ID, client.getClientAuthenticatorType());
+
+        // Try to register client with default authenticator - should pass. Client authenticator should be "client-jwt"
+        clientUUID = createClientByAdmin("client-jwt-2", (ClientRepresentation clientRep) -> {
+        });
+        client = getClientByAdmin(clientUUID);
+        Assert.assertEquals(JWTClientAuthenticator.PROVIDER_ID, client.getClientAuthenticatorType());
+
+        // Check the Consent is enabled, Holder-of-key is enabled and default signature algorithm
+        Assert.assertTrue(client.isConsentRequired());
+        OIDCAdvancedConfigWrapper clientConfig = OIDCAdvancedConfigWrapper.fromClientRepresentation(client);
+        Assert.assertTrue(clientConfig.isUseMtlsHokToken());
+        Assert.assertEquals(Algorithm.PS256, clientConfig.getIdTokenSignedResponseAlg());
+        Assert.assertEquals(Algorithm.PS256, clientConfig.getRequestObjectSignatureAlg().toString());
+    }
+
+
+    @Test
+    public void testFAPIAdvancedPublicClientLoginNotPossible() throws Exception {
+        // TODO:mposolda implement what I lost yesterday... Baseline policy, then followed by public client login
+    }
+
+    @Test
+    public void testFAPIAdvancedSignatureAlgorithms() throws Exception {
+        // TODO:mposolda
+        // Test that unsecured algorithm is not possible
+
+        // Test that secured algorithm is possible to explicitly set
+
+        // Test default algorithms set everywhere
+    }
+
+
+    @Test
+    public void testFAPIAdvancedLoginWithPrivateKeyJWT() throws Exception {
+        // TODO:mposolda
+        // Register client with private-key-jwt
+
+        // Check login - response type
+
+        // Check login request object (maybe request object signed by different algorithm, expired request object)
+
+        // Check HoK required
+
+        // Login with private-key-jwt client authentication etc
+    }
+
+    @Test
+    public void testFAPIAdvancedLoginWithMTLS() throws Exception {
+        // TODO:mposolda Same like "testFAPIAdvancedLoginWithPrivateKeyJWT" but just different client authenticator
+
+    }
+
+
+
 
 
     private void checkPKCEWithS256RequiredDuringLogin(String clientId) {
@@ -352,13 +457,23 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
     }
 
 
-    private void setupPolicyFAPIBaselineForAllClient(String policyName) throws Exception {
-        // register policies
+    private void setupPolicyFAPIBaselineForAllClient() throws Exception {
         String json = (new ClientPoliciesBuilder()).addPolicy(
-                (new ClientPolicyBuilder()).createPolicy(policyName, "Policy for enable FAPI Baseline for all clients", Boolean.TRUE)
+                (new ClientPolicyBuilder()).createPolicy("MyPolicy", "Policy for enable FAPI Baseline for all clients", Boolean.TRUE)
                         .addCondition(AnyClientConditionFactory.PROVIDER_ID,
                                 createAnyClientConditionConfig())
                         .addProfile(FAPI1_BASELINE_PROFILE_NAME)
+                        .toRepresentation()
+        ).toString();
+        updatePolicies(json);
+    }
+
+    private void setupPolicyFAPIAdvancedForAllClient() throws Exception {
+        String json = (new ClientPoliciesBuilder()).addPolicy(
+                (new ClientPolicyBuilder()).createPolicy("MyPolicy", "Policy for enable FAPI Advanced for all clients", Boolean.TRUE)
+                        .addCondition(AnyClientConditionFactory.PROVIDER_ID,
+                                createAnyClientConditionConfig())
+                        .addProfile(FAPI1_ADVANCED_PROFILE_NAME)
                         .toRepresentation()
         ).toString();
         updatePolicies(json);
