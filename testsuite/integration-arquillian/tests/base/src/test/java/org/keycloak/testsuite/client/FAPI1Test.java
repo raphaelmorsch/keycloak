@@ -375,7 +375,31 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
 
     @Test
     public void testFAPIAdvancedPublicClientLoginNotPossible() throws Exception {
-        // TODO:mposolda implement what I lost yesterday... Baseline policy, then followed by public client login
+        setupPolicyFAPIBaselineForAllClient();
+
+        // Register client as public client
+        String clientUUID = createClientByAdmin("foo", (ClientRepresentation clientRep) -> {
+            clientRep.setPublicClient(true);
+        });
+        ClientRepresentation client = getClientByAdmin(clientUUID);
+        Assert.assertTrue(client.isPublicClient());
+
+        // Setup PKCE and nonce
+        oauth.nonce("123456");
+        String codeVerifier = "1234567890123456789012345678901234567890123"; // 43
+        String codeChallenge = generateS256CodeChallenge(codeVerifier);
+        oauth.codeChallenge(codeChallenge);
+        oauth.codeChallengeMethod(OAuth2Constants.PKCE_METHOD_S256);
+
+        // Check PKCE with S256, redirectUri and nonce/state set. Login should be successful
+        successfulLoginAndLogout("foo", true, null, codeVerifier);
+
+        // Set "advanced" policy
+        setupPolicyFAPIAdvancedForAllClient();
+
+        // Should not be possible to login anymore with public client
+        oauth.openLoginForm();
+        assertRedirectedToClientWithError(OAuthErrorException.INVALID_CLIENT,"invalid client access type");
     }
 
     @Test
