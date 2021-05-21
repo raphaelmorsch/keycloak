@@ -18,12 +18,18 @@
 
 package org.keycloak.testsuite.client;
 
+import java.io.IOException;
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -38,6 +44,7 @@ import org.junit.Test;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.adapters.authentication.JWTClientSecretCredentialsProvider;
+import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.authentication.authenticators.client.ClientIdAndSecretAuthenticator;
 import org.keycloak.authentication.authenticators.client.JWTClientAuthenticator;
@@ -50,11 +57,12 @@ import org.keycloak.common.util.UriUtils;
 import org.keycloak.constants.ServiceUrlConstants;
 import org.keycloak.crypto.Algorithm;
 import org.keycloak.models.AdminRoles;
-import org.keycloak.models.ClientModel;
 import org.keycloak.models.Constants;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
+import org.keycloak.protocol.oidc.utils.OIDCResponseType;
+import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
@@ -62,13 +70,18 @@ import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.representations.oidc.OIDCClientRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.condition.AnyClientConditionFactory;
+import org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutor;
 import org.keycloak.testsuite.Assert;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
+import org.keycloak.testsuite.client.resources.TestApplicationResourceUrls;
+import org.keycloak.testsuite.client.resources.TestOIDCEndpointsApplicationResource;
 import org.keycloak.testsuite.pages.AppPage;
 import org.keycloak.testsuite.pages.ErrorPage;
 import org.keycloak.testsuite.pages.LoginPage;
 import org.keycloak.testsuite.pages.OAuthGrantPage;
+import org.keycloak.testsuite.rest.resource.TestingOIDCEndpointsApplicationResource;
+import org.keycloak.testsuite.util.MutualTLSUtils;
 import org.keycloak.testsuite.util.OAuthClient;
 
 import static org.junit.Assert.assertEquals;
@@ -279,7 +292,10 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         checkRedirectUriForCurrentClientDuringLogin();
 
         // Check PKCE with S256, redirectUri and nonce/state set. Login should be successful
-        successfulLoginAndLogout("foo", false, "secret", codeVerifier);
+        successfulLoginAndLogout("foo", false, (String code) -> {
+            String signedJwt = getClientSecretSignedJWT("secret", Algorithm.HS256);
+            return doAccessTokenRequestWithClientSignedJWT(code, signedJwt, codeVerifier, DefaultHttpClient::new);
+        });
     }
 
 
@@ -306,7 +322,10 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         checkRedirectUriForCurrentClientDuringLogin();
 
         // Check PKCE with S256, redirectUri and nonce/state set. Login should be successful
-        successfulLoginAndLogout("foo", true, null, codeVerifier);
+        successfulLoginAndLogout("foo", false, (String code) -> {
+            oauth.codeVerifier(codeVerifier);
+            return oauth.doAccessTokenRequest(code, null);
+        });
     }
 
 
@@ -394,7 +413,10 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         oauth.codeChallengeMethod(OAuth2Constants.PKCE_METHOD_S256);
 
         // Check PKCE with S256, redirectUri and nonce/state set. Login should be successful
-        successfulLoginAndLogout("foo", true, null, codeVerifier);
+        successfulLoginAndLogout("foo", false, (String code) -> {
+            oauth.codeVerifier(codeVerifier);
+            return oauth.doAccessTokenRequest(code, null);
+        });
 
         // Set "advanced" policy
         setupPolicyFAPIAdvancedForAllClient();
@@ -449,16 +471,77 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
 
     @Test
     public void testFAPIAdvancedLoginWithPrivateKeyJWT() throws Exception {
-        // TODO:mposolda
+        // Set "advanced" policy
+        setupPolicyFAPIAdvancedForAllClient();
+
         // Register client with private-key-jwt
+        String clientUUID = createClientByAdmin("foo", (ClientRepresentation clientRep) -> {
+            clientRep.setClientAuthenticatorType(JWTClientAuthenticator.PROVIDER_ID);
+            clientRep.setImplicitFlowEnabled(true);
+            OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep).setRequestUris(Collections.singletonList(TestApplicationResourceUrls.clientRequestUri()));
+        });
+        ClientResource clientResource = adminClient.realm(REALM_NAME).clients().get(clientUUID);
+        ClientRepresentation client = clientResource.toRepresentation();
 
-        // Check login - response type
+        // Check nonce and redirectUri
+        oauth.clientId("foo");
+        checkNonceAndStateForCurrentClientDuringLogin();
+        checkRedirectUriForCurrentClientDuringLogin();
 
-        // Check login request object (maybe request object signed by different algorithm, expired request object)
+        // Check login request object required
+        oauth.openLoginForm();
+        assertRedirectedToClientWithError(OAuthErrorException.INVALID_REQUEST,"Missing parameters: 'request' or 'request_uri'");
+
+        // Create request without 'nbf' . Should fail in FAPI1 advanced client policy
+        TestingOIDCEndpointsApplicationResource.AuthorizationEndpointRequestObject requestObject = createValidRequestObjectForSecureRequestObjectExecutor("foo");
+        requestObject.nbf(null);
+        registerRequestObject(requestObject, "foo", org.keycloak.jose.jws.Algorithm.PS256, true);
+        oauth.openLoginForm();
+        assertRedirectedToClientWithError(SecureRequestObjectExecutor.INVALID_REQUEST_OBJECT,"Missing parameter in the 'request' object: nbf");
+
+        // Create valid request object - more extensive testing of 'request' object is in ClientPoliciesTest.testSecureRequestObjectExecutor()
+        requestObject = createValidRequestObjectForSecureRequestObjectExecutor("foo");
+        requestObject.setNonce("123456"); // Nonce from method "checkNonceAndStateForCurrentClientDuringLogin()"
+        registerRequestObject(requestObject, "foo", org.keycloak.jose.jws.Algorithm.PS256, true);
+
+        // Check response type
+        oauth.openLoginForm();
+        assertRedirectedToClientWithError(OAuthErrorException.INVALID_REQUEST,"invalid response_type");
+
+        // Set correct response_type for FAPI 1 Advanced
+        oauth.responseType(OIDCResponseType.CODE + " " + OIDCResponseType.ID_TOKEN);
+        requestObject.setResponseType(OIDCResponseType.CODE + " " + OIDCResponseType.ID_TOKEN);
+        registerRequestObject(requestObject, "foo", org.keycloak.jose.jws.Algorithm.PS256, true);
+        oauth.openLoginForm();
+        loginPage.assertCurrent();
+
+        // Get keys of client. Will be used for client authentication and signing of request object
+        TestOIDCEndpointsApplicationResource oidcClientEndpointsResource = testingClient.testApp().oidcClientEndpoints();
+        Map<String, String> generatedKeys = oidcClientEndpointsResource.getKeysAsBase64();
+        KeyPair keyPair = getKeyPairFromGeneratedBase64(generatedKeys, Algorithm.PS256);
+        PrivateKey privateKey = keyPair.getPrivate();
+        PublicKey publicKey = keyPair.getPublic();
 
         // Check HoK required
+        String code = loginUserAndGetCode("foo", true);
+        String signedJwt = createSignedRequestToken("foo", privateKey, publicKey, org.keycloak.crypto.Algorithm.PS256);
+        OAuthClient.AccessTokenResponse tokenResponse = doAccessTokenRequestWithClientSignedJWT(code, signedJwt, null, DefaultHttpClient::new);
+        Assert.assertEquals(OAuthErrorException.INVALID_GRANT,tokenResponse.getError());
+        Assert.assertEquals("Client Certification missing for MTLS HoK Token Binding", tokenResponse.getErrorDescription());
 
-        // Login with private-key-jwt client authentication etc
+        // Login with private-key-jwt client authentication and MTLS added to HttpClient. TokenRequest should be successful now
+        oauth.openLoginForm();
+        code = oauth.getCurrentFragment().get(OAuth2Constants.CODE);
+        Assert.assertNotNull(code);
+
+        String signedJwt2 = createSignedRequestToken("foo", privateKey, publicKey, org.keycloak.crypto.Algorithm.PS256);
+
+        tokenResponse = doAccessTokenRequestWithClientSignedJWT(code, signedJwt2, null, () -> MutualTLSUtils.newCloseableHttpClientWithDefaultKeyStoreAndTrustStore());
+
+        assertSuccessfulTokenResponse(tokenResponse);
+
+        // Logout and remove consent of the user for next logins
+        logoutUserAndRevokeConsent("foo");
     }
 
     @Test
@@ -537,26 +620,38 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         updatePolicies(json);
     }
 
-    // TODO:mposolda Need to have this method to handle also "client-jwt" authentication? Maybe have supplier of client authentication provided here?
-    private void successfulLoginAndLogout(String clientId, boolean publicClient, String clientSecret, String codeVerifier) throws Exception {
+    // codeToTokenExchanger is supposed to exchange "code" for the accessTokenResponse. It is supposed to send the tokenRequest including proper client authentication
+    private void successfulLoginAndLogout(String clientId, boolean fragmentResponseModeExpected, Function<String, OAuthClient.AccessTokenResponse> codeToTokenExchanger) throws Exception {
+        String code = loginUserAndGetCode(clientId, fragmentResponseModeExpected);
+
+        OAuthClient.AccessTokenResponse tokenResponse = codeToTokenExchanger.apply(code);
+
+        assertSuccessfulTokenResponse(tokenResponse);
+
+        // Logout and remove consent of the user for next logins
+        logoutUserAndRevokeConsent(clientId);
+    }
+
+    private String loginUserAndGetCode(String clientId, boolean fragmentResponseModeExpected) {
         oauth.clientId(clientId);
         oauth.doLogin("john", "password");
 
         grantPage.assertCurrent();
         grantPage.assertGrants(OAuthGrantPage.PROFILE_CONSENT_TEXT, OAuthGrantPage.EMAIL_CONSENT_TEXT, OAuthGrantPage.ROLES_CONSENT_TEXT);
         grantPage.accept();
-        Assert.assertTrue(oauth.getCurrentQuery().containsKey(OAuth2Constants.CODE));
-
-        String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
-        OAuthClient.AccessTokenResponse tokenResponse;
-        if (publicClient) {
-            oauth.codeVerifier(codeVerifier);
-            tokenResponse = oauth.doAccessTokenRequest(code, null);
+        String code;
+        if (fragmentResponseModeExpected) {
+            code = oauth.getCurrentFragment().get(OAuth2Constants.CODE);
+            Assert.assertNull(oauth.getCurrentQuery().get(OAuth2Constants.CODE));
         } else {
-            String signedJwt = getClientSecretSignedJWT(clientSecret, Algorithm.HS256);
-            tokenResponse = doAccessTokenRequestWithClientSignedJWT(code, signedJwt, codeVerifier);
+            Assert.assertNull(oauth.getCurrentFragment().get(OAuth2Constants.CODE));
+            code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
         }
+        Assert.assertNotNull(code);
+        return code;
+    }
 
+    private void assertSuccessfulTokenResponse(OAuthClient.AccessTokenResponse tokenResponse) {
         assertEquals(200, tokenResponse.getStatusCode());
         Assert.assertThat(tokenResponse.getIdToken(), Matchers.notNullValue());
         Assert.assertThat(tokenResponse.getAccessToken(), Matchers.notNullValue());
@@ -564,10 +659,6 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         // Scope parameter must be present per FAPI
         Assert.assertNotNull(tokenResponse.getScope());
         assertScopes("openid profile email", tokenResponse.getScope());
-
-        // Logout and remove consent of the user for next logins
-        oauth.doLogout(tokenResponse.getRefreshToken(), clientSecret);
-        revokeConsent(clientId);
     }
 
 
@@ -582,21 +673,25 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         return KeycloakUriBuilder.fromUri(authServerBaseUrl).path(ServiceUrlConstants.REALM_INFO_PATH).build("test").toString();
     }
 
-    private OAuthClient.AccessTokenResponse doAccessTokenRequestWithClientSignedJWT(String code, String signedJwt, String codeVerifier) throws Exception {
-        List<NameValuePair> parameters = new LinkedList<>();
-        parameters.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.AUTHORIZATION_CODE));
-        parameters.add(new BasicNameValuePair(OAuth2Constants.CODE, code));
-        parameters.add(new BasicNameValuePair(OAuth2Constants.CODE_VERIFIER, codeVerifier));
-        parameters.add(new BasicNameValuePair(OAuth2Constants.REDIRECT_URI, oauth.getRedirectUri()));
-        parameters.add(new BasicNameValuePair(OAuth2Constants.CLIENT_ASSERTION_TYPE, OAuth2Constants.CLIENT_ASSERTION_TYPE_JWT));
-        parameters.add(new BasicNameValuePair(OAuth2Constants.CLIENT_ASSERTION, signedJwt));
+    private OAuthClient.AccessTokenResponse doAccessTokenRequestWithClientSignedJWT(String code, String signedJwt, String codeVerifier, Supplier<CloseableHttpClient> httpClientSupplier) {
+        try {
+            List<NameValuePair> parameters = new LinkedList<>();
+            parameters.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.AUTHORIZATION_CODE));
+            parameters.add(new BasicNameValuePair(OAuth2Constants.CODE, code));
+            parameters.add(new BasicNameValuePair(OAuth2Constants.CODE_VERIFIER, codeVerifier));
+            parameters.add(new BasicNameValuePair(OAuth2Constants.REDIRECT_URI, oauth.getRedirectUri()));
+            parameters.add(new BasicNameValuePair(OAuth2Constants.CLIENT_ASSERTION_TYPE, OAuth2Constants.CLIENT_ASSERTION_TYPE_JWT));
+            parameters.add(new BasicNameValuePair(OAuth2Constants.CLIENT_ASSERTION, signedJwt));
 
-        CloseableHttpResponse response = sendRequest(oauth.getAccessTokenUrl(), parameters);
-        return new OAuthClient.AccessTokenResponse(response);
+            CloseableHttpResponse response = sendRequest(oauth.getAccessTokenUrl(), parameters, httpClientSupplier);
+            return new OAuthClient.AccessTokenResponse(response);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private CloseableHttpResponse sendRequest(String requestUrl, List<NameValuePair> parameters) throws Exception {
-        CloseableHttpClient client = new DefaultHttpClient();
+    private CloseableHttpResponse sendRequest(String requestUrl, List<NameValuePair> parameters, Supplier<CloseableHttpClient> httpClientSupplier) throws Exception {
+        CloseableHttpClient client = httpClientSupplier.get();
         try {
             HttpPost post = new HttpPost(requestUrl);
             UrlEncodedFormEntity formEntity = new UrlEncodedFormEntity(parameters, "UTF-8");
@@ -621,8 +716,9 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         assertEquals(expectedErrorDescription, oauth.getCurrentQuery().get(OAuth2Constants.ERROR_DESCRIPTION));
     }
 
-    private void revokeConsent(String clientId) {
+    private void logoutUserAndRevokeConsent(String clientId) {
         UserResource user = ApiUtil.findUserByUsernameId(adminClient.realm(REALM_NAME), "john");
+        user.logout();
         List<Map<String, Object>> consents = user.getConsents();
         org.junit.Assert.assertEquals(1, consents.size());
         user.revokeConsent(clientId);
