@@ -62,6 +62,7 @@ import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
+import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.CredentialRepresentation;
@@ -482,6 +483,7 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         });
         ClientResource clientResource = adminClient.realm(REALM_NAME).clients().get(clientUUID);
         ClientRepresentation client = clientResource.toRepresentation();
+        assertEquals(JWTClientAuthenticator.PROVIDER_ID, client.getClientAuthenticatorType());
 
         // Check nonce and redirectUri
         oauth.clientId("foo");
@@ -539,6 +541,8 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         tokenResponse = doAccessTokenRequestWithClientSignedJWT(code, signedJwt2, null, () -> MutualTLSUtils.newCloseableHttpClientWithDefaultKeyStoreAndTrustStore());
 
         assertSuccessfulTokenResponse(tokenResponse);
+        AccessToken accessToken = oauth.verifyToken(tokenResponse.getAccessToken());
+        Assert.assertNotNull(accessToken.getCertConf().getCertThumbprint());
 
         // Logout and remove consent of the user for next logins
         logoutUserAndRevokeConsent("foo");
@@ -546,11 +550,50 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
 
     @Test
     public void testFAPIAdvancedLoginWithMTLS() throws Exception {
-        // TODO:mposolda Same like "testFAPIAdvancedLoginWithPrivateKeyJWT" but just different client authenticator
+        // Set "advanced" policy
+        setupPolicyFAPIAdvancedForAllClient();
 
+        // Register client with X509
+        String clientUUID = createClientByAdmin("foo", (ClientRepresentation clientRep) -> {
+            clientRep.setClientAuthenticatorType(X509ClientAuthenticator.PROVIDER_ID);
+            clientRep.setImplicitFlowEnabled(true);
+            OIDCAdvancedConfigWrapper clientConfig = OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep);
+            clientConfig.setRequestUris(Collections.singletonList(TestApplicationResourceUrls.clientRequestUri()));
+            clientConfig.setTlsClientAuthSubjectDn("EMAILADDRESS=contact@keycloak.org, CN=Keycloak Intermediate CA, OU=Keycloak, O=Red Hat, ST=MA, C=US");
+        });
+        ClientResource clientResource = adminClient.realm(REALM_NAME).clients().get(clientUUID);
+        ClientRepresentation client = clientResource.toRepresentation();
+        assertEquals(X509ClientAuthenticator.PROVIDER_ID, client.getClientAuthenticatorType());
+
+        // Check nonce and redirectUri
+        oauth.clientId("foo");
+        checkNonceAndStateForCurrentClientDuringLogin();
+        checkRedirectUriForCurrentClientDuringLogin();
+
+        // Check login request object required
+        oauth.openLoginForm();
+        assertRedirectedToClientWithError(OAuthErrorException.INVALID_REQUEST,"Missing parameters: 'request' or 'request_uri'");
+
+        // Set request object and correct responseType
+        TestingOIDCEndpointsApplicationResource.AuthorizationEndpointRequestObject requestObject = createValidRequestObjectForSecureRequestObjectExecutor("foo");
+        requestObject.setNonce("123456"); // Nonce from method "checkNonceAndStateForCurrentClientDuringLogin()"
+        oauth.responseType(OIDCResponseType.CODE + " " + OIDCResponseType.ID_TOKEN);
+        requestObject.setResponseType(OIDCResponseType.CODE + " " + OIDCResponseType.ID_TOKEN);
+        registerRequestObject(requestObject, "foo", org.keycloak.jose.jws.Algorithm.PS256, true);
+        oauth.openLoginForm();
+        loginPage.assertCurrent();
+
+        // Check HoK required
+        String code = loginUserAndGetCode("foo", true);
+        OAuthClient.AccessTokenResponse tokenResponse = oauth.doAccessTokenRequest(code, null);
+
+        assertSuccessfulTokenResponse(tokenResponse);
+        AccessToken accessToken = oauth.verifyToken(tokenResponse.getAccessToken());
+        Assert.assertNotNull(accessToken.getCertConf().getCertThumbprint());
+
+        // Logout and remove consent of the user for next logins
+        logoutUserAndRevokeConsent("foo");
     }
-
-
 
 
 
