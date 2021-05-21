@@ -50,8 +50,10 @@ import org.keycloak.common.util.UriUtils;
 import org.keycloak.constants.ServiceUrlConstants;
 import org.keycloak.crypto.Algorithm;
 import org.keycloak.models.AdminRoles;
+import org.keycloak.models.ClientModel;
 import org.keycloak.models.Constants;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
+import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.CredentialRepresentation;
@@ -404,12 +406,44 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
 
     @Test
     public void testFAPIAdvancedSignatureAlgorithms() throws Exception {
-        // TODO:mposolda
-        // Test that unsecured algorithm is not possible
+        // Set "advanced" policy
+        setupPolicyFAPIAdvancedForAllClient();
+
+        // Test that unsecured algorithm (RS256) is not possible
+        try {
+            createClientByAdmin("invalid", (ClientRepresentation clientRep) -> {
+                clientRep.setClientAuthenticatorType(JWTClientAuthenticator.PROVIDER_ID);
+                OIDCAdvancedConfigWrapper clientConfig = OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep);
+                clientConfig.setIdTokenSignedResponseAlg(Algorithm.RS256);
+            });
+            fail();
+        } catch (ClientPolicyException e) {
+            assertEquals(OAuthErrorException.INVALID_REQUEST, e.getMessage());
+        }
 
         // Test that secured algorithm is possible to explicitly set
+        String clientUUID = createClientByAdmin("client-jwt", (ClientRepresentation clientRep) -> {
+            clientRep.setClientAuthenticatorType(JWTClientAuthenticator.PROVIDER_ID);
+            OIDCAdvancedConfigWrapper clientCfg = OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep);
+            clientCfg.setIdTokenSignedResponseAlg(Algorithm.ES256);
+        });
+        ClientRepresentation client = getClientByAdmin(clientUUID);
+        OIDCAdvancedConfigWrapper clientConfig = OIDCAdvancedConfigWrapper.fromClientRepresentation(client);
+        Assert.assertEquals(Algorithm.ES256, clientConfig.getIdTokenSignedResponseAlg());
+        Assert.assertEquals(Algorithm.PS256, clientConfig.getRequestObjectSignatureAlg().toString());
 
         // Test default algorithms set everywhere
+        clientUUID = createClientByAdmin("client-jwt-default-alg", (ClientRepresentation clientRep) -> {
+            clientRep.setClientAuthenticatorType(JWTClientAuthenticator.PROVIDER_ID);
+        });
+        client = getClientByAdmin(clientUUID);
+        clientConfig = OIDCAdvancedConfigWrapper.fromClientRepresentation(client);
+        Assert.assertEquals(Algorithm.PS256, clientConfig.getIdTokenSignedResponseAlg());
+        Assert.assertEquals(Algorithm.PS256, clientConfig.getRequestObjectSignatureAlg().toString());
+        Assert.assertEquals(Algorithm.PS256, clientConfig.getUserInfoSignedResponseAlg().toString());
+        Assert.assertEquals(Algorithm.PS256, clientConfig.getTokenEndpointAuthSigningAlg());
+        Assert.assertEquals(Algorithm.PS256, client.getAttributes().get(OIDCConfigAttributes.ACCESS_TOKEN_SIGNED_RESPONSE_ALG));
+
     }
 
 
