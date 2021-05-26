@@ -11,7 +11,7 @@
         {
           "executor": "pkce-enforcer",
           "configuration": {
-            "auto-configure": "true"
+            "auto-configure": true
           }
         },
         {
@@ -65,14 +65,14 @@
           "executor": "secure-request-object",
           "configuration": {
             "available-period": "3600",
-            "verify-nbf": "true"
+            "verify-nbf": true
           }
         },
         {
           "executor": "secure-response-type",
           "configuration": {
-            "auto-configure": "true",
-            "allow-token-response-type": "false"
+            "auto-configure": true,
+            "allow-token-response-type": false
           }
         },
         {
@@ -94,7 +94,7 @@
         {
           "executor": "holder-of-key-enforcer",
           "configuration": {
-            "auto-configure": "true"
+            "auto-configure": true
           }
         }
       ]
