@@ -3218,6 +3218,14 @@ module.controller('ClientPoliciesProfilesEditExecutorCtrl', function($scope, rea
                     break;
                 }
             }
+
+            // Convert boolean properties from the configuration to strings as expected by the kc-provider-config directive
+            for (var j=0 ; j < $scope.executorType.properties.length ; j++) {
+                var currentProperty = $scope.executorType.properties[j];
+                if (currentProperty.type === 'boolean') {
+                    $scope.executor.config[currentProperty.name] = ($scope.executor.config[currentProperty.name]) ? "true" : "false";
+                }
+            }
         }
 
     }
@@ -3229,6 +3237,10 @@ module.controller('ClientPoliciesProfilesEditExecutorCtrl', function($scope, rea
             } else {
                 return [];
             }
+        }
+
+        if (configProperty.type === 'boolean') {
+            return (configProperty.defaultValue) ? "true" : "false";
         }
 
         if (configProperty.defaultValue !== undefined) {
@@ -3259,6 +3271,14 @@ module.controller('ClientPoliciesProfilesEditExecutorCtrl', function($scope, rea
         }
 
         ComponentUtils.removeLastEmptyValue($scope.executor.config);
+
+        // Convert String properties required by the kc-provider-config directive back to booleans
+        for (var j=0 ; j < $scope.executorType.properties.length ; j++) {
+            var currentProperty = $scope.executorType.properties[j];
+            if (currentProperty.type === 'boolean') {
+                $scope.executor.config[currentProperty.name] = ($scope.executor.config[currentProperty.name] === "true") ? true : false;
+            }
+        }
 
         if ($scope.createNew) {
             var selectedExecutor = {
