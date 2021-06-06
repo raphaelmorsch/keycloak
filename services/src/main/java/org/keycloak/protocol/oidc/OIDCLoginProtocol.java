@@ -79,6 +79,7 @@ public class OIDCLoginProtocol implements LoginProtocol {
     public static final String RESPONSE_TYPE_PARAM = "response_type";
     public static final String GRANT_TYPE_PARAM = "grant_type";
     public static final String REDIRECT_URI_PARAM = "redirect_uri";
+    public static final String POST_LOGOUT_REDIRECT_URI_PARAM = "post_logout_redirect_uri";
     public static final String CLIENT_ID_PARAM = "client_id";
     public static final String NONCE_PARAM = "nonce";
     public static final String MAX_AGE_PARAM = OAuth2Constants.MAX_AGE;

@@ -126,7 +126,8 @@ public class OIDCPublicKeyRotationAdapterTest extends AbstractServletsAdapterTes
 
         // Logout
         String logoutUri = OIDCLoginProtocolService.logoutUrl(authServerPage.createUriBuilder())
-                .queryParam(OAuth2Constants.REDIRECT_URI, tokenMinTTLPage.toString())
+                .queryParam(OAuth2Constants.POST_LOGOUT_REDIRECT_URI, tokenMinTTLPage.toString())
+                .queryParam(OAuth2Constants.ID_TOKEN_HINT, "Doug")
                 .build("demo").toString();
         driver.navigate().to(logoutUri);
         assertCurrentUrlStartsWithLoginUrlOf(testRealmPage);
@@ -189,7 +190,9 @@ public class OIDCPublicKeyRotationAdapterTest extends AbstractServletsAdapterTes
 
         // Logout
         String logoutUri = OIDCLoginProtocolService.logoutUrl(authServerPage.createUriBuilder())
-                .queryParam(OAuth2Constants.REDIRECT_URI, securePortal.toString()).build("demo").toString();
+                .queryParam(OAuth2Constants.POST_LOGOUT_REDIRECT_URI, tokenMinTTLPage.toString())
+                .queryParam(OAuth2Constants.ID_TOKEN_HINT, "Doug")
+                .build("demo").toString();
         driver.navigate().to(logoutUri);
     }
 

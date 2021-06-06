@@ -110,7 +110,9 @@ public class SessionServletAdapterTest extends AbstractServletsAdapterTest {
 
         // Logout in browser1
         String logoutUri = OIDCLoginProtocolService.logoutUrl(authServerPage.createUriBuilder())
-                .queryParam(OAuth2Constants.REDIRECT_URI, sessionPortalPage.toString()).build("demo").toString();
+                .queryParam(OAuth2Constants.POST_LOGOUT_REDIRECT_URI, sessionPortalPage.toString())
+                .queryParam(OAuth2Constants.ID_TOKEN_HINT, "Doug")
+                .build("demo").toString();
         driver.navigate().to(logoutUri);
         assertCurrentUrlStartsWithLoginUrlOf(testRealmPage);
 
@@ -150,7 +152,9 @@ public class SessionServletAdapterTest extends AbstractServletsAdapterTest {
 
         // Logout
         String logoutUri = OIDCLoginProtocolService.logoutUrl(authServerPage.createUriBuilder())
-                .queryParam(OAuth2Constants.REDIRECT_URI, sessionPortalPage.toString()).build("demo").toString();
+                .queryParam(OAuth2Constants.POST_LOGOUT_REDIRECT_URI, sessionPortalPage.toString())
+                .queryParam(OAuth2Constants.ID_TOKEN_HINT, "Doug")
+                .build("demo").toString();
         driver.navigate().to(logoutUri);
 
         // Assert that http session was invalidated
@@ -182,7 +186,9 @@ public class SessionServletAdapterTest extends AbstractServletsAdapterTest {
         String pageSource = driver.getPageSource();
         assertTrue(pageSource.contains("Counter=3"));
         String logoutUri = OIDCLoginProtocolService.logoutUrl(authServerPage.createUriBuilder())
-                .queryParam(OAuth2Constants.REDIRECT_URI, sessionPortalPage.toString()).build("demo").toString();
+                .queryParam(OAuth2Constants.POST_LOGOUT_REDIRECT_URI, sessionPortalPage.toString())
+                .queryParam(OAuth2Constants.ID_TOKEN_HINT, "Doug")
+                .build("demo").toString();
         driver.navigate().to(logoutUri);
     }
 

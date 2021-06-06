@@ -139,8 +139,8 @@ public class Urls {
         return accountBase(baseUri).path(AccountFormService.class, "sessionsPage").build(realmName);
     }
 
-    public static URI accountLogout(URI baseUri, URI redirectUri, String realmName) {
-        return realmLogout(baseUri).queryParam("redirect_uri", redirectUri).build(realmName);
+    public static URI accountLogout(URI baseUri, URI redirectUri, String realmName, String idTokenHint) {
+        return realmLogout(baseUri).queryParam("post_logout_redirect_uri", redirectUri).queryParam("id_token_hint", idTokenHint).build(realmName);
     }
 
     public static URI accountResourcesPage(URI baseUri, String realmName) {

@@ -43,6 +43,7 @@ import org.keycloak.locale.LocaleUpdaterProvider;
 import org.keycloak.models.AccountRoles;
 import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ClientModel;
+import org.keycloak.models.ClientSessionContext;
 import org.keycloak.models.FederatedIdentityModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ModelException;
@@ -55,7 +56,9 @@ import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.models.utils.CredentialValidation;
 import org.keycloak.models.utils.FormMessage;
+import org.keycloak.protocol.oidc.TokenManager;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
+import org.keycloak.representations.IDToken;
 import org.keycloak.services.ErrorResponse;
 import org.keycloak.services.ForbiddenException;
 import org.keycloak.services.ServicesLogger;
@@ -68,6 +71,7 @@ import org.keycloak.services.managers.UserConsentManager;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.services.resources.AbstractSecuredLocalService;
 import org.keycloak.services.resources.RealmsResource;
+import org.keycloak.services.util.DefaultClientSessionContext;
 import org.keycloak.services.util.ResolveRelative;
 import org.keycloak.services.validation.Validation;
 import org.keycloak.sessions.AuthenticationSessionModel;
@@ -181,6 +185,10 @@ public class AccountFormService extends AbstractSecuredLocalService {
             }
 
             account.setUser(auth.getUser());
+
+            ClientSessionContext clientSessionCtx = DefaultClientSessionContext.fromClientSessionScopeParameter(auth.getClientSession(), session);
+            IDToken idToken = new TokenManager().responseBuilder(realm, client, event, session, userSession, clientSessionCtx).accessToken(authResult.getToken()).generateIDToken().getIdToken();
+            account.setIdTokenHint(session.tokens().encodeAndEncrypt(idToken));
         }
 
         account.setFeatures(realm.isIdentityFederationEnabled(), eventStore != null && realm.isEventsEnabled(), true, Profile.isFeatureEnabled(Profile.Feature.AUTHORIZATION));

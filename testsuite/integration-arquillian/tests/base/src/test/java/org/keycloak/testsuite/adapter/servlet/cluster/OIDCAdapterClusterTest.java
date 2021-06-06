@@ -140,7 +140,7 @@ public class OIDCAdapterClusterTest extends AbstractAdapterClusteredTest {
         assertSessionCounter(NODE_2_NAME, NODE_2_URI, NODE_1_URI, proxiedUrl, 4);
 
         String logoutUri = OIDCLoginProtocolService.logoutUrl(authServerPage.createUriBuilder())
-                .queryParam(OAuth2Constants.REDIRECT_URI, proxiedUrl).build(AuthRealm.DEMO).toString();
+                .queryParam(OAuth2Constants.POST_LOGOUT_REDIRECT_URI, proxiedUrl).build(AuthRealm.DEMO).toString();
         driver.navigate().to(logoutUri);
         Retry.execute(() -> {
             driver.navigate().to(proxiedUrl);

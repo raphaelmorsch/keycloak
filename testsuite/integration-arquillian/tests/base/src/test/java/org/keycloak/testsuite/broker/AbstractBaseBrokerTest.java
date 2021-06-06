@@ -304,16 +304,16 @@ public abstract class AbstractBaseBrokerTest extends AbstractKeycloakTest {
         logoutFromRealm(contextRoot, realm, null);
     }
 
-    protected void logoutFromRealm(String contextRoot, String realm, String initiatingIdp) { logoutFromRealm(contextRoot, realm, initiatingIdp, null); }
+    protected void logoutFromRealm(String contextRoot, String realm, String initiatingIdp) {
+        logoutFromRealm(contextRoot, realm, initiatingIdp, "Doug");
+    }
 
     protected void logoutFromRealm(String contextRoot, String realm, String initiatingIdp, String tokenHint) {
-        driver.navigate().to(contextRoot
-                + "/auth/realms/" + realm
-                + "/protocol/" + "openid-connect"
-                + "/logout?redirect_uri=" + encodeUrl(getAccountUrl(contextRoot, realm))
-                + (!StringUtils.isBlank(initiatingIdp) ? "&initiating_idp=" + initiatingIdp : "")
-                + (!StringUtils.isBlank(tokenHint) ? "&id_token_hint=" + tokenHint : "")
-        );
+        oauth.realm(realm)
+                .postLogoutRedirectUri(encodeUrl(getAccountUrl(contextRoot, realm)))
+                .initiatingIDP(initiatingIdp)
+                .idTokenHint(tokenHint)
+                .openLogout();
 
         try {
             Retry.execute(() -> {
