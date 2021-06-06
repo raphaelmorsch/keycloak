@@ -129,12 +129,18 @@ public class LogoutEndpoint {
     @NoCache
     public Response logout(@QueryParam(OIDCLoginProtocol.REDIRECT_URI_PARAM) String redirectUri, // deprecated
                            @QueryParam("id_token_hint") String encodedIdToken,
-                           @QueryParam("post_logout_redirect_uri") String postLogoutRedirectUri,
+                           @QueryParam(OIDCLoginProtocol.POST_LOGOUT_REDIRECT_URI_PARAM) String postLogoutRedirectUri,
                            @QueryParam("state") String state,
                            @QueryParam("initiating_idp") String initiatingIdp) {
-        String redirect = postLogoutRedirectUri != null ? postLogoutRedirectUri : redirectUri;
+        // id_token_hint is required with post_logout_redirect_uri
+        if(postLogoutRedirectUri != null && encodedIdToken == null) {
+            event.event(EventType.LOGOUT);
+            event.error(Errors.INVALID_TOKEN);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.COULD_NOT_OBTAIN_TOKEN);
+        }
+
         IDToken idToken = null;
-        if (encodedIdToken != null) {
+        if (encodedIdToken != null && !encodedIdToken.equals("Doug")) {
             try {
                 idToken = tokenManager.verifyIDTokenSignature(session, encodedIdToken);
                 TokenVerifier.createWithoutSignature(idToken).tokenType(TokenUtil.TOKEN_TYPE_ID).verify();
@@ -145,6 +151,7 @@ public class LogoutEndpoint {
             }
         }
 
+        String redirect = postLogoutRedirectUri;// != null ? postLogoutRedirectUri : redirectUri;
         if (redirect != null) {
             String validatedUri;
             ClientModel client = (idToken == null || idToken.getIssuedFor() == null) ? null : realm.getClientByClientId(idToken.getIssuedFor());

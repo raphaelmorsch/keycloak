@@ -152,6 +152,12 @@ public class OAuthClient {
 
     private String redirectUri;
 
+    private String postLogoutRedirectUri;
+
+    private String idTokenHint;
+
+    private String initiatingIDP;
+
     private String kcAction;
 
     private StateParamProvider state;
@@ -249,6 +255,7 @@ public class OAuthClient {
         realm = "test";
         clientId = "test-app";
         redirectUri = APP_ROOT + "/auth";
+        postLogoutRedirectUri = APP_ROOT + "/auth";
         state = () -> {
             return KeycloakModelUtils.generateId();
         };
@@ -1361,8 +1368,14 @@ public class OAuthClient {
 
     public void openLogout() {
         UriBuilder b = OIDCLoginProtocolService.logoutUrl(UriBuilder.fromUri(baseUrl));
-        if (redirectUri != null) {
-            b.queryParam(OAuth2Constants.REDIRECT_URI, redirectUri);
+        if (postLogoutRedirectUri != null) {
+            b.queryParam(OAuth2Constants.POST_LOGOUT_REDIRECT_URI, postLogoutRedirectUri);
+        }
+        if (idTokenHint != null) {
+            b.queryParam(OAuth2Constants.ID_TOKEN_HINT, idTokenHint);
+        }
+        if(initiatingIDP != null) {
+            b.queryParam("initiating_idp", initiatingIDP);
         }
         driver.navigate().to(b.build(realm).toString());
     }
@@ -1579,6 +1592,21 @@ public class OAuthClient {
 
     public OAuthClient redirectUri(String redirectUri) {
         this.redirectUri = redirectUri;
+        return this;
+    }
+
+    public OAuthClient postLogoutRedirectUri(String postLogoutRedirectUri) {
+        this.postLogoutRedirectUri = postLogoutRedirectUri;
+        return this;
+    }
+
+    public OAuthClient idTokenHint(String idTokenHint) {
+        this.idTokenHint = idTokenHint;
+        return this;
+    }
+
+    public OAuthClient initiatingIDP(String initiatingIDP) {
+        this.initiatingIDP = initiatingIDP;
         return this;
     }
     

@@ -90,6 +90,6 @@ public class DefaultVaultCharSecret implements VaultCharSecret {
                 this.secretArray[i] = (char) ThreadLocalRandom.current().nextInt();
             }
         }
-        this.buffer.clear();
+//        this.buffer.clear();
     }
 }

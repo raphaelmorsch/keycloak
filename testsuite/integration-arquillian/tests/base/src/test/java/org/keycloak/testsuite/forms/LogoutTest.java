@@ -108,7 +108,12 @@ public class LogoutTest extends AbstractTestRealmKeycloakTest {
 
         String redirectUri = oauth.APP_AUTH_ROOT + "?logout";
 
-        String logoutUrl = oauth.getLogoutUrl().redirectUri(redirectUri).build();
+        String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
+        OAuthClient.AccessTokenResponse tokenResponse = oauth.doAccessTokenRequest(code, "password");
+        events.poll();
+        String idTokenString = tokenResponse.getIdToken();
+
+        String logoutUrl = oauth.getLogoutUrl().postLogoutRedirectUri(redirectUri).idTokenHint(idTokenString).build();
         driver.navigate().to(logoutUrl);
 
         events.expectLogout(sessionId).detail(Details.REDIRECT_URI, redirectUri).assertEvent();
@@ -148,7 +153,12 @@ public class LogoutTest extends AbstractTestRealmKeycloakTest {
 
             String invalidRedirectUri = ServerURLs.getAuthServerContextRoot() + "/bar";
 
-            String logoutUrl = oauth.getLogoutUrl().redirectUri(invalidRedirectUri).build();
+            String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
+            OAuthClient.AccessTokenResponse tokenResponse = oauth.doAccessTokenRequest(code, "password");
+            events.poll();
+            String idTokenString = tokenResponse.getIdToken();
+
+            String logoutUrl = oauth.getLogoutUrl().postLogoutRedirectUri(invalidRedirectUri).idTokenHint(idTokenString).build();
             driver.navigate().to(logoutUrl);
 
             events.expectLogoutError(Errors.INVALID_REDIRECT_URI).assertEvent();
@@ -202,7 +212,7 @@ public class LogoutTest extends AbstractTestRealmKeycloakTest {
             // expire online user session
             setTimeOffset(9999);
 
-            String logoutUrl = oauth.getLogoutUrl().redirectUri(oauth.APP_AUTH_ROOT).idTokenHint(idTokenString).build();
+            String logoutUrl = oauth.getLogoutUrl().postLogoutRedirectUri(oauth.APP_AUTH_ROOT).idTokenHint(idTokenString).build();
             driver.navigate().to(logoutUrl);
 
             // should not throw an internal server error
@@ -228,8 +238,13 @@ public class LogoutTest extends AbstractTestRealmKeycloakTest {
         oauth.openLoginForm();
         events.expectLogin().session(sessionId).removeDetail(Details.USERNAME).assertEvent();
 
-         //  Logout session 1 by redirect
-        driver.navigate().to(oauth.getLogoutUrl().redirectUri(oauth.APP_AUTH_ROOT).build());
+        //  Logout session 1 by redirect
+        String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
+        OAuthClient.AccessTokenResponse tokenResponse = oauth.doAccessTokenRequest(code, "password");
+        events.poll();
+        String idTokenString = tokenResponse.getIdToken();
+
+        driver.navigate().to(oauth.getLogoutUrl().postLogoutRedirectUri(oauth.APP_AUTH_ROOT).idTokenHint(idTokenString).build());
         events.expectLogout(sessionId).detail(Details.REDIRECT_URI, oauth.APP_AUTH_ROOT).assertEvent();
 
          // Check session 1 not logged-in
@@ -246,7 +261,12 @@ public class LogoutTest extends AbstractTestRealmKeycloakTest {
         events.expectLogin().session(sessionId3).removeDetail(Details.USERNAME).assertEvent();
 
         //  Logout session 3 by redirect
-        driver.navigate().to(oauth.getLogoutUrl().redirectUri(oauth.APP_AUTH_ROOT).build());
+        code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
+        tokenResponse = oauth.doAccessTokenRequest(code, "password");
+        events.poll();
+        idTokenString = tokenResponse.getIdToken();
+
+        driver.navigate().to(oauth.getLogoutUrl().postLogoutRedirectUri(oauth.APP_AUTH_ROOT).idTokenHint(idTokenString).build());
         events.expectLogout(sessionId3).detail(Details.REDIRECT_URI, oauth.APP_AUTH_ROOT).assertEvent();
     }
 

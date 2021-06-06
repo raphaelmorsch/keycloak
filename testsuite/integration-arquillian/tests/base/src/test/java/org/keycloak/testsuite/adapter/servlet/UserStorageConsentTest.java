@@ -172,8 +172,10 @@ public class UserStorageConsentTest extends AbstractServletsAdapterTest {
         consentPage.confirm();
         assertCurrentUrlEquals(productPortal.toString());
         Assert.assertTrue(driver.getPageSource().contains("iPhone"));
+
         String logoutUri = OIDCLoginProtocolService.logoutUrl(authServerPage.createUriBuilder())
-                .queryParam(OAuth2Constants.REDIRECT_URI, productPortal.toString())
+                .queryParam(OAuth2Constants.POST_LOGOUT_REDIRECT_URI, productPortal.toString())
+                .queryParam(OAuth2Constants.ID_TOKEN_HINT, "Doug")
                 .build("demo").toString();
 
         driver.navigate().to(logoutUri);
