@@ -17,24 +17,6 @@
 
 package org.keycloak.testsuite.client;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
-import static org.keycloak.testsuite.admin.ApiUtil.findUserByUsername;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.security.KeyPair;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -85,16 +67,17 @@ import org.keycloak.services.clientpolicy.condition.ClientUpdaterSourceHostsCond
 import org.keycloak.services.clientpolicy.condition.ClientUpdaterSourceRolesConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ConfidentialClientAcceptExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.ConsentRequiredExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.FullScopeDisabledExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.HolderOfKeyEnforcerExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.PKCEEnforcerExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureClientAuthenticatorExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureClientUrisExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutor;
 import org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureResponseTypeExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureSessionEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmForSignedJwtExecutorFactory;
-import org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutor;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude;
 import org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude.AuthServer;
@@ -108,6 +91,45 @@ import org.keycloak.testsuite.util.OAuthClient;
 import org.keycloak.testsuite.util.RoleBuilder;
 import org.keycloak.testsuite.util.ServerURLs;
 import org.keycloak.util.JsonSerialization;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
+import static org.keycloak.testsuite.admin.ApiUtil.findUserByUsername;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.ClientPoliciesBuilder;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.ClientPolicyBuilder;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.ClientProfileBuilder;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.ClientProfilesBuilder;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createAnyClientConditionConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createClientAccessTypeConditionConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createClientRolesConditionConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createClientScopesConditionConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createClientUpdateContextConditionConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createClientUpdateSourceGroupsConditionConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createClientUpdateSourceHostsConditionConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createClientUpdateSourceRolesConditionConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createHolderOfKeyEnforceExecutorConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createPKCEEnforceExecutorConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createSecureClientAuthenticatorExecutorConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createSecureRequestObjectExecutorConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createSecureResponseTypeExecutor;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createSecureSigningAlgorithmEnforceExecutorConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createSecureSigningAlgorithmForSignedJwtEnforceExecutorConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createTestRaiseExeptionConditionConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createFullScopeDisabledExecutorConfig;
 
 /**
  * @author <a href="mailto:takashi.norimatsu.ws@hitachi.com">Takashi Norimatsu</a>
@@ -2128,6 +2150,84 @@ public class ClientPoliciesTest extends AbstractClientPoliciesTest {
             });
             clientRep = getClientByAdmin(cid);
             assertEquals(Boolean.TRUE, clientRep.isImplicitFlowEnabled());
+        } catch (ClientPolicyException cpe) {
+            fail();
+        }
+    }
+
+    @Test
+    public void testFullScopeDisabledExecutor() throws Exception {
+        // register profiles - client autoConfigured to disable fullScopeAllowed
+        String json = (new ClientProfilesBuilder()).addProfile(
+                (new ClientProfileBuilder()).createProfile(PROFILE_NAME, "Test Profile")
+                        .addExecutor(FullScopeDisabledExecutorFactory.PROVIDER_ID, createFullScopeDisabledExecutorConfig(true))
+                        .toRepresentation()
+        ).toString();
+        updateProfiles(json);
+
+        // register policies
+        json = (new ClientPoliciesBuilder()).addPolicy(
+                (new ClientPolicyBuilder()).createPolicy(POLICY_NAME, "Test Policy", Boolean.TRUE)
+                        .addCondition(AnyClientConditionFactory.PROVIDER_ID,
+                                createAnyClientConditionConfig())
+                        .addProfile(PROFILE_NAME)
+                        .toRepresentation()
+        ).toString();
+        updatePolicies(json);
+
+        // Client will be auto-configured to disable fullScopeAllowed
+        String clientId = generateSuffixedName("aaa-app");
+        String cid = createClientByAdmin(clientId, (ClientRepresentation clientRep) -> {
+            clientRep.setImplicitFlowEnabled(Boolean.FALSE);
+            clientRep.setFullScopeAllowed(Boolean.TRUE);
+        });
+        ClientRepresentation clientRep = getClientByAdmin(cid);
+        assertEquals(Boolean.FALSE, clientRep.isFullScopeAllowed());
+
+        // Client cannot be updated to disable fullScopeAllowed
+        updateClientByAdmin(cid, (ClientRepresentation cRep) -> {
+            cRep.setFullScopeAllowed(Boolean.TRUE);
+        });
+        clientRep = getClientByAdmin(cid);
+        assertEquals(Boolean.FALSE, clientRep.isFullScopeAllowed());
+
+        // Switch auto-configure to false. Auto-configuration won't happen, but validation will still be here, so should not be possible to enable fullScopeAllowed
+        json = (new ClientProfilesBuilder()).addProfile(
+                (new ClientProfileBuilder()).createProfile(PROFILE_NAME, "Test Profile")
+                        .addExecutor(FullScopeDisabledExecutorFactory.PROVIDER_ID, createFullScopeDisabledExecutorConfig(false))
+                        .toRepresentation()
+        ).toString();
+        updateProfiles(json);
+
+        // Not possible to register client with fullScopeAllowed due the validation
+        try {
+            createClientByAdmin(clientId, (ClientRepresentation clientRep2) -> {
+                clientRep2.setFullScopeAllowed(Boolean.TRUE);
+            });
+            fail();
+        } catch (ClientPolicyException cpe) {
+            assertEquals(Errors.INVALID_REGISTRATION, cpe.getError());
+        }
+
+        // Not possible to update existing client to fullScopeAllowed due the validation
+        try {
+            updateClientByAdmin(cid, (ClientRepresentation cRep) -> {
+                cRep.setFullScopeAllowed(Boolean.TRUE);
+            });
+            fail();
+        } catch (ClientPolicyException cpe) {
+            assertEquals(Errors.INVALID_REGISTRATION, cpe.getError());
+        }
+        clientRep = getClientByAdmin(cid);
+        assertEquals(Boolean.FALSE, clientRep.isFullScopeAllowed());
+
+        try {
+            updateClientByAdmin(cid, (ClientRepresentation cRep) -> {
+                cRep.setImplicitFlowEnabled(Boolean.TRUE);
+            });
+            clientRep = getClientByAdmin(cid);
+            assertEquals(Boolean.TRUE, clientRep.isImplicitFlowEnabled());
+            assertEquals(Boolean.FALSE, clientRep.isFullScopeAllowed());
         } catch (ClientPolicyException cpe) {
             fail();
         }

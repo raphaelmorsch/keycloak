@@ -18,18 +18,6 @@
 
 package org.keycloak.testsuite.client;
 
-import java.security.KeyPair;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -39,6 +27,8 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.hamcrest.Matchers;
 import org.jboss.arquillian.graphene.page.Page;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
@@ -73,6 +63,7 @@ import org.keycloak.services.clientpolicy.condition.AnyClientConditionFactory;
 import org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutor;
 import org.keycloak.testsuite.Assert;
 import org.keycloak.testsuite.admin.ApiUtil;
+import org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude;
 import org.keycloak.testsuite.client.resources.TestApplicationResourceUrls;
 import org.keycloak.testsuite.client.resources.TestOIDCEndpointsApplicationResource;
 import org.keycloak.testsuite.pages.AppPage;
@@ -82,10 +73,26 @@ import org.keycloak.testsuite.pages.OAuthGrantPage;
 import org.keycloak.testsuite.rest.resource.TestingOIDCEndpointsApplicationResource;
 import org.keycloak.testsuite.util.MutualTLSUtils;
 import org.keycloak.testsuite.util.OAuthClient;
+import org.keycloak.testsuite.util.ServerURLs;
+
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.ClientPoliciesBuilder;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.ClientPolicyBuilder;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createAnyClientConditionConfig;
 
 /**
  * Test for the FAPI 1 specifications:
@@ -96,6 +103,7 @@ import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
+@AuthServerContainerExclude(AuthServerContainerExclude.AuthServer.REMOTE)
 public class FAPI1Test extends AbstractClientPoliciesTest {
 
     @Page
@@ -110,6 +118,11 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
     @Page
     protected AppPage appPage;
 
+    @BeforeClass
+    public static void verifySSL() {
+        // FAPI requires SSL and does not makes sense to test it with disabled SSL
+        Assume.assumeTrue("The FAPI test requires SSL to be enabled.", ServerURLs.AUTH_SERVER_SSL_REQUIRED);
+    }
 
     @Override
     public void addTestRealms(List<RealmRepresentation> testRealms) {
@@ -206,6 +219,7 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         });
         ClientRepresentation client = getClientByAdmin(clientUUID);
         Assert.assertEquals(JWTClientAuthenticator.PROVIDER_ID, client.getClientAuthenticatorType());
+        Assert.assertFalse(client.isFullScopeAllowed());
 
         // Set new initialToken for register new clients
         setInitialAccessTokenForDynamicClientRegistration();
@@ -279,6 +293,7 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         ClientRepresentation client = getClientByAdmin(clientUUID);
         Assert.assertFalse(client.isPublicClient());
         Assert.assertEquals(JWTClientSecretAuthenticator.PROVIDER_ID, client.getClientAuthenticatorType());
+        Assert.assertFalse(client.isFullScopeAllowed());
 
         checkPKCEWithS256RequiredDuringLogin("foo");
 
@@ -385,12 +400,13 @@ public class FAPI1Test extends AbstractClientPoliciesTest {
         client = getClientByAdmin(clientUUID);
         Assert.assertEquals(JWTClientAuthenticator.PROVIDER_ID, client.getClientAuthenticatorType());
 
-        // Check the Consent is enabled, Holder-of-key is enabled and default signature algorithm
+        // Check the Consent is enabled, Holder-of-key is enabled, fullScopeAllowed disabled and default signature algorithm.
         Assert.assertTrue(client.isConsentRequired());
         OIDCAdvancedConfigWrapper clientConfig = OIDCAdvancedConfigWrapper.fromClientRepresentation(client);
         Assert.assertTrue(clientConfig.isUseMtlsHokToken());
         Assert.assertEquals(Algorithm.PS256, clientConfig.getIdTokenSignedResponseAlg());
         Assert.assertEquals(Algorithm.PS256, clientConfig.getRequestObjectSignatureAlg().toString());
+        Assert.assertFalse(client.isFullScopeAllowed());
     }
 
 

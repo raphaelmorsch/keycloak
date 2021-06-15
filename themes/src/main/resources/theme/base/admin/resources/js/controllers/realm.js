@@ -1401,6 +1401,232 @@ module.controller('RealmTokenDetailCtrl', function($scope, Realm, realm, $http, 
     };
 });
 
+module.controller('RealmUserProfileCtrl', function($scope, Realm, realm, $http, $location, $route, UserProfile, Dialog, Notifications, serverInfo) {
+    $scope.realm = realm;
+    $scope.validatorProviders = serverInfo.componentTypes['org.keycloak.validate.Validator'];
+
+    $scope.isShowAttributes = true;
+
+    UserProfile.get({realm: realm.realm}, function(config) {
+        $scope.config = config;
+        $scope.rawConfig = angular.toJson(config, true);
+    });
+
+    $scope.isShowAttributes = true;
+
+    $scope.showAttributes = function() {
+        $route.reload();
+    }
+
+    $scope.showJsonEditor = function() {
+        $scope.isShowAttributes = false;
+    }
+
+    $scope.canViewPermission = {
+        minimumInputLength: 0,
+        delay: 500,
+        allowClear: true,
+        query: function (query) {
+            query.callback({results: ['user', 'admin']});
+        },
+        formatResult: function(object, container, query) {
+            return object;
+        },
+        formatSelection: function(object, container, query) {
+            return object;
+        }
+    };
+
+    $scope.canEditPermission = {
+        minimumInputLength: 0,
+        delay: 500,
+        allowClear: true,
+        query: function (query) {
+            query.callback({results: ['user', 'admin']});
+        },
+        formatResult: function(object, container, query) {
+            return object;
+        },
+        formatSelection: function(object, container, query) {
+            return object;
+        }
+    };
+
+    $scope.attributeSelected = false;
+
+    $scope.showListing = function() {
+        return !$scope.attributeSelected && $scope.currentAttribute == null && $scope.isShowAttributes;
+    }
+
+    $scope.create = function() {
+        $scope.isCreate = true;
+        $scope.currentAttribute = {
+            permissions: {
+                view: [],
+                edit: []
+            }
+        };
+    };
+
+    $scope.removeAttribute = function(attribute) {
+        Dialog.confirmDelete(attribute.name, 'attribute', function() {
+            let newAttributes = [];
+
+            for (var v of $scope.config.attributes) {
+                if (v != attribute) {
+                    newAttributes.push(v);
+                }
+            }
+
+            $scope.config.attributes = newAttributes;
+            $scope.save();
+        });
+    };
+
+    $scope.addAnnotation = function() {
+        if (!$scope.currentAttribute.annotations) {
+            $scope.currentAttribute.annotations = {};
+        }
+        $scope.currentAttribute.annotations[$scope.newAnnotation.key] = $scope.newAnnotation.value;
+        delete $scope.newAnnotation;
+    }
+
+    $scope.removeAnnotation = function(key) {
+        delete $scope.currentAttribute.annotations[key];
+    }
+
+    $scope.edit = function(attribute) {
+        if (attribute.permissions == null) {
+            attribute.permissions = {
+                view: [],
+                edit: []
+            };
+        }
+
+        $scope.isRequired = attribute.required != null;
+        $scope.canUserView = attribute.permissions.view.includes('user');
+        $scope.canAdminView = attribute.permissions.view.includes('admin');
+        $scope.canUserEdit = attribute.permissions.edit.includes('user');
+        $scope.canAdminEdit = attribute.permissions.edit.includes('admin');
+        $scope.currentAttribute = attribute;
+        $scope.attributeSelected = true;
+    };
+
+    $scope.$watch('isRequired', function() {
+        if ($scope.isRequired) {
+            $scope.currentAttribute.required = {};
+        } else {
+            delete $scope.currentAttribute.required;
+        }
+    }, true);
+
+    handlePermission = function(permission, role, allowed) {
+        let attribute = $scope.currentAttribute;
+        let roles = [];
+
+        for (let r of attribute.permissions[permission]) {
+            if (r != role) {
+                roles.push(r);
+            }
+        }
+
+        if (allowed) {
+            roles.push(role);
+        }
+
+        attribute.permissions[permission] = roles;
+    }
+
+    $scope.$watch('canUserView', function() {
+        handlePermission('view', 'user', $scope.canUserView);
+    }, true);
+
+    $scope.$watch('canAdminView', function() {
+        handlePermission('view', 'admin', $scope.canAdminView);
+    }, true);
+
+    $scope.$watch('canUserEdit', function() {
+        handlePermission('edit', 'user', $scope.canUserEdit);
+    }, true);
+
+    $scope.$watch('canAdminEdit', function() {
+        handlePermission('edit', 'admin', $scope.canAdminEdit);
+    }, true);
+
+    $scope.addValidator = function(validator) {
+        if ($scope.currentAttribute.validations == null) {
+            $scope.currentAttribute.validations = {};
+        }
+
+        let config = {};
+
+        for (let key in validator.config) {
+            let values = validator.config[key];
+
+            for (let k in values) {
+                config[key] = values[k];
+            }
+        }
+
+        $scope.currentAttribute.validations[validator.id] = config;
+
+        delete $scope.newValidator;
+    };
+
+    $scope.selectValidator = function(validator) {
+        validator.config = {};
+    };
+
+    $scope.cancelAddValidator = function() {
+        delete $scope.newValidator;
+    };
+
+    $scope.removeValidator = function(id) {
+        let newValidators = {};
+
+        for (let v in $scope.currentAttribute.validations) {
+            if (v != id) {
+                newValidators[v] = $scope.currentAttribute.validations[v];
+            }
+        }
+
+        if (newValidators.length == 0) {
+            delete $scope.currentAttribute.validations;
+            return;
+        }
+
+        $scope.currentAttribute.validations = newValidators;
+    };
+
+    $scope.save = function() {
+        if (!$scope.isShowAttributes) {
+            $scope.config = JSON.parse($scope.rawConfig);
+        }
+
+        if ($scope.isCreate && $scope.currentAttribute) {
+            $scope.config['attributes'].push($scope.currentAttribute);
+        }
+
+        UserProfile.update({realm: realm.realm},
+            $scope.config,  function () {
+                $scope.attributeSelected = false;
+                delete $scope.currentAttribute;
+                delete $scope.isCreate;
+                delete $scope.isRequired;
+                delete $scope.canUserView;
+                delete $scope.canAdminView;
+                delete $scope.canUserEdit;
+                delete $scope.canAdminEdit;
+                $route.reload();
+                Notifications.success("The attribute has been added.");
+            });
+    };
+
+    $scope.reset = function() {
+        $route.reload();
+    };
+});
+
 module.controller('ViewKeyCtrl', function($scope, key) {
     $scope.key = key;
 });
@@ -2198,14 +2424,19 @@ module.controller('IdentityProviderMapperListCtrl', function($scope, realm, iden
     $scope.mappers = mappers;
 });
 
-module.controller('IdentityProviderMapperCtrl', function($scope, realm,  identityProvider, mapperTypes, mapper, IdentityProviderMapper, Notifications, Dialog, $location) {
+module.controller('IdentityProviderMapperCtrl', function ($scope, realm, identityProvider, mapperTypes, mapper, IdentityProviderMapper, Notifications, Dialog, ComponentUtils, $location) {
     $scope.realm = realm;
     $scope.identityProvider = identityProvider;
     $scope.create = false;
-    $scope.mapper = angular.copy(mapper);
     $scope.changed = false;
     $scope.mapperType = mapperTypes[mapper.identityProviderMapper];
-    $scope.$watch(function() {
+
+    ComponentUtils.convertAllMultivaluedStringValuesToList($scope.mapperType.properties, mapper.config);
+    ComponentUtils.addLastEmptyValueToMultivaluedLists($scope.mapperType.properties, mapper.config);
+
+    $scope.mapper = angular.copy(mapper);
+
+    $scope.$watch(function () {
         return $location.path();
     }, function() {
         $scope.path = $location.path().substring(1).split("/");
@@ -2218,12 +2449,16 @@ module.controller('IdentityProviderMapperCtrl', function($scope, realm,  identit
     }, true);
 
     $scope.save = function() {
+        let mapperCopy = angular.copy($scope.mapper);
+        ComponentUtils.convertAllListValuesToMultivaluedString($scope.mapperType.properties, mapperCopy.config);
+
         IdentityProviderMapper.update({
             realm : realm.realm,
-            alias: identityProvider.alias,
+            alias : identityProvider.alias,
             mapperId : mapper.id
-        }, $scope.mapper, function() {
+        }, mapperCopy, function () {
             $scope.changed = false;
+            ComponentUtils.addLastEmptyValueToMultivaluedLists($scope.mapperType.properties, $scope.mapper.config);
             mapper = angular.copy($scope.mapper);
             $location.url("/realms/" + realm.realm + '/identity-provider-mappers/' + identityProvider.alias + "/mappers/" + mapper.id);
             Notifications.success("Your changes have been saved.");
@@ -2251,7 +2486,7 @@ module.controller('IdentityProviderMapperCtrl', function($scope, realm,  identit
 
 });
 
-module.controller('IdentityProviderMapperCreateCtrl', function($scope, realm, identityProvider, mapperTypes, IdentityProviderMapper, Notifications, Dialog, $location) {
+module.controller('IdentityProviderMapperCreateCtrl', function ($scope, realm, identityProvider, mapperTypes, IdentityProviderMapper, Notifications, Dialog, ComponentUtils, $location) {
     $scope.realm = realm;
     $scope.identityProvider = identityProvider;
     $scope.create = true;
@@ -2268,11 +2503,15 @@ module.controller('IdentityProviderMapperCreateCtrl', function($scope, realm, id
         $scope.path = $location.path().substring(1).split("/");
     });
 
-    $scope.save = function() {
+    $scope.save = function () {
         $scope.mapper.identityProviderMapper = $scope.mapperType.id;
+        let copyMapper = angular.copy($scope.mapper);
+        ComponentUtils.convertAllListValuesToMultivaluedString($scope.mapperType.properties, copyMapper.config);
+
         IdentityProviderMapper.save({
-            realm : realm.realm, alias: identityProvider.alias
-        }, $scope.mapper, function(data, headers) {
+            realm : realm.realm,
+            alias : identityProvider.alias
+        }, copyMapper, function (data, headers) {
             var l = headers().location;
             var id = l.substring(l.lastIndexOf("/") + 1);
             $location.url("/realms/" + realm.realm + '/identity-provider-mappers/' + identityProvider.alias + "/mappers/" + id);

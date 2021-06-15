@@ -17,8 +17,6 @@
 
 package org.keycloak.common;
 
-import static org.keycloak.common.Profile.Type.DEPRECATED;
-
 import org.jboss.logging.Logger;
 
 import java.io.File;
@@ -28,6 +26,8 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 
+import static org.keycloak.common.Profile.Type.DEPRECATED;
+
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
@@ -36,6 +36,9 @@ public class Profile {
 
     private static final Logger logger = Logger.getLogger(Profile.class);
 
+    public static final String PRODUCT_NAME = ProductValue.RHSSO.getName();
+    public static final String PROJECT_NAME = ProductValue.KEYCLOAK.getName();
+
     public enum Type {
         DEFAULT,
         DISABLED_BY_DEFAULT,
@@ -43,6 +46,7 @@ public class Profile {
         EXPERIMENTAL,
         DEPRECATED;
     }
+
     public enum Feature {
         AUTHORIZATION(Type.DEFAULT),
         ACCOUNT2(Type.DEFAULT),
@@ -57,10 +61,11 @@ public class Profile {
         WEB_AUTHN(Type.DEFAULT, Type.PREVIEW),
         CLIENT_POLICIES(Type.DEFAULT),
         CIBA(Type.PREVIEW),
-        MAP_STORAGE(Type.EXPERIMENTAL);
+        MAP_STORAGE(Type.EXPERIMENTAL),
+        DECLARATIVE_USER_PROFILE(Type.PREVIEW);
 
-        private Type typeProject;
-        private Type typeProduct;
+        private final Type typeProject;
+        private final Type typeProduct;
 
         Feature(Type type) {
             this(type, type);
@@ -85,8 +90,18 @@ public class Profile {
     }
 
     private enum ProductValue {
-        KEYCLOAK,
-        RHSSO
+        KEYCLOAK("Keycloak"),
+        RHSSO("RH-SSO");
+
+        private final String name;
+
+        ProductValue(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
     }
 
     private enum ProfileValue {
@@ -112,7 +127,7 @@ public class Profile {
         this.propertyResolver = resolver;
         Config config = new Config();
 
-        product = "rh-sso".equals(Version.NAME) ? ProductValue.RHSSO : ProductValue.KEYCLOAK;
+        product = PRODUCT_NAME.toLowerCase().equals(Version.NAME) ? ProductValue.RHSSO : ProductValue.KEYCLOAK;
         profile = ProfileValue.valueOf(config.getProfile().toUpperCase());
 
         for (Feature f : Feature.values()) {

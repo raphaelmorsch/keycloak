@@ -33,6 +33,7 @@ import org.keycloak.admin.client.resource.AuthenticationManagementResource;
 import org.keycloak.admin.client.resource.RealmsResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
+import org.keycloak.common.Profile;
 import org.keycloak.common.util.KeycloakUriBuilder;
 import org.keycloak.common.util.Time;
 import org.keycloak.representations.idm.ClientRepresentation;
@@ -687,5 +688,15 @@ public abstract class AbstractKeycloakTest {
             }
         }
         return in;
+    }
+
+    /**
+     * Get product/project name
+     *
+     * @return f.e. 'RH-SSO' or 'Keycloak'
+     */
+    protected String getProjectName() {
+        final boolean isProduct = adminClient.serverInfo().getInfo().getProfileInfo().getName().equals("product");
+        return isProduct ? Profile.PRODUCT_NAME : Profile.PROJECT_NAME;
     }
 }
