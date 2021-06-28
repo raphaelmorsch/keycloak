@@ -23,13 +23,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.keycloak.crypto.SignatureProvider;
 import org.keycloak.jose.jws.Algorithm;
 import org.keycloak.jose.jws.JWSHeader;
 import org.keycloak.jose.jws.JWSInput;
 import org.keycloak.models.CibaConfig;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.protocol.oidc.OIDCWellKnownProvider;
 
 /**
  * Parse the parameters from OIDC "request" object
@@ -53,7 +53,11 @@ class BackchannelAuthenticationEndpointSignedRequestParser extends BackchannelAu
         if (header.getAlgorithm() == Algorithm.none) {
             throw new RuntimeException("None signed algorithm is not allowed");
         }
-        if (!OIDCWellKnownProvider.isAsymmetricAlgorithm(headerAlgorithm.name())) {
+        SignatureProvider signatureProvider = session.getProvider(SignatureProvider.class, headerAlgorithm.name());
+        if (signatureProvider == null) {
+            throw new RuntimeException("Not found provider for the algorithm " + headerAlgorithm.name());
+        }
+        if (!signatureProvider.isAsymmetricAlgorithm()) {
             throw new RuntimeException("Signed algorithm is not allowed");
         }
         if (requestedSignatureAlgorithm != null && requestedSignatureAlgorithm != headerAlgorithm) {

@@ -53,10 +53,13 @@ import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
 import java.net.URI;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -176,7 +179,7 @@ public class OIDCWellKnownProvider implements WellKnownProvider {
 
         config.setBackchannelTokenDeliveryModesSupported(DEFAULT_BACKCHANNEL_TOKEN_DELIVERY_MODES_SUPPORTED);
         config.setBackchannelAuthenticationEndpoint(CibaGrantType.authorizationUrl(backendUriInfo.getBaseUriBuilder()).build(realm.getName()).toString());
-        config.setBackchannelAuthenticationRequestSigningAlgValuesSupported(getSupportedClientAsymmetricSigningAlgorithms(false));
+        config.setBackchannelAuthenticationRequestSigningAlgValuesSupported(getSupportedBackchannelAuthenticationRequestSigningAlgorithms());
 
         return config;
     }
@@ -214,9 +217,13 @@ public class OIDCWellKnownProvider implements WellKnownProvider {
         return supportedAlgorithms.collect(Collectors.toList());
     }
 
-    private List<String> getSupportedAsymmetricAlgorithms(Class<? extends Provider> clazz, boolean includeNone) {
-        return getSupportedAlgorithms(ClientSignatureVerifierProvider.class, includeNone).stream()
-                .filter(i->isAsymmetricAlgorithm(i)).collect(Collectors.toList());
+    private List<String> getSupportedAsymmetricAlgorithms() {
+        return getSupportedAlgorithms(SignatureProvider.class, false).stream()
+                .map(algorithm -> new AbstractMap.SimpleEntry<>(algorithm, session.getProvider(SignatureProvider.class, algorithm)))
+                .filter(entry -> entry.getValue() != null)
+                .filter(entry -> entry.getValue().isAsymmetricAlgorithm())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
     }
 
     private List<String> getSupportedSigningAlgorithms(boolean includeNone) {
@@ -227,8 +234,8 @@ public class OIDCWellKnownProvider implements WellKnownProvider {
         return getSupportedAlgorithms(ClientSignatureVerifierProvider.class, includeNone);
     }
 
-    private List<String> getSupportedClientAsymmetricSigningAlgorithms(boolean includeNone) {
-        return getSupportedAsymmetricAlgorithms(ClientSignatureVerifierProvider.class, includeNone);
+    private List<String> getSupportedBackchannelAuthenticationRequestSigningAlgorithms() {
+        return getSupportedAsymmetricAlgorithms();
     }
 
     private List<String> getSupportedIdTokenEncryptionAlg(boolean includeNone) {
