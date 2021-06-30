@@ -38,7 +38,6 @@ import org.openqa.selenium.By;
  * 
  * @author <a href="mailto:sebastian.zoescher@prime-sign.com">Sebastian Zoescher</a>
  */
-@EnableFeature(value = Profile.Feature.WEB_AUTHN, skipRestart = true, onlyForProduct = true)
 public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
 
     static final String CONFIG_CONDITION_LEVEL = "loa-condition-level";
