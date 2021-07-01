@@ -50,6 +50,7 @@ import static org.keycloak.protocol.oidc.OIDCLoginProtocol.REQUEST_URI_PARAM;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Pushed Authorization Request endpoint
@@ -57,7 +58,8 @@ import java.util.Map;
 public class ParEndpoint extends AbstractParEndpoint {
 
     public static final String PAR_CREATED_TIME = "par.created.time";
-    private static final String REQUEST_URI_TEMPLATE = "urn:ietf:params:oauth:request_uri:%s";
+    private static final String REQUEST_URI_PREFIX = "urn:ietf:params:oauth:request_uri:";
+    public static final int REQUEST_URI_PREFIX_LENGTH = REQUEST_URI_PREFIX.length();
 
     @Context
     private HttpRequest httpRequest;
@@ -139,8 +141,8 @@ public class ParEndpoint extends AbstractParEndpoint {
 
         Map<String, String> params = new HashMap<>();
 
-        byte[] clientHashAndSecret = Bytes.concat(getHash(client.getClientId()), KeycloakModelUtils.generateSecret());
-        String requestUri = String.format(REQUEST_URI_TEMPLATE, Base64Url.encode(clientHashAndSecret));
+        UUID key = UUID.randomUUID();
+        String requestUri = REQUEST_URI_PREFIX + key.toString();
 
         int expiresIn = realm.getAttribute("requestUriLifespan", 60);
 
@@ -151,8 +153,8 @@ public class ParEndpoint extends AbstractParEndpoint {
             });
         params.put(PAR_CREATED_TIME, String.valueOf(System.currentTimeMillis()));
 
-        PushedAuthzRequestStoreProvider parStore = session.getProvider(PushedAuthzRequestStoreProvider.class, "par");
-        parStore.put(requestUri, expiresIn, params);
+        PushedAuthzRequestStoreProvider parStore = session.getProvider(PushedAuthzRequestStoreProvider.class);
+        parStore.put(key, expiresIn, params);
 
         ParResponse parResponse = new ParResponse(requestUri, String.valueOf(expiresIn));
 

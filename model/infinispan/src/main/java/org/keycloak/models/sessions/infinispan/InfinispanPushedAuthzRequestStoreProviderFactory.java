@@ -27,12 +27,13 @@ import org.keycloak.models.PushedAuthzRequestStoreProviderFactory;
 import org.keycloak.models.sessions.infinispan.entities.ActionTokenValueEntity;
 import org.keycloak.provider.EnvironmentDependentProviderFactory;
 
+import java.util.UUID;
 import java.util.function.Supplier;
 
 public class InfinispanPushedAuthzRequestStoreProviderFactory implements PushedAuthzRequestStoreProviderFactory, EnvironmentDependentProviderFactory {
 
     // Reuse "actionTokens" infinispan cache for now
-    private volatile Supplier<BasicCache<String, ActionTokenValueEntity>> codeCache;
+    private volatile Supplier<BasicCache<UUID, ActionTokenValueEntity>> codeCache;
 
     @Override
     public PushedAuthzRequestStoreProvider create(KeycloakSession session) {
@@ -67,7 +68,7 @@ public class InfinispanPushedAuthzRequestStoreProviderFactory implements PushedA
 
     @Override
     public String getId() {
-        return "par";
+        return "infinispan";
     }
 
     @Override

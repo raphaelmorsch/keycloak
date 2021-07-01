@@ -27,6 +27,7 @@ import org.keycloak.models.sessions.infinispan.entities.ActionTokenValueEntity;
 import org.keycloak.models.sessions.infinispan.util.InfinispanUtil;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -35,18 +36,18 @@ public class InfinispanPushedAuthzRequestStoreProvider implements PushedAuthzReq
 
     public static final Logger logger = Logger.getLogger(InfinispanPushedAuthzRequestStoreProvider.class);
 
-    private final Supplier<BasicCache<String, ActionTokenValueEntity>> parDataCache;
+    private final Supplier<BasicCache<UUID, ActionTokenValueEntity>> parDataCache;
 
-    public InfinispanPushedAuthzRequestStoreProvider(KeycloakSession session, Supplier<BasicCache<String, ActionTokenValueEntity>> actionKeyCache) {
+    public InfinispanPushedAuthzRequestStoreProvider(KeycloakSession session, Supplier<BasicCache<UUID, ActionTokenValueEntity>> actionKeyCache) {
         this.parDataCache = actionKeyCache;
     }
 
     @Override
-    public void put(String key, int lifespanSeconds, Map<String, String> codeData) {
+    public void put(UUID key, int lifespanSeconds, Map<String, String> codeData) {
         ActionTokenValueEntity tokenValue = new ActionTokenValueEntity(codeData);
 
         try {
-            BasicCache<String, ActionTokenValueEntity> cache = parDataCache.get();
+            BasicCache<UUID, ActionTokenValueEntity> cache = parDataCache.get();
             long lifespanMs = InfinispanUtil.toHotrodTimeMs(cache, Time.toMillis(lifespanSeconds));
             cache.put(key, tokenValue, lifespanMs, TimeUnit.MILLISECONDS);
         } catch (HotRodClientException re) {
@@ -60,9 +61,9 @@ public class InfinispanPushedAuthzRequestStoreProvider implements PushedAuthzReq
     }
 
     @Override
-    public Map<String, String> remove(String key) {
+    public Map<String, String> remove(UUID key) {
         try {
-            BasicCache<String, ActionTokenValueEntity> cache = parDataCache.get();
+            BasicCache<UUID, ActionTokenValueEntity> cache = parDataCache.get();
             ActionTokenValueEntity existing = cache.remove(key);
             return existing == null ? null : existing.getNotes();
         } catch (HotRodClientException re) {

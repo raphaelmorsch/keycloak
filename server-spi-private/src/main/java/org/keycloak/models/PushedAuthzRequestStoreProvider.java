@@ -20,6 +20,7 @@ package org.keycloak.models;
 import org.keycloak.provider.Provider;
 
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Provides single-use cache for Pushed Authorization Request. The data of this request may be used only once.
@@ -33,7 +34,7 @@ public interface PushedAuthzRequestStoreProvider extends Provider {
      * @param lifespanSeconds time to live
      * @param codeData        the data to store
      */
-    void put(String key, int lifespanSeconds, Map<String, String> codeData);
+    void put(UUID key, int lifespanSeconds, Map<String, String> codeData);
 
 
     /**
@@ -44,5 +45,5 @@ public interface PushedAuthzRequestStoreProvider extends Provider {
      * @param key unique identifier
      * @return context data related Pushed Authorization Request. It returns null if there is no context data available.
      */
-    Map<String, String> remove(String key);
+    Map<String, String> remove(UUID key);
 }
