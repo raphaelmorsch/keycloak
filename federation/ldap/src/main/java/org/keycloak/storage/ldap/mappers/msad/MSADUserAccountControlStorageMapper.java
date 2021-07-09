@@ -19,11 +19,13 @@ package org.keycloak.storage.ldap.mappers.msad;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.LDAPConstants;
 import org.keycloak.models.ModelException;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.ldap.LDAPStorageProvider;
 import org.keycloak.storage.ldap.idm.model.LDAPObject;
@@ -54,9 +56,12 @@ public class MSADUserAccountControlStorageMapper extends AbstractLDAPStorageMapp
     private static final Pattern AUTH_EXCEPTION_REGEX = Pattern.compile(".*AcceptSecurityContext error, data ([0-9a-f]*), v.*");
     private static final Pattern AUTH_INVALID_NEW_PASSWORD = Pattern.compile(".*ERROR CODE ([0-9A-F]+) - ([0-9A-F]+): .*WILL_NOT_PERFORM.*");
 
+    private final KeycloakSession session;
+
     public MSADUserAccountControlStorageMapper(ComponentModel mapperModel, LDAPStorageProvider ldapProvider) {
         super(mapperModel, ldapProvider);
         ldapProvider.setUpdater(this);
+        this.session = ldapProvider.getSession();
     }
 
     @Override
@@ -140,9 +145,19 @@ public class MSADUserAccountControlStorageMapper extends AbstractLDAPStorageMapp
 
         if (ldapProvider.getEditMode() == UserStorageProvider.EditMode.WRITABLE) {
             if (errorCode.equals("532") || errorCode.equals("773")) {
-                // User needs to change his MSAD password. Allow him to login, but add UPDATE_PASSWORD required action
+                // User needs to change his MSAD password. Allow him to login, but add UPDATE_PASSWORD required action to authenticationSession
                 if (user.getRequiredActionsStream().noneMatch(action -> Objects.equals(action, UserModel.RequiredAction.UPDATE_PASSWORD.name()))) {
-                    user.addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
+                    AuthenticationSessionModel authSession = session.getContext().getAuthenticationSession();
+                    if (authSession != null) {
+                        if (authSession.getRequiredActions().stream().noneMatch(action -> Objects.equals(action, UserModel.RequiredAction.UPDATE_PASSWORD.name()))) {
+                            logger.debugf("Adding requiredAction UPDATE_PASSWORD to the authenticationSession of user %s", user.getUsername());
+                            authSession.addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
+                        }
+                    } else {
+                        // Just a fallback. It should not happen during normal authentication process
+                        logger.debugf("Adding requiredAction UPDATE_PASSWORD to the user %s", user.getUsername());
+                        user.addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
+                    }
                 }
                 return true;
             } else if (errorCode.equals("533")) {
