@@ -201,6 +201,8 @@ module.controller('ClientX509Ctrl', function($scope, $location, Client, Notifica
     $scope.save = function() {
         if (!$scope.client.attributes["x509.subjectdn"]) {
             Notifications.error("The SubjectDN must not be empty.");
+        } else if (!$scope.client.attributes["x509.subjectdn.format"]) {
+            Notifications.error("The SubjectDN Format must not be empty.");
         } else {
             Client.update({
                 realm : $scope.realm.realm,
@@ -224,6 +226,7 @@ module.controller('ClientX509Ctrl', function($scope, $location, Client, Notifica
 
     $scope.reset = function() {
         $scope.client.attributes["x509.subjectdn"] = $scope.clientCopy.attributes["x509.subjectdn"];
+        $scope.client.attributes["x509.subjectdn.format"] = $scope.clientCopy.attributes["x509.subjectdn.format"];
         $location.url("/realms/" + $scope.realm.realm + "/clients/" + $scope.client.id + "/credentials");
     };
 });

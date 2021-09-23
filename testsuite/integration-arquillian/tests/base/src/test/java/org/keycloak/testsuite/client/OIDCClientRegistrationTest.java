@@ -576,6 +576,7 @@ public class OIDCClientRegistrationTest extends AbstractClientRegistrationTest {
              OIDCAdvancedConfigWrapper config = OIDCAdvancedConfigWrapper.fromClientRepresentation(kcClient);
              Assert.assertEquals(X509ClientAuthenticator.PROVIDER_ID, kcClient.getClientAuthenticatorType());
              Assert.assertEquals("Ein", config.getTlsClientAuthSubjectDn());
+             Assert.assertEquals(X509ClientAuthenticator.SubjectDNFormat.RFC2253.toString(), config.getTlsClientAuthSubjectDnFormat());
 
              // update
              reg.auth(Auth.token(response));

@@ -198,6 +198,14 @@ public class OIDCAdvancedConfigWrapper {
         setAttribute(X509ClientAuthenticator.ATTR_SUBJECT_DN, tls_client_auth_subject_dn);
     }
 
+    public String getTlsClientAuthSubjectDnFormat() {
+        return getAttribute(X509ClientAuthenticator.ATTR_SUBJECT_DN_FORMAT);
+    }
+
+    public void setTlsClientAuthSubjectDnFormat(String tlsClientAuthSubjectDnFormat) {
+        setAttribute(X509ClientAuthenticator.ATTR_SUBJECT_DN_FORMAT, tlsClientAuthSubjectDnFormat.toString());
+    }
+
     public String getPkceCodeChallengeMethod() {
         return getAttribute(OIDCConfigAttributes.PKCE_CODE_CHALLENGE_METHOD);
     }

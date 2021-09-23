@@ -22,6 +22,7 @@ import org.keycloak.authentication.ClientAuthenticator;
 import org.keycloak.authentication.ClientAuthenticatorFactory;
 import org.keycloak.authentication.authenticators.client.ClientIdAndSecretAuthenticator;
 import org.keycloak.authentication.authenticators.client.JWTClientAuthenticator;
+import org.keycloak.authentication.authenticators.client.X509ClientAuthenticator;
 import org.keycloak.jose.jwk.JSONWebKeySet;
 import org.keycloak.jose.jwk.JWK;
 import org.keycloak.jose.jwk.JWKParser;
@@ -150,6 +151,11 @@ public class DescriptionConverter {
 
         if (clientOIDC.getTlsClientAuthSubjectDn() != null) {
             configWrapper.setTlsClientAuthSubjectDn(clientOIDC.getTlsClientAuthSubjectDn());
+
+            // Defaults to RFC2253
+            if (configWrapper.getTlsClientAuthSubjectDnFormat() == null) {
+                configWrapper.setTlsClientAuthSubjectDnFormat(X509ClientAuthenticator.SubjectDNFormat.RFC2253.toString());
+            }
         }
 
         if (clientOIDC.getIdTokenSignedResponseAlg() != null) {
