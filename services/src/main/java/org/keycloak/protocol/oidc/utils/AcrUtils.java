@@ -12,6 +12,7 @@ import java.util.Map;
 import org.jboss.logging.Logger;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.Constants;
+import org.keycloak.representations.ClaimsRepresentation;
 import org.keycloak.representations.IDToken;
 import org.keycloak.util.JsonSerialization;
 
@@ -34,21 +35,12 @@ public class AcrUtils {
     }
     if (claimsParam != null) {
       try {
-        JsonNode claims = JsonSerialization.readValue(claimsParam, JsonNode.class);
-        JsonNode idToken = claims.get("id_token");
-        if (idToken != null) {
-          JsonNode acrClaim = idToken.get(IDToken.ACR);
-          if (acrClaim != null) {
-            JsonNode essential = acrClaim.get("essential");
-            if (notEssential || (essential != null && essential.isBoolean() && essential.booleanValue())) {
-              JsonNode values = acrClaim.get("values");
-              if (values != null && values.isArray()) {
-                for (JsonNode value : values) {
-                  if (value.isTextual()) {
-                    acrValues.add(value.textValue());
-                  }
-                }
-              }
+        ClaimsRepresentation claims = JsonSerialization.readValue(claimsParam, ClaimsRepresentation.class);
+        ClaimsRepresentation.ClaimValue<String> acrClaim = claims.getClaimValue(IDToken.ACR, ClaimsRepresentation.ClaimContext.ID_TOKEN, String.class);
+        if (acrClaim != null) {
+          if (notEssential || acrClaim.isEssential()) {
+            if (acrClaim.getValues() != null) {
+              acrValues.addAll(acrClaim.getValues());
             }
           }
         }

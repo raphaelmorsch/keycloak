@@ -24,10 +24,9 @@ import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
 import org.keycloak.models.Constants;
 import org.keycloak.models.UserModel;
-import org.keycloak.services.ErrorPage;
 import org.keycloak.services.ServicesLogger;
-import org.keycloak.services.messages.Messages;
 import org.keycloak.sessions.AuthenticationSessionModel;
+import org.keycloak.sessions.CommonClientSessionModel;
 
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.MultivaluedMap;
@@ -148,7 +147,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 checkAndValidateParentFlow(model);
                 return processFlow();
             } else {
-                processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
+                setExecutionStatus(model, AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
                 return flowChallenge;
             }
         }
@@ -218,10 +217,10 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                         requiredExecutions, alternativeExecutions);
 
                 // Note: If we evaluate alternative execution, we will also doublecheck that there are not required elements in same subflow
-                if ((model.isRequired() && requiredExecutions.stream().allMatch(processor::isSuccessful)) ||
+                if (((model.isRequired() || model.isConditional()) && requiredExecutions.stream().allMatch(processor::isSuccessful)) ||
                         (model.isAlternative() && alternativeExecutions.stream().anyMatch(processor::isSuccessful) && requiredExecutions.isEmpty())) {
                     logger.debugf("Flow '%s' successfully finished after children executions success", logExecutionAlias(parentFlowExecutionModel));
-                    processor.getAuthenticationSession().setExecutionStatus(parentFlowExecutionModel.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
+                    setExecutionStatus(parentFlowExecutionModel, AuthenticationSessionModel.ExecutionStatus.SUCCESS);
 
                     // Flow is successfully finished. Recursively check whether it's parent flow is now successful as well
                     model = parentFlowExecutionModel;
@@ -245,7 +244,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         fillListsOfExecutions(executions.stream(), requiredList, alternativeList);
 
         //handle required elements : all required elements need to be executed
-        boolean flowSuccessful = true;
+        boolean requiredElementsSuccessful = true;
         Iterator<AuthenticationExecutionModel> requiredIListIterator = requiredList.listIterator();
         while (requiredIListIterator.hasNext()) {
             AuthenticationExecutionModel required = requiredIListIterator.next();
@@ -256,13 +255,13 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 continue;
             }
             Response response = processSingleFlowExecutionModel(required, true);
-            flowSuccessful = processor.isSuccessful(required) || isSetupRequired(required);
+            requiredElementsSuccessful &= processor.isSuccessful(required) || isSetupRequired(required);
             if (response != null) {
                 return response;
             }
             // Some required elements were not successful and did not return response.
             // We can break as we know that the whole subflow would be considered unsuccessful as well
-            if (!flowSuccessful) {
+            if (!requiredElementsSuccessful) {
                 break;
             }
         }
@@ -270,13 +269,12 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         //Evaluate alternative elements only if there are no required elements. This may also occur if there was only condition elements
         if (requiredList.isEmpty()) {
             //check if an alternative is already successful, in case we are returning in the flow after an action
-            if (isLevelOfAuthenticationSatisfied() && alternativeList.stream().anyMatch(alternative -> processor.isSuccessful(alternative) || isSetupRequired(alternative))) {
+            if (alternativeList.stream().anyMatch(alternative -> processor.isSuccessful(alternative) || isSetupRequired(alternative))) {
                 successful = true;
                 return null;
             }
 
-            //handle alternative elements: the first alternative element to be satisfied is enough if LOA is also satisfied
-            flowSuccessful = false;
+            //handle alternative elements: the first alternative element to be satisfied is enough
             for (AuthenticationExecutionModel alternative : alternativeList) {
                 try {
                     Response response = processSingleFlowExecutionModel(alternative, true);
@@ -284,25 +282,17 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                         return response;
                     }
                     if (processor.isSuccessful(alternative) || isSetupRequired(alternative)) {
-                        if (isLevelOfAuthenticationSatisfied()) {
-                            successful = true;
-                            return null;
-                        } else {
-                            flowSuccessful = true;
-                        }
+                        successful = true;
+                        return null;
                     }
                 } catch (AuthenticationFlowException afe) {
                     //consuming the error is not good here from an administrative point of view, but the user, since he has alternatives, should be able to go to another alternative and continue
                     afeList.add(afe);
-                    processor.getAuthenticationSession().setExecutionStatus(alternative.getId(), AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
+                    setExecutionStatus(alternative, AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
                 }
             }
-        }
-        if (!flow.isTopLevel() || isLevelOfAuthenticationSatisfied() || !isLevelOfAuthenticationForced()) {
-            successful = flowSuccessful;
         } else {
-            throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS,
-                ErrorPage.error(processor.getSession(), processor.getAuthenticationSession(), Response.Status.BAD_REQUEST, Messages.INSUFFICIENT_LEVEL_OF_AUTHENTICATION));
+            successful = requiredElementsSuccessful;
         }
         return null;
     }
@@ -350,7 +340,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 .filter(s -> s.isEnabled())
                 .collect(Collectors.toList());
         return conditionalAuthenticatorList.isEmpty() || conditionalAuthenticatorList.stream()
-            .anyMatch(m -> conditionalNotMatched(m, modelList, storeResult));
+                .anyMatch(m -> conditionalNotMatched(m, modelList, storeResult));
     }
 
     private boolean isConditionalAuthenticator(AuthenticationExecutionModel model) {
@@ -370,7 +360,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         ConditionalAuthenticator authenticator = (ConditionalAuthenticator) createAuthenticator(factory);
         AuthenticationProcessor.Result context = processor.createAuthenticatorContext(model, authenticator, executionList);
 
-       boolean matchCondition;
+        boolean matchCondition;
 
         // Retrieve previous evaluation result if any, else evaluate and store result for future re-evaluation
         if (processor.isEvaluatedTrue(model)) {
@@ -380,7 +370,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         } else {
             matchCondition = authenticator.matchCondition(context);
             if (storeResult) {
-                processor.getAuthenticationSession().setExecutionStatus(model.getId(),
+                setExecutionStatus(model,
                         matchCondition ? AuthenticationSessionModel.ExecutionStatus.EVALUATED_TRUE : AuthenticationSessionModel.ExecutionStatus.EVALUATED_FALSE);
             }
         }
@@ -407,14 +397,14 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             if (flowChallenge == null) {
                 if (authenticationFlow.isSuccessful()) {
                     logger.debugf("Flow '%s' successfully finished", logExecutionAlias(model));
-                    processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
+                    setExecutionStatus(model, AuthenticationSessionModel.ExecutionStatus.SUCCESS);
                 } else {
                     logger.debugf("Flow '%s' failed", logExecutionAlias(model));
-                    processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.FAILED);
+                    setExecutionStatus(model, AuthenticationSessionModel.ExecutionStatus.FAILED);
                 }
                 return null;
             } else {
-                processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
+                setExecutionStatus(model, AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
                 return flowChallenge;
             }
         }
@@ -451,7 +441,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 if (factory.isUserSetupAllowed() && model.isRequired() && authenticator.areRequiredActionsEnabled(processor.getSession(), processor.getRealm())) {
                     //This means that having even though the user didn't validate the
                     logger.debugv("authenticator SETUP_REQUIRED: {0}", factory.getId());
-                    processor.getAuthenticationSession().setExecutionStatus(model.getId(), AuthenticationSessionModel.ExecutionStatus.SETUP_REQUIRED);
+                    setExecutionStatus(model, AuthenticationSessionModel.ExecutionStatus.SETUP_REQUIRED);
                     authenticator.setRequiredActions(processor.getSession(), processor.getRealm(), processor.getAuthenticationSession().getAuthenticatedUser());
                     return null;
                 } else {
@@ -495,13 +485,6 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         return AuthenticationSelectionResolver.createAuthenticationSelectionList(processor, model);
     }
 
-    private boolean isLevelOfAuthenticationSatisfied() {
-        return AuthenticatorUtil.isLevelOfAuthenticationSatisfied(processor.getAuthenticationSession());
-    }
-
-    private boolean isLevelOfAuthenticationForced() {
-        return AuthenticatorUtil.isLevelOfAuthenticationForced(processor.getAuthenticationSession());
-    }
 
     public Response processResult(AuthenticationProcessor.Result result, boolean isAction) {
         AuthenticationExecutionModel execution = result.getExecution();
@@ -509,12 +492,12 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         switch (status) {
             case SUCCESS:
                 logger.debugv("authenticator SUCCESS: {0}", execution.getAuthenticator());
-                processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.SUCCESS);
+                setExecutionStatus(execution, AuthenticationSessionModel.ExecutionStatus.SUCCESS);
                 return null;
             case FAILED:
                 logger.debugv("authenticator FAILED: {0}", execution.getAuthenticator());
                 processor.logFailure();
-                processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.FAILED);
+                setExecutionStatus(execution, AuthenticationSessionModel.ExecutionStatus.FAILED);
                 if (result.getChallenge() != null) {
                     return sendChallenge(result, execution);
                 }
@@ -525,16 +508,16 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 throw new ForkFlowException(result.getSuccessMessage(), result.getErrorMessage());
             case FORCE_CHALLENGE:
             case CHALLENGE:
-                processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
+                setExecutionStatus(execution, AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
                 return sendChallenge(result, execution);
             case FAILURE_CHALLENGE:
                 logger.debugv("authenticator FAILURE_CHALLENGE: {0}", execution.getAuthenticator());
                 processor.logFailure();
-                processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
+                setExecutionStatus(execution, AuthenticationSessionModel.ExecutionStatus.CHALLENGED);
                 return sendChallenge(result, execution);
             case ATTEMPTED:
                 logger.debugv("authenticator ATTEMPTED: {0}", execution.getAuthenticator());
-                processor.getAuthenticationSession().setExecutionStatus(execution.getId(), AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
+                setExecutionStatus(execution, AuthenticationSessionModel.ExecutionStatus.ATTEMPTED);
                 return null;
             case FLOW_RESET:
                 processor.resetFlow();
@@ -559,5 +542,29 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     @Override
     public List<AuthenticationFlowException> getFlowExceptions(){
         return afeList;
+    }
+
+    private void setExecutionStatus(AuthenticationExecutionModel authExecutionModel, CommonClientSessionModel.ExecutionStatus status) {
+        this.processor.getAuthenticationSession().setExecutionStatus(authExecutionModel.getId(), status);
+
+        if (authExecutionModel.isAuthenticatorFlow() && status == CommonClientSessionModel.ExecutionStatus.SUCCESS) {
+            // Trigger callbacks after flow was successfully finished
+            processor.getRealm().getAuthenticationExecutionsStream(authExecutionModel.getFlowId()).forEach(this::checkAuthCallback);
+        }
+    }
+
+    private void checkAuthCallback(AuthenticationExecutionModel execution) {
+        // We will trigger the callback just if particular authenticator, which corresponds to this callback, was finished with SUCCESS or condition was evaluated to true
+        CommonClientSessionModel.ExecutionStatus executionStatus = processor.getAuthenticationSession().getExecutionStatus().get(execution.getId());
+        if (executionStatus == CommonClientSessionModel.ExecutionStatus.SUCCESS || executionStatus == CommonClientSessionModel.ExecutionStatus.EVALUATED_TRUE) {
+            if (!execution.isAuthenticatorFlow()) {
+                AuthenticatorFactory authFactory = getAuthenticatorFactory(execution);
+                if (authFactory instanceof AuthenticationFlowCallbackFactory) {
+                    AuthenticationFlowCallback authCallback = (AuthenticationFlowCallback) createAuthenticator(authFactory);
+                    logger.tracef("Will trigger callback '%s' after successful finish of the flow '%s'", authFactory.getId(), execution.getParentFlow());
+                    authCallback.onParentFlowSuccess(processor.createAuthenticatorContext(execution, authCallback, null)); // no need to have executions filled
+                }
+            }
+        }
     }
 }

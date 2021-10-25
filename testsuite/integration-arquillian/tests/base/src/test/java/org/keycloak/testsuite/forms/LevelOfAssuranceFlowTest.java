@@ -16,16 +16,13 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.keycloak.authentication.authenticators.browser.PasswordFormFactory;
-import org.keycloak.authentication.authenticators.browser.SetLoaAuthenticatorFactory;
 import org.keycloak.authentication.authenticators.browser.UsernameFormFactory;
 import org.keycloak.authentication.authenticators.conditional.ConditionalLoaAuthenticatorFactory;
-import org.keycloak.common.Profile;
 import org.keycloak.events.Details;
 import org.keycloak.models.AuthenticationExecutionModel.Requirement;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
-import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
 import org.keycloak.testsuite.authentication.PushButtonAuthenticatorFactory;
 import org.keycloak.testsuite.pages.ErrorPage;
 import org.keycloak.testsuite.pages.LoginUsernameOnlyPage;
@@ -41,9 +38,6 @@ import org.openqa.selenium.By;
 public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
 
     static final String CONFIG_CONDITION_LEVEL = "loa-condition-level";
-
-    static final String CONFIG_SET_LEVEL = "loa-level";
-    static final String CONFIG_STORE_IN_USER_SESSION = "loa-store-in-user-session";
     
     @Rule
     public AssertEvents events = new AssertEvents(this);
@@ -91,15 +85,8 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
                             config.getConfig().put(CONFIG_CONDITION_LEVEL, "1");
                         });
 
-                    // username input for level 2
+                    // username input for level 1
                     subFlow.addAuthenticatorExecution(Requirement.REQUIRED, UsernameFormFactory.PROVIDER_ID);
-
-                    // set current LOA value to 1
-                    subFlow.addAuthenticatorExecution(Requirement.REQUIRED, SetLoaAuthenticatorFactory.PROVIDER_ID, config -> {
-                        config.getConfig().put(CONFIG_SET_LEVEL, "1");
-                        config.getConfig().put(CONFIG_STORE_IN_USER_SESSION, "true");
-                    });
-
                 })
 
                 // level 2 authentication
@@ -111,13 +98,6 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
 
                     // password required for level 2
                     subFlow.addAuthenticatorExecution(Requirement.REQUIRED, PasswordFormFactory.PROVIDER_ID);
-
-                    // set current LOA value to 2
-                    subFlow.addAuthenticatorExecution(Requirement.REQUIRED, SetLoaAuthenticatorFactory.PROVIDER_ID, config -> {
-                        config.getConfig().put(CONFIG_SET_LEVEL, "2");
-                        config.getConfig().put(CONFIG_STORE_IN_USER_SESSION, "true");
-                    });
-
                 })
 
                 // level 3 authentication
@@ -129,13 +109,6 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
 
                     // simply push button for level 3
                     subFlow.addAuthenticatorExecution(Requirement.REQUIRED, PushButtonAuthenticatorFactory.PROVIDER_ID);
-
-                    // set current LOA value to 3
-                    subFlow.addAuthenticatorExecution(Requirement.REQUIRED, SetLoaAuthenticatorFactory.PROVIDER_ID, config -> {
-                        config.getConfig().put(CONFIG_SET_LEVEL, "3");
-                        config.getConfig().put(CONFIG_STORE_IN_USER_SESSION, "true");
-                    });
-
                 })
 
             ).defineAsBrowserFlow());

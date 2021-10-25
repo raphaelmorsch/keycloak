@@ -222,10 +222,8 @@ public class ProvidersTest extends AbstractAuthenticationTest {
         addProviderInfo(result, "allow-access-authenticator", "Allow access",
                 "Authenticator will always successfully authenticate. Useful for example in the conditional flows to be used after satisfying the previous conditions");
 
-        addProviderInfo(result, "set-level-of-authentication", "Set Level of Authentication",
-                "Set the Level of Authentication (LOA).");
         addProviderInfo(result, "conditional-level-of-authentication", "Condition - Level of Authentication",
-                "Flow is executed only if the configured LOA or a higher one has been requested but not yet satisfied.");
+                "Flow is executed only if the configured LOA or a higher one has been requested but not yet satisfied. After the flow is successfully finished, the LOA in the session will be updated to value prescribed by this condition.");
 
         return result;
     }
