@@ -36,10 +36,12 @@ import org.keycloak.models.utils.PostMigrationEvent;
 import org.keycloak.models.utils.RepresentationToModel;
 import org.keycloak.platform.Platform;
 import org.keycloak.platform.PlatformProvider;
+import org.keycloak.representations.idm.ClientTypeRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.services.DefaultKeycloakSessionFactory;
 import org.keycloak.services.ServicesLogger;
+import org.keycloak.services.clienttype.ClientTypeManager;
 import org.keycloak.services.error.KeycloakErrorHandler;
 import org.keycloak.services.filters.KeycloakSecurityHeadersFilter;
 import org.keycloak.services.managers.ApplianceBootstrap;
@@ -67,6 +69,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -150,6 +153,11 @@ public class KeycloakApplication extends Application {
             public void run(KeycloakSession session) {
                 boolean shouldBootstrapAdmin = new ApplianceBootstrap(session).isNoMasterUser();
                 BOOTSTRAP_ADMIN_USER.set(shouldBootstrapAdmin);
+
+                // TODO:mposolda This is not good place to call this. Only testing purposes
+                ClientTypeManager mgr = session.getProvider(ClientTypeManager.class);
+                Map<String, ClientTypeRepresentation> clientTypes = mgr.getClientTypes(null, true);
+                logger.info("HELLO, I AM HERE");
             }
 
         });

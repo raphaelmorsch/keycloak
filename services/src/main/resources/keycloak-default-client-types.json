@@ -1,0 +1,64 @@
+{
+  "sla": {
+    "client-type-provider": "default",
+    "config": {
+      "standardFlowEnabled": {
+        "applicable": true,
+        "read-only": true,
+        "default-value": true
+      }
+    }
+  },
+  "service-account": {
+    "client-type-provider": "default",
+    "config": {
+      "consentRequired": {
+        "applicable": true,
+        "read-only": true,
+        "default-value": false
+      },
+      "login_theme": {
+        "applicable": false
+      },
+      "protocol": {
+        "applicable": true,
+        "read-only": true,
+        "default-value": "openid-connect"
+      },
+      "accessType": {
+        "applicable": true,
+        "read-only": true,
+        "default-value": "confidential"
+      },
+      "standardFlowEnabled": {
+        "applicable": true,
+        "read-only": true,
+        "default-value": false
+      },
+      "implicitFlowEnabled": {
+        "applicable": true,
+        "read-only": true,
+        "default-value": false
+      },
+      "directAccessGrantsEnabled": {
+        "applicable": true,
+        "read-only": true,
+        "default-value": false
+      },
+      "serviceAccountsEnabled": {
+        "applicable": true,
+        "read-only": true,
+        "default-value": true
+      },
+      "logoUri": {
+        "applicable": false
+      },
+      "policyUri": {
+        "applicable": false
+      },
+      "tosUri": {
+        "applicable": false
+      }
+    }
+  }
+}
