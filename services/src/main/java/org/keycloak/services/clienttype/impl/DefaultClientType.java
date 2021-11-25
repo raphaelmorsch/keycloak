@@ -113,7 +113,7 @@ public class DefaultClientType implements ClientType {
 
             // Validate that read-only client properties were not changed. Also validate that non-applicable properties were not changed.
             if (!propertyConfig.getApplicable() || propertyConfig.getReadOnly()) {
-                if (ObjectUtil.isEqualOrBothNull(oldVal, newVal)) {
+                if (!ObjectUtil.isEqualOrBothNull(oldVal, newVal)) {
                     logger.warnf("Cannot change property '%s' of client '%s' . Old value '%s', New value '%s'", propertyName, currentClient.getClientId(), oldVal, newVal);
                     throw new ClientTypeException("Cannot change property of client as it is not allowed");
                 }
@@ -131,7 +131,7 @@ public class DefaultClientType implements ClientType {
                 return getter.invoke(client);
             } catch (Exception e) {
                 logger.errorf("Cannot read property '%s' on client '%s'. Client type is '%s'", propertyName, client.getClientId(), clientType.getName());
-                throw new ClientTypeException("Cannot set property on client", e);
+                throw new ClientTypeException("Cannot read property of client", e);
             }
         } else {
             // Attribute

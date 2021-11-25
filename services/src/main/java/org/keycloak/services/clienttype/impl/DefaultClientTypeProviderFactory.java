@@ -24,7 +24,9 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -49,12 +51,27 @@ public class DefaultClientTypeProviderFactory implements ClientTypeProviderFacto
 
     @Override
     public void init(Config.Scope config) {
+        Set<String> filtered = Arrays.stream(new String[] {"attributes", "type"}).collect(Collectors.toSet());
+
         try {
             BeanInfo bi = Introspector.getBeanInfo(ClientRepresentation.class);
             PropertyDescriptor[] pd = bi.getPropertyDescriptors();
             clientRepresentationSetters = Arrays.stream(pd)
-                    .filter(desc -> !desc.getName().equals("attributes"))
+                    .filter(desc -> !filtered.contains(desc.getName()))
                     .filter(desc -> desc.getWriteMethod() != null)
+                    .map(desc -> {
+                        // Take "is" methods into consideration
+                        if (desc.getReadMethod() == null && Boolean.class.equals(desc.getPropertyType())) {
+                            String methodName = "is" + desc.getName().substring(0, 1).toUpperCase() + desc.getName().substring(1);
+                            try {
+                                Method getter = ClientRepresentation.class.getDeclaredMethod(methodName);
+                                desc.setReadMethod(getter);
+                            } catch (Exception e) {
+                                throw new IllegalStateException("Getter method for property " + desc.getName() + " cannot be found");
+                            }
+                        }
+                        return desc;
+                    })
                     .collect(Collectors.toMap(PropertyDescriptor::getName, Function.identity()));
         } catch (IntrospectionException ie) {
             throw new IllegalStateException("Introspection of Client representation failed", ie);

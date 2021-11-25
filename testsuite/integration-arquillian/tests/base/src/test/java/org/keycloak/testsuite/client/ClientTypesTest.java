@@ -18,11 +18,12 @@
 
 package org.keycloak.testsuite.client;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.Response;
 
 import org.junit.Test;
+import org.keycloak.models.ClientModel;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
-import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.services.clienttype.ClientTypeManager;
@@ -44,16 +45,7 @@ public class ClientTypesTest extends AbstractTestRealmKeycloakTest {
     // Test create client with clientType filled. Check default properties are filled
     @Test
     public void testCreateClientWithClientType() {
-        ClientRepresentation clientRep = ClientBuilder.create()
-                .clientId("foo")
-                .type(ClientTypeManager.SERVICE_ACCOUNT)
-                .build();
-
-        Response response = testRealm().clients().create(clientRep);
-        String clientUUID = ApiUtil.getCreatedId(response);
-        getCleanup().addClientUuid(clientUUID);
-
-        clientRep = testRealm().clients().get(clientUUID).toRepresentation();
+        ClientRepresentation clientRep = createClientWithType("foo", ClientTypeManager.SERVICE_ACCOUNT);
         Assert.assertEquals("foo", clientRep.getClientId());
         Assert.assertEquals(ClientTypeManager.SERVICE_ACCOUNT, clientRep.getType());
         Assert.assertEquals(OIDCLoginProtocol.LOGIN_PROTOCOL, clientRep.getProtocol());
@@ -63,5 +55,57 @@ public class ClientTypesTest extends AbstractTestRealmKeycloakTest {
         Assert.assertTrue(clientRep.isServiceAccountsEnabled());
         Assert.assertFalse(clientRep.isPublicClient());
         Assert.assertFalse(clientRep.isBearerOnly());
+    }
+
+    @Test
+    public void testUpdateClientWithClientType() {
+        ClientRepresentation clientRep = createClientWithType("foo", ClientTypeManager.SERVICE_ACCOUNT);
+
+        // Changing type should fail
+        clientRep.setType(ClientTypeManager.SLA);
+        try {
+            testRealm().clients().get(clientRep.getId()).update(clientRep);
+            Assert.fail("Not expected to update client");
+        } catch (BadRequestException bre) {
+            // Expected
+        }
+
+        // Updating read-only attribute should fail
+        clientRep.setType(ClientTypeManager.SERVICE_ACCOUNT);
+        clientRep.setServiceAccountsEnabled(false);
+        try {
+            testRealm().clients().get(clientRep.getId()).update(clientRep);
+            Assert.fail("Not expected to update client");
+        } catch (BadRequestException bre) {
+            // Expected
+        }
+
+        // Adding non-applicable attribute should fail
+        clientRep.setServiceAccountsEnabled(true);
+        clientRep.getAttributes().put(ClientModel.LOGO_URI, "https://foo");
+        try {
+            testRealm().clients().get(clientRep.getId()).update(clientRep);
+            Assert.fail("Not expected to update client");
+        } catch (BadRequestException bre) {
+            // Expected
+        }
+
+        // Update of supported attribute should be successful
+        clientRep.getAttributes().remove(ClientModel.LOGO_URI);
+        clientRep.setRootUrl("https://foo");
+        testRealm().clients().get(clientRep.getId()).update(clientRep);
+    }
+
+    private ClientRepresentation createClientWithType(String clientId, String clientType) {
+        ClientRepresentation clientRep = ClientBuilder.create()
+                .clientId(clientId)
+                .type(clientType)
+                .build();
+
+        Response response = testRealm().clients().create(clientRep);
+        String clientUUID = ApiUtil.getCreatedId(response);
+        getCleanup().addClientUuid(clientUUID);
+
+        return testRealm().clients().get(clientUUID).toRepresentation();
     }
 }

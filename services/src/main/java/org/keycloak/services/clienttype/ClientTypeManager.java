@@ -32,6 +32,7 @@ import org.keycloak.representations.idm.ClientTypesRepresentation;
 public interface ClientTypeManager extends Provider {
 
     // Constants for global types
+    String SLA = "sla"; // TODO:mposolda probably rename "sla"
     String SERVICE_ACCOUNT = "service-account";
 
     // TODO:mposolda javadoc
