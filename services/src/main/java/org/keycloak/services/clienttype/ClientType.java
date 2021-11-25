@@ -41,8 +41,8 @@ public interface ClientType {
 
     // Augment at the client type
     // Augment particular client on creation of client  (TODO: Should it be clientModel or clientRepresentation? Or something else?)
-    void onCreate(ClientRepresentation newClient);
+    void onCreate(ClientRepresentation newClient) throws ClientTypeException;
 
     // Augment particular client on update of client (TODO: Should it be clientModel or clientRepresentation? Or something else?)
-    void onUpdate(ClientModel currentClient, ClientRepresentation clientToUpdate);
+    void onUpdate(ClientModel currentClient, ClientRepresentation clientToUpdate)  throws ClientTypeException;
 }

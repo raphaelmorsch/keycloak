@@ -25,6 +25,7 @@ import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.keycloak.Config;
@@ -39,7 +40,7 @@ import org.keycloak.services.clienttype.ClientTypeProviderFactory;
  */
 public class DefaultClientTypeProviderFactory implements ClientTypeProviderFactory {
 
-    private Map<String, Method> clientRepresentationSetters;
+    private Map<String, PropertyDescriptor> clientRepresentationSetters;
 
     @Override
     public ClientTypeProvider create(KeycloakSession session) {
@@ -54,7 +55,7 @@ public class DefaultClientTypeProviderFactory implements ClientTypeProviderFacto
             clientRepresentationSetters = Arrays.stream(pd)
                     .filter(desc -> !desc.getName().equals("attributes"))
                     .filter(desc -> desc.getWriteMethod() != null)
-                    .collect(Collectors.toMap(PropertyDescriptor::getName, PropertyDescriptor::getWriteMethod));
+                    .collect(Collectors.toMap(PropertyDescriptor::getName, Function.identity()));
         } catch (IntrospectionException ie) {
             throw new IllegalStateException("Introspection of Client representation failed", ie);
         }

@@ -13,7 +13,7 @@
     },
     {
       "name": "service-account",
-      "client-type-provider": "default",
+      "provider": "default",
       "config": {
         "consentRequired": {
           "applicable": true,

@@ -37,6 +37,7 @@ import org.keycloak.models.utils.RepresentationToModel;
 import org.keycloak.platform.Platform;
 import org.keycloak.platform.PlatformProvider;
 import org.keycloak.representations.idm.ClientTypeRepresentation;
+import org.keycloak.representations.idm.ClientTypesRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.services.DefaultKeycloakSessionFactory;
@@ -156,7 +157,7 @@ public class KeycloakApplication extends Application {
 
                 // TODO:mposolda This is not good place to call this. Only testing purposes
                 ClientTypeManager mgr = session.getProvider(ClientTypeManager.class);
-                Map<String, ClientTypeRepresentation> clientTypes = mgr.getClientTypes(null, true);
+                ClientTypesRepresentation clientTypes = mgr.getClientTypes(null, true);
                 logger.info("HELLO, I AM HERE");
             }
 

@@ -18,14 +18,19 @@
 
 package org.keycloak.services.clienttype.impl;
 
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
 import java.util.Map;
 
 import org.jboss.logging.Logger;
+import org.keycloak.common.util.ObjectUtil;
 import org.keycloak.models.ClientModel;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ClientTypeRepresentation;
 import org.keycloak.services.clienttype.ClientType;
+import org.keycloak.services.clienttype.ClientTypeException;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
@@ -34,10 +39,14 @@ public class DefaultClientType implements ClientType {
 
     private static final Logger logger = Logger.getLogger(DefaultClientType.class);
 
+    private final KeycloakSession session;
     private final ClientTypeRepresentation clientType;
-    private final Map<String, Method> clientRepresentationSetters;
 
-    public DefaultClientType(ClientTypeRepresentation clientType, Map<String, Method> clientRepresentationSetters) {
+    // TODO:mposolda rename this as it is not just setters
+    private final Map<String, PropertyDescriptor> clientRepresentationSetters;
+
+    public DefaultClientType(KeycloakSession session, ClientTypeRepresentation clientType, Map<String, PropertyDescriptor> clientRepresentationSetters) {
+        this.session = session;
         this.clientType = clientType;
         this.clientRepresentationSetters = clientRepresentationSetters;
     }
@@ -66,19 +75,19 @@ public class DefaultClientType implements ClientType {
     }
 
     @Override
-    public void onCreate(ClientRepresentation createdClient) {
+    public void onCreate(ClientRepresentation createdClient) throws ClientTypeException {
         for (Map.Entry<String, ClientTypeRepresentation.PropertyConfig> property : clientType.getConfig().entrySet()) {
             ClientTypeRepresentation.PropertyConfig propertyConfig = property.getValue();
             if (!propertyConfig.getApplicable()) continue;
             if (propertyConfig.getDefaultValue() != null) {
                 if (clientRepresentationSetters.containsKey(property.getKey())) {
                     // Java property on client representation
-                    Method setter = clientRepresentationSetters.get(property.getKey());
+                    Method setter = clientRepresentationSetters.get(property.getKey()).getWriteMethod();
                     try {
                         setter.invoke(createdClient, propertyConfig.getDefaultValue());
                     } catch (Exception e) {
                         logger.errorf("Cannot set property '%s' on client with value '%s'. Check configuration of the client type '%s'", property.getKey(), propertyConfig.getDefaultValue(), clientType.getName());
-                        throw new IllegalStateException("Cannot set property on client", e);
+                        throw new ClientTypeException("Cannot set property on client", e);
                     }
                 } else {
                     // Client attribute
@@ -89,7 +98,40 @@ public class DefaultClientType implements ClientType {
     }
 
     @Override
-    public void onUpdate(ClientModel currentClient, ClientRepresentation clientToUpdate) {
-        // Nothing for now
+    public void onUpdate(ClientModel currentClient, ClientRepresentation newClient) throws ClientTypeException{
+        ClientRepresentation oldClient = ModelToRepresentation.toRepresentation(currentClient, session);
+        for (Map.Entry<String, ClientTypeRepresentation.PropertyConfig> property : clientType.getConfig().entrySet()) {
+            String propertyName = property.getKey();
+            ClientTypeRepresentation.PropertyConfig propertyConfig = property.getValue();
+
+            Object oldVal = getClientProperty(oldClient, propertyName);
+            Object newVal = getClientProperty(newClient, propertyName);
+
+            // Validate that read-only client properties were not changed. Also validate that non-applicable properties were not changed.
+            if (!propertyConfig.getApplicable() || propertyConfig.getReadOnly()) {
+                if (ObjectUtil.isEqualOrBothNull(oldVal, newVal)) {
+                    logger.warnf("Cannot change property '%s' of client '%s' . Old value '%s', New value '%s'", propertyName, currentClient.getClientId(), oldVal, newVal);
+                    throw new ClientTypeException("Cannot change property of client as it is not allowed");
+                }
+            }
+        }
+    }
+
+    private Object getClientProperty(ClientRepresentation client, String propertyName) {
+        PropertyDescriptor propertyDescriptor = clientRepresentationSetters.get(propertyName);
+
+        if (propertyDescriptor != null) {
+            // Java property
+            Method getter = propertyDescriptor.getReadMethod();
+            try {
+                return getter.invoke(client);
+            } catch (Exception e) {
+                logger.errorf("Cannot read property '%s' on client '%s'. Client type is '%s'", propertyName, client.getClientId(), clientType.getName());
+                throw new ClientTypeException("Cannot set property on client", e);
+            }
+        } else {
+            // Attribute
+            return client.getAttributes() == null ? null : client.getAttributes().get(propertyName);
+        }
     }
 }

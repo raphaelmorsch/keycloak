@@ -18,24 +18,26 @@
 
 package org.keycloak.services.clienttype;
 
-import org.keycloak.provider.Provider;
-import org.keycloak.representations.idm.ClientTypeRepresentation;
+import org.keycloak.models.ModelException;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public interface ClientTypeProvider extends Provider {
+public class ClientTypeException extends ModelException {
 
-    // Return client types for the model returned
-    ClientType getClientType(ClientTypeRepresentation clientTypeRep);
-
-    // TODO:mposolda type-safety here. The returned clientType should have correctly casted client type configuration
-    // Also rename the method...
-    // Used when creating/updating clientType. The JSON configuration is validated to be checked if it matches the good format for client type
-    ClientTypeRepresentation validateAndCastClientTypeConfig(ClientTypeRepresentation clientType)  throws ClientTypeException;
-
-    @Override
-    default void close() {
+    public ClientTypeException(String message) {
+        super(message);
     }
 
+    public ClientTypeException(String message, Object ... parameters) {
+        super(message, parameters);
+    }
+
+    public ClientTypeException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public ClientTypeException(Throwable cause) {
+        super(cause);
+    }
 }
