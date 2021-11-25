@@ -41,6 +41,9 @@ import org.keycloak.protocol.saml.SamlProtocol;
 import org.keycloak.representations.adapters.config.BaseRealmConfig;
 import org.keycloak.representations.adapters.config.PolicyEnforcerConfig;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.services.clienttype.ClientType;
+import org.keycloak.services.clienttype.ClientTypeManager;
+import org.keycloak.services.clienttype.ClientTypeProvider;
 import org.keycloak.sessions.AuthenticationSessionProvider;
 
 import java.net.URI;
@@ -79,6 +82,14 @@ public class ClientManager {
      * @return
      */
     public static ClientModel createClient(KeycloakSession session, RealmModel realm, ClientRepresentation rep) {
+        if (rep.getType() != null) {
+            // TODO:mposolda trace or remove this logging message
+            logger.infof("Creating client '%s' with client type '%s'", rep.getClientId(), rep.getType());
+            ClientTypeManager mgr = session.getProvider(ClientTypeManager.class);
+            ClientType clientType = mgr.getClientType(session, realm, rep.getType());
+            clientType.onCreate(rep);
+        }
+
         ClientModel client = RepresentationToModel.createClient(session, realm, rep);
 
         if (rep.getProtocol() != null) {

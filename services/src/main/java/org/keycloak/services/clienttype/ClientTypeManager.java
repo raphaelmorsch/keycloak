@@ -18,11 +18,10 @@
 
 package org.keycloak.services.clienttype;
 
-import java.util.Map;
 
+import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.provider.Provider;
-import org.keycloak.representations.idm.ClientTypeRepresentation;
 import org.keycloak.representations.idm.ClientTypesRepresentation;
 
 /**
@@ -32,9 +31,14 @@ import org.keycloak.representations.idm.ClientTypesRepresentation;
  */
 public interface ClientTypeManager extends Provider {
 
+    // Constants for global types
+    String SERVICE_ACCOUNT = "service-account";
+
     // TODO:mposolda javadoc
     // TODO:mposolda check if "includeGlobal" is needed
     ClientTypesRepresentation getClientTypes(RealmModel realm, boolean includeGlobal);
+
+    ClientType getClientType(KeycloakSession session, RealmModel realm, String typeName);
 
     @Override
     default void close() {

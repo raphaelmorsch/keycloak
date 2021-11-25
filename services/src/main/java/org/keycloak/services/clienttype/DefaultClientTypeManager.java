@@ -47,4 +47,37 @@ public class DefaultClientTypeManager implements ClientTypeManager {
         // TODO:mposolda merge global with the realm. Take "includeGlobal" into consideration
         return new ClientTypesRepresentation(null, globalClientTypes);
     }
+
+    @Override
+    public ClientType getClientType(KeycloakSession session, RealmModel realm, String typeName) {
+        ClientTypesRepresentation clientTypes = getClientTypes(realm, true);
+        ClientTypeRepresentation clientType = getClientTypeByName(clientTypes, typeName);
+        if (clientType == null) {
+            logger.errorf("Referenced client type '%s' not found");
+            throw new ClientTypeException("Client type not found");
+        }
+
+        ClientTypeProvider provider = session.getProvider(ClientTypeProvider.class, clientType.getProvider());
+        return provider.getClientType(clientType);
+    }
+
+    private ClientTypeRepresentation getClientTypeByName(ClientTypesRepresentation clientTypes, String clientTypeName) {
+        // Search realm clientTypes
+        if (clientTypes.getClientTypes() != null) {
+            for (ClientTypeRepresentation clientType : clientTypes.getClientTypes()) {
+                if (clientTypeName.equals(clientType.getName())) {
+                    return clientType;
+                }
+            }
+        }
+        // Search global clientTypes
+        if (clientTypes.getGlobalClientTypes() != null) {
+            for (ClientTypeRepresentation clientType : clientTypes.getGlobalClientTypes()) {
+                if (clientTypeName.equals(clientType.getName())) {
+                    return clientType;
+                }
+            }
+        }
+        return null;
+    }
 }

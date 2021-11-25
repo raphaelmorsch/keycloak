@@ -101,6 +101,10 @@ public class ModelToRepresentation {
         REALM_EXCLUDED_ATTRIBUTES.add(Constants.CLIENT_PROFILES);
     }
 
+    public static Set<String> CLIENT_EXCLUDED_ATTRIBUTES = new HashSet<>();
+    static {
+        CLIENT_EXCLUDED_ATTRIBUTES.add(ClientModel.TYPE);
+    }
 
     public static void buildGroupPath(StringBuilder sb, GroupModel group) {
         if (group.getParent() != null) {
@@ -512,6 +516,19 @@ public class ModelToRepresentation {
         return a;
     }
 
+    public static Map<String, String> stripClientAttributesIncludedAsFields(Map<String, String> attributes) {
+        Map<String, String> a = new HashMap<>();
+
+        for (Map.Entry<String, String> e : attributes.entrySet()) {
+            if (CLIENT_EXCLUDED_ATTRIBUTES.contains(e.getKey())) {
+                continue;
+            }
+            a.put(e.getKey(), e.getValue());
+        }
+
+        return a;
+    }
+
     public static void exportGroups(RealmModel realm, RealmRepresentation rep) {
         rep.setGroups(toGroupHierarchy(realm, true).collect(Collectors.toList()));
     }
@@ -620,13 +637,14 @@ public class ModelToRepresentation {
         rep.setClientId(clientModel.getClientId());
         rep.setName(clientModel.getName());
         rep.setDescription(clientModel.getDescription());
+        rep.setType(clientModel.getType());
         rep.setEnabled(clientModel.isEnabled());
         rep.setAlwaysDisplayInConsole(clientModel.isAlwaysDisplayInConsole());
         rep.setAdminUrl(clientModel.getManagementUrl());
         rep.setPublicClient(clientModel.isPublicClient());
         rep.setFrontchannelLogout(clientModel.isFrontchannelLogout());
         rep.setProtocol(clientModel.getProtocol());
-        rep.setAttributes(clientModel.getAttributes());
+        rep.setAttributes(stripClientAttributesIncludedAsFields(clientModel.getAttributes()));
         rep.setAuthenticationFlowBindingOverrides(clientModel.getAuthenticationFlowBindingOverrides());
         rep.setFullScopeAllowed(clientModel.isFullScopeAllowed());
         rep.setBearerOnly(clientModel.isBearerOnly());

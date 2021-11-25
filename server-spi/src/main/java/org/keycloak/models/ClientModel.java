@@ -40,6 +40,7 @@ public interface ClientModel extends ClientScopeModel, RoleContainerModel,  Prot
     String LOGO_URI ="logoUri";
     String POLICY_URI ="policyUri";
     String TOS_URI ="tosUri";
+    String TYPE = "type";
 
     public static class SearchableFields {
         public static final SearchableModelField<ClientModel> ID                 = new SearchableModelField<>("id", String.class);
@@ -112,6 +113,14 @@ public interface ClientModel extends ClientScopeModel, RoleContainerModel,  Prot
     String getDescription();
 
     void setDescription(String description);
+
+    default String getType() {
+        return getAttribute(TYPE);
+    }
+
+    default void setType(String type) {
+        setAttribute(TYPE, type);
+    }
 
     boolean isEnabled();
 

@@ -20,6 +20,7 @@ package org.keycloak.services.clienttype.impl;
 
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.jboss.logging.Logger;
@@ -91,6 +92,9 @@ public class DefaultClientType implements ClientType {
                     }
                 } else {
                     // Client attribute
+                    if (createdClient.getAttributes() == null) {
+                        createdClient.setAttributes(new HashMap<>());
+                    }
                     createdClient.getAttributes().put(property.getKey(), propertyConfig.getDefaultValue().toString());
                 }
             }

@@ -28,10 +28,15 @@
           "read-only": true,
           "default-value": "openid-connect"
         },
-        "accessType": {
+        "publicClient": {
           "applicable": true,
           "read-only": true,
-          "default-value": "confidential"
+          "default-value": false
+        },
+        "bearerOnly": {
+          "applicable": true,
+          "read-only": true,
+          "default-value": false
         },
         "standardFlowEnabled": {
           "applicable": true,
