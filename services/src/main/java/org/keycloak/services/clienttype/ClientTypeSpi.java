@@ -18,25 +18,32 @@
 
 package org.keycloak.services.clienttype;
 
-import java.util.Map;
-
-import org.keycloak.models.RealmModel;
 import org.keycloak.provider.Provider;
-import org.keycloak.representations.idm.ClientTypeRepresentation;
-import org.keycloak.representations.idm.ClientTypesRepresentation;
+import org.keycloak.provider.ProviderFactory;
+import org.keycloak.provider.Spi;
 
 /**
- * TODO:mposolda javadoc
- *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public interface ClientTypeManager extends Provider {
-
-    // TODO:mposolda javadoc
-    // TODO:mposolda check if "includeGlobal" is needed
-    ClientTypesRepresentation getClientTypes(RealmModel realm, boolean includeGlobal);
+public class ClientTypeSpi implements Spi {
 
     @Override
-    default void close() {
+    public boolean isInternal() {
+        return true;
+    }
+
+    @Override
+    public String getName() {
+        return "client-type";
+    }
+
+    @Override
+    public Class<? extends Provider> getProviderClass() {
+        return ClientTypeProvider.class;
+    }
+
+    @Override
+    public Class<? extends ProviderFactory> getProviderFactoryClass() {
+        return ClientTypeProviderFactory.class;
     }
 }

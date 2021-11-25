@@ -20,23 +20,24 @@ package org.keycloak.services.clienttype;
 
 import java.util.Map;
 
-import org.keycloak.models.RealmModel;
 import org.keycloak.provider.Provider;
 import org.keycloak.representations.idm.ClientTypeRepresentation;
-import org.keycloak.representations.idm.ClientTypesRepresentation;
 
 /**
- * TODO:mposolda javadoc
- *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public interface ClientTypeManager extends Provider {
+public interface ClientTypeProvider extends Provider {
 
-    // TODO:mposolda javadoc
-    // TODO:mposolda check if "includeGlobal" is needed
-    ClientTypesRepresentation getClientTypes(RealmModel realm, boolean includeGlobal);
+    // Return client types for the model returned
+    ClientType getClientType(ClientTypeRepresentation clientTypeRep);
+
+    // TODO:mposolda type-safety here. The type argument will be different as we don't know the exact format of the JSON here. Also the returned argument will be different...
+    // Also rename the method...
+    // Used when creating/updating clientType. The JSON configuration is validated to be checked if it matches the good format for client type
+    Map<String, ClientTypeRepresentation.PropertyConfig> validateClientTypeConfig(Map<String, ClientTypeRepresentation.PropertyConfig> config);
 
     @Override
     default void close() {
     }
+
 }

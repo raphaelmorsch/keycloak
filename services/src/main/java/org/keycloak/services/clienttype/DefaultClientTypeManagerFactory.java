@@ -19,15 +19,14 @@
 package org.keycloak.services.clienttype;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.representations.idm.ClientTypeRepresentation;
-import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.representations.idm.ClientTypesRepresentation;
 import org.keycloak.util.JsonSerialization;
 
 /**
@@ -37,7 +36,7 @@ public class DefaultClientTypeManagerFactory implements ClientTypeManagerFactory
 
     private static final Logger logger = Logger.getLogger(DefaultClientTypeManagerFactory.class);
 
-    private Map<String, ClientTypeRepresentation> globalClientTypes;
+    private List<ClientTypeRepresentation> globalClientTypes;
 
     @Override
     public ClientTypeManager create(KeycloakSession session) {
@@ -65,7 +64,7 @@ public class DefaultClientTypeManagerFactory implements ClientTypeManagerFactory
     }
 
 
-    protected Map<String, ClientTypeRepresentation> getGlobalClientTypes(KeycloakSession session) {
+    protected List<ClientTypeRepresentation> getGlobalClientTypes(KeycloakSession session) {
         if (globalClientTypes == null) {
             synchronized (this) {
                 if (globalClientTypes == null) {
@@ -73,7 +72,8 @@ public class DefaultClientTypeManagerFactory implements ClientTypeManagerFactory
                     logger.info("Loading global client types");
 
                     try {
-                        globalClientTypes = JsonSerialization.readValue(getClass().getResourceAsStream("/keycloak-default-client-types.json"), TypedMap.class);
+                        ClientTypesRepresentation globalTypes  = JsonSerialization.readValue(getClass().getResourceAsStream("/keycloak-default-client-types.json"), ClientTypesRepresentation.class);
+                        this.globalClientTypes = globalTypes.getClientTypes();
                     } catch (IOException e) {
                         throw new IllegalStateException("Failed to deserialize global proposed client types from JSON.", e);
                     }
@@ -82,6 +82,4 @@ public class DefaultClientTypeManagerFactory implements ClientTypeManagerFactory
         }
         return globalClientTypes;
     }
-
-    public static class TypedMap extends HashMap<String, ClientTypeRepresentation> {}
 }

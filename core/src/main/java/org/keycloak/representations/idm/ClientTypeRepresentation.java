@@ -27,13 +27,41 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public class ClientTypeRepresentation {
 
-    @JsonProperty("client-type-provider")
-    private String clientTypeProvider;
+    @JsonProperty("name")
+    private String name;
 
+    @JsonProperty("provider")
+    private String provider;
+
+    // TODO:mposolda decouple this to the typed config
     @JsonProperty("config")
     private Map<String, PropertyConfig> config;
 
+    public String getName() {
+        return name;
+    }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
+
+    public Map<String, PropertyConfig> getConfig() {
+        return config;
+    }
+
+    public void setConfig(Map<String, PropertyConfig> config) {
+        this.config = config;
+    }
+
+    // TODO:mposolda remove "T" . It is probably redundant...
     public static class PropertyConfig<T> {
 
         @JsonProperty("applicable")

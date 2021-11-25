@@ -16,35 +16,37 @@
  *
  */
 
-package org.keycloak.services.clienttype;
+package org.keycloak.services.clienttype.impl;
 
-import java.util.List;
+import java.lang.reflect.Method;
 import java.util.Map;
 
-import org.jboss.logging.Logger;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.RealmModel;
 import org.keycloak.representations.idm.ClientTypeRepresentation;
-import org.keycloak.representations.idm.ClientTypesRepresentation;
+import org.keycloak.services.clienttype.ClientType;
+import org.keycloak.services.clienttype.ClientTypeProvider;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public class DefaultClientTypeManager implements ClientTypeManager {
-
-    private static final Logger logger = Logger.getLogger(DefaultClientTypeManager.class);
+public class DefaultClientTypeProvider implements ClientTypeProvider {
 
     private final KeycloakSession session;
-    private final List<ClientTypeRepresentation> globalClientTypes;
+    private final Map<String, Method> clientRepresentationSetters;
 
-    public DefaultClientTypeManager(KeycloakSession session, List<ClientTypeRepresentation> globalClientTypes) {
+    public DefaultClientTypeProvider(KeycloakSession session, Map<String, Method> clientRepresentationSetters) {
         this.session = session;
-        this.globalClientTypes = globalClientTypes;
+        this.clientRepresentationSetters = clientRepresentationSetters;
     }
 
     @Override
-    public ClientTypesRepresentation getClientTypes(RealmModel realm, boolean includeGlobal) {
-        // TODO:mposolda merge global with the realm. Take "includeGlobal" into consideration
-        return new ClientTypesRepresentation(null, globalClientTypes);
+    public ClientType getClientType(ClientTypeRepresentation clientTypeRep) {
+        return new DefaultClientType(clientTypeRep, clientRepresentationSetters);
+    }
+
+    @Override
+    public Map<String, ClientTypeRepresentation.PropertyConfig> validateClientTypeConfig(Map<String, ClientTypeRepresentation.PropertyConfig> config) {
+        // TODO:mposolda validation and type-safety here
+        return config;
     }
 }
