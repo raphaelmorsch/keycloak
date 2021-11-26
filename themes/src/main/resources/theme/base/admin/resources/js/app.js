@@ -1670,6 +1670,9 @@ module.config([ '$routeProvider', function($routeProvider) {
                 clients : function(ClientListLoader) {
                     return ClientListLoader();
                 },
+                clientTypes : function(ClientTypesLoader) {
+                    return ClientTypesLoader.loadClientTypes('true');
+                },
                 client : function() {
                     return {};
                 },

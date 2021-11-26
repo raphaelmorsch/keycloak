@@ -31,6 +31,18 @@
                 <kc-tooltip>{{:: 'client-id.tooltip' | translate}}</kc-tooltip>
             </div>
             <div class="form-group">
+                <label class="col-md-2 control-label" for="type">{{:: 'type' | translate}}</label>
+                <div class="col-sm-6">
+                    <div>
+                        <select class="form-control" id="type"
+                                ng-model="client.type"
+                                ng-options="aType for aType in clientTypeNames">
+                        </select>
+                    </div>
+                </div>
+                <kc-tooltip>{{:: 'client-type.tooltip' | translate}}</kc-tooltip>
+            </div>
+            <div class="form-group">
                 <label class="col-md-2 control-label" for="protocol">{{:: 'client-protocol' | translate}}</label>
                 <div class="col-sm-6">
                     <div>

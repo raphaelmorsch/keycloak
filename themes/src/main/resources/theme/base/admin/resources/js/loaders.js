@@ -585,3 +585,18 @@ module.factory('ClientPoliciesLoader', function(Loader, ClientPolicies, $route) 
         }
     });
 });
+
+module.factory('ClientTypesLoader', function(Loader, ClientTypes, $route , $q) {
+    var clientTypesLoader = {};
+
+    clientTypesLoader.loadClientTypes = function(includeGlobalTypes) {
+        return Loader.get(ClientTypes, function() {
+            return {
+                realm : $route.current.params.realm,
+                includeGlobalTypes : includeGlobalTypes
+            }
+        })();
+    };
+
+    return clientTypesLoader;
+});

@@ -2229,6 +2229,17 @@ module.factory('ClientPolicies', function($resource) {
     });
 });
 
+module.factory('ClientTypes', function($resource) {
+    return $resource(authUrl + '/admin/realms/:realm/client-types?include-global-types=:includeGlobalTypes', {
+        realm : '@realm',
+        includeGlobalTypes : '@includeGlobalTypes'
+    }, {
+       update : {
+           method : 'PUT'
+       }
+    });
+});
+
 module.factory('LDAPMapperSync', function($resource) {
     return $resource(authUrl + '/admin/realms/:realm/user-storage/:parentId/mappers/:mapperId/sync', {
         realm : '@realm',

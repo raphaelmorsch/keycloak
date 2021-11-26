@@ -1967,11 +1967,17 @@ module.controller('ClientDetailCtrl', function($scope, realm, client, flows, $ro
     };
 });
 
-module.controller('CreateClientCtrl', function($scope, realm, client, $route, serverInfo, Client, ClientDescriptionConverter, $location, $modal, Dialog, Notifications) {
+module.controller('CreateClientCtrl', function($scope, realm, clientTypes, client, $route, serverInfo, Client, ClientDescriptionConverter, $location, $modal, Dialog, Notifications) {
     $scope.protocols = serverInfo.listProviderIds('login-protocol');
     $scope.create = true;
 
     $scope.realm = realm;
+
+    $scope.clientTypeNames = [];
+    for (var i=0 ; i<clientTypes['global-client-types'].length ; i++) {
+        var name = clientTypes['global-client-types'][i].name;
+        $scope.clientTypeNames.push(name);
+    };
 
     $scope.client = {
         enabled: true,

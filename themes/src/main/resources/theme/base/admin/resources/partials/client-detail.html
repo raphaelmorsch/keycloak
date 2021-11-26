@@ -30,6 +30,13 @@
                 </div>
                 <kc-tooltip>{{:: 'client.description.tooltip' | translate}}</kc-tooltip>
             </div>
+            <div class="form-group">
+                <label class="col-md-2 control-label" for="type">{{:: 'type' | translate}} </label>
+                <div class="col-sm-6">
+                    <input class="form-control" type="text" id="type" name="type" data-ng-model="clientEdit.type" data-ng-disabled="true">
+                </div>
+                <kc-tooltip>{{:: 'client-type.tooltip' | translate}}</kc-tooltip>
+            </div>
             <div class="form-group clearfix block">
                 <label class="col-md-2 control-label" for="enabled">{{:: 'enabled' | translate}}</label>
                 <div class="col-sm-6">
