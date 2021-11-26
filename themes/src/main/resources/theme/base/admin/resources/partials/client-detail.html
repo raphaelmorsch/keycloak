@@ -81,7 +81,7 @@
                 <kc-tooltip>{{:: 'client.consent-screen-text.tooltip' | translate}}</kc-tooltip>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" data-ng-show="applicable('login_theme')">
                 <label class="col-md-2 control-label" for="loginTheme">{{:: 'login-theme' | translate}}</label>
                 <div class="col-sm-6">
                     <select class="form-control" id="loginTheme"
@@ -122,28 +122,28 @@
                 <label class="col-md-2 control-label" for="standardFlowEnabled">{{:: 'standard-flow-enabled' | translate}}</label>
                 <kc-tooltip>{{:: 'standard-flow-enabled.tooltip' | translate}}</kc-tooltip>
                 <div class="col-md-6">
-                    <input ng-model="clientEdit.standardFlowEnabled" name="standardFlowEnabled" id="standardFlowEnabled" onoffswitch on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}"/>
+                    <input ng-model="clientEdit.standardFlowEnabled" name="standardFlowEnabled" id="standardFlowEnabled" ng-disabled="readOnly('standardFlowEnabled')" onoffswitch on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}"/>
                 </div>
             </div>
             <div class="form-group" data-ng-show="protocol == 'openid-connect' && !clientEdit.bearerOnly">
                 <label class="col-md-2 control-label" for="implicitFlowEnabled">{{:: 'implicit-flow-enabled' | translate}}</label>
                 <kc-tooltip>{{:: 'implicit-flow-enabled.tooltip' | translate}}</kc-tooltip>
                 <div class="col-md-6">
-                    <input ng-model="clientEdit.implicitFlowEnabled" name="implicitFlowEnabled" id="implicitFlowEnabled" onoffswitch on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}"/>
+                    <input ng-model="clientEdit.implicitFlowEnabled" name="implicitFlowEnabled" id="implicitFlowEnabled" ng-disabled="readOnly('implicitFlowEnabled')" onoffswitch on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}"/>
                 </div>
             </div>
             <div class="form-group" data-ng-show="protocol == 'openid-connect' && !clientEdit.bearerOnly">
                 <label class="col-md-2 control-label" for="directAccessGrantsEnabled">{{:: 'direct-access-grants-enabled' | translate}}</label>
                 <kc-tooltip>{{:: 'direct-access-grants-enabled.tooltip' | translate}}</kc-tooltip>
                 <div class="col-md-6">
-                    <input ng-model="clientEdit.directAccessGrantsEnabled" name="directAccessGrantsEnabled" id="directAccessGrantsEnabled" onoffswitch on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}"/>
+                    <input ng-model="clientEdit.directAccessGrantsEnabled" name="directAccessGrantsEnabled" id="directAccessGrantsEnabled" ng-disabled="readOnly('directAccessGrantsEnabled')" onoffswitch on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}"/>
                 </div>
             </div>
-            <div class="form-group" data-ng-show="protocol == 'openid-connect' && !clientEdit.publicClient && !clientEdit.bearerOnly">
+            <div class="form-group" data-ng-show="protocol == 'openid-connect' && !clientEdit.publicClient && !clientEdit.bearerOnly && applicable('serviceAccountsEnabled')">
                 <label class="col-md-2 control-label" for="serviceAccountsEnabled">{{:: 'service-accounts-enabled' | translate}}</label>
                 <kc-tooltip>{{:: 'service-accounts-enabled.tooltip' | translate}}</kc-tooltip>
                 <div class="col-md-6">
-                    <input ng-model="clientEdit.serviceAccountsEnabled" name="serviceAccountsEnabled" id="serviceAccountsEnabled" onoffswitch on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}"/>
+                    <input ng-model="clientEdit.serviceAccountsEnabled" name="serviceAccountsEnabled" id="serviceAccountsEnabled" ng-disabled="readOnly('serviceAccountsEnabled')" onoffswitch on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}"/>
                 </div>
             </div>
             <div class="form-group"
@@ -168,11 +168,12 @@
                         on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}" />
                 </div>
             </div>
-            <div class="form-group" data-ng-show="serverInfo.featureEnabled('AUTHORIZATION') && protocol == 'openid-connect' && !clientEdit.publicClient && !clientEdit.bearerOnly">
+            <div class="form-group" data-ng-show="serverInfo.featureEnabled('AUTHORIZATION') && protocol == 'openid-connect' && !clientEdit.publicClient && !clientEdit.bearerOnly && applicable('authorizationServicesEnabled')">
                 <label class="col-md-2 control-label" for="authorizationServicesEnabled">{{:: 'authz-authorization-services-enabled' | translate}}</label>
                 <kc-tooltip>{{:: 'authz-authorization-services-enabled.tooltip' | translate}}</kc-tooltip>
                 <div class="col-md-6">
-                    <input ng-model="clientEdit.authorizationServicesEnabled" ng-click="confirmChangeAuthzSettings($event)" name="authorizationServicesEnabled" id="authorizationServicesEnabled" onoffswitch on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}"/>
+                    <input ng-model="clientEdit.authorizationServicesEnabled" ng-click="confirmChangeAuthzSettings($event)" name="authorizationServicesEnabled" id="authorizationServicesEnabled"
+                           ng-disabled="readOnly('authorizationServicesEnabled')" onoffswitch on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}"/>
                 </div>
             </div>
             <div class="form-group clearfix block" data-ng-show="protocol == 'saml'">

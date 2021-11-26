@@ -4,6 +4,15 @@ Array.prototype.remove = function(from, to) {
     return this.push.apply(this, rest);
 };
 
+function getClientTypeByName(clientTypes, name) {
+    for (var i=0 ; i<clientTypes['global-client-types'].length ; i++) {
+        if (name === clientTypes['global-client-types'][i].name) {
+            return clientTypes['global-client-types'][i];
+        }
+    };
+    return null;
+}
+
 module.controller('ClientTabCtrl', function(Dialog, $scope, Current, Notifications, $location) {
     $scope.removeClient = function() {
         Dialog.confirmDelete($scope.client.clientId, 'client', function() {
@@ -1090,7 +1099,7 @@ module.controller('ClientInstallationCtrl', function($scope, realm, client, serv
 });
 
 
-module.controller('ClientDetailCtrl', function($scope, realm, client, flows, $route, serverInfo, Client, ClientDescriptionConverter, Components, ClientStorageOperations, $location, $modal, Dialog, Notifications, TimeUnit2) {
+module.controller('ClientDetailCtrl', function($scope, realm, client, clientTypes, flows, $route, serverInfo, Client, ClientDescriptionConverter, Components, ClientStorageOperations, $location, $modal, Dialog, Notifications, TimeUnit2) {
     $scope.serverInfo = serverInfo;
     $scope.flows = [];
     $scope.clientFlows = [];
@@ -1108,7 +1117,24 @@ module.controller('ClientDetailCtrl', function($scope, realm, client, flows, $ro
     $scope.flows.push(emptyFlow)
     $scope.clientFlows.push(emptyFlow)
 
+    var clientType = null;
+    if (client.type) {
+        clientType = getClientTypeByName(clientTypes, client.type);
+    }
 
+    $scope.applicable = function(propertyName) {
+        console.log('Calling applicable("' + propertyName + '")');
+        if (!clientType) return true;
+        if (!clientType.config[propertyName]) return true;
+        return clientType.config[propertyName]['applicable'];
+    }
+
+    $scope.readOnly = function(propertyName) {
+        console.log('Calling readOnly("' + propertyName + '")');
+        if (!clientType) return false;
+        if (!clientType.config[propertyName]) return false;
+        return clientType.config[propertyName]['read-only'];
+    }
 
     $scope.accessTypes = [
         "confidential",
