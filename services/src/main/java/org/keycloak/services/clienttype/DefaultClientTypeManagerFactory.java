@@ -78,7 +78,7 @@ public class DefaultClientTypeManagerFactory implements ClientTypeManagerFactory
                         List<ClientTypeRepresentation> globalTypes = new ArrayList<>();
 
                         // Validate globalTypes in correct format
-                        for (ClientTypeRepresentation clientType : globalTypesRep.getClientTypes()) {
+                        for (ClientTypeRepresentation clientType : globalTypesRep.getRealmClientTypes()) {
                             globalTypes.add(validateAndCastConfiguration(session, clientType));
                         }
 

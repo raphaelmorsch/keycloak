@@ -1225,4 +1225,11 @@ public class RealmAdminResource {
         ResteasyProviderFactory.getInstance().injectProperties(resource);
         return resource;
     }
+
+    @Path("client-types")
+    public ClientTypesResource getClientTypesResource() {
+        ClientTypesResource resource = new ClientTypesResource(realm, auth);
+        ResteasyProviderFactory.getInstance().injectProperties(resource);
+        return resource;
+    }
 }

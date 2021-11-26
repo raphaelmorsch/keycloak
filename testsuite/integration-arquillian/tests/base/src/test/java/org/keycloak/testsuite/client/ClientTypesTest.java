@@ -18,19 +18,29 @@
 
 package org.keycloak.testsuite.client;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.Response;
 
 import org.junit.Test;
+import org.keycloak.common.util.ObjectUtil;
 import org.keycloak.models.ClientModel;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.representations.idm.ClientTypeRepresentation;
+import org.keycloak.representations.idm.ClientTypesRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.services.clienttype.ClientType;
 import org.keycloak.services.clienttype.ClientTypeManager;
 import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
 import org.keycloak.testsuite.Assert;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.util.ClientBuilder;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
@@ -94,6 +104,42 @@ public class ClientTypesTest extends AbstractTestRealmKeycloakTest {
         clientRep.getAttributes().remove(ClientModel.LOGO_URI);
         clientRep.setRootUrl("https://foo");
         testRealm().clients().get(clientRep.getId()).update(clientRep);
+    }
+
+    @Test
+    public void testClientTypesAdminRestAPI() {
+        ClientTypesRepresentation clientTypes = testRealm().clientTypes().getClientTypes(true);
+
+        // TODO:mposolda likely should not be null
+        Assert.assertNull(clientTypes.getRealmClientTypes());
+
+        List<String> globalClientTypeNames = clientTypes.getGlobalClientTypes().stream()
+                .map(ClientTypeRepresentation::getName)
+                .collect(Collectors.toList());
+        Assert.assertNames(globalClientTypeNames, "sla", "service-account");
+
+        ClientTypeRepresentation serviceAccountType = clientTypes.getGlobalClientTypes().stream()
+                .filter(clientType -> "service-account".equals(clientType.getName()))
+                .findFirst()
+                .get();
+        Assert.assertEquals("default", serviceAccountType.getProvider());
+
+        ClientTypeRepresentation.PropertyConfig cfg = serviceAccountType.getConfig().get("standardFlowEnabled");
+        assertPropertyConfig("standardFlowEnabled", cfg, true, true, false);
+
+        cfg = serviceAccountType.getConfig().get("serviceAccountsEnabled");
+        assertPropertyConfig("serviceAccountsEnabled", cfg, true, true, true);
+
+        cfg = serviceAccountType.getConfig().get("tosUri");
+        assertPropertyConfig("tosUri", cfg, false, null, null);
+
+        // TODO:mposolda test for updates and "includeGlobal=false"
+    }
+
+    private void assertPropertyConfig(String propertyName, ClientTypeRepresentation.PropertyConfig cfg, Boolean expectedApplicable, Boolean expectedReadOnly, Object expectedDefaultValue) {
+        assertThat("'applicable' for property " + propertyName + " not equal", ObjectUtil.isEqualOrBothNull(expectedApplicable, cfg.getApplicable()));
+        assertThat("'read-only' for property " + propertyName + " not equal", ObjectUtil.isEqualOrBothNull(expectedReadOnly, cfg.getReadOnly()));
+        assertThat("'default-value' for property " + propertyName + " not equal", ObjectUtil.isEqualOrBothNull(expectedDefaultValue, cfg.getDefaultValue()));
     }
 
     private ClientRepresentation createClientWithType(String clientId, String clientType) {

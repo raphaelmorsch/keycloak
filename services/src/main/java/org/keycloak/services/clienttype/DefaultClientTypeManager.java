@@ -19,7 +19,6 @@
 package org.keycloak.services.clienttype;
 
 import java.util.List;
-import java.util.Map;
 
 import org.jboss.logging.Logger;
 import org.keycloak.models.KeycloakSession;
@@ -43,13 +42,19 @@ public class DefaultClientTypeManager implements ClientTypeManager {
     }
 
     @Override
-    public ClientTypesRepresentation getClientTypes(RealmModel realm, boolean includeGlobal) {
-        // TODO:mposolda merge global with the realm. Take "includeGlobal" into consideration
+    public ClientTypesRepresentation getClientTypes(RealmModel realm, boolean includeGlobal) throws ClientTypeException {
+        // TODO:mposolda merge global with the realm. Take "includeGlobal" into consideration.
+        // TODO:mposolda Don't need to validate global, but needs to validate realm-ones as they were possibly changed
         return new ClientTypesRepresentation(null, globalClientTypes);
     }
 
     @Override
-    public ClientType getClientType(KeycloakSession session, RealmModel realm, String typeName) {
+    public void updateClientTypes(RealmModel realm, ClientTypesRepresentation clientTypes) throws ClientTypeException {
+        // TODO:mposolda implement
+    }
+
+    @Override
+    public ClientType getClientType(KeycloakSession session, RealmModel realm, String typeName) throws ClientTypeException {
         ClientTypesRepresentation clientTypes = getClientTypes(realm, true);
         ClientTypeRepresentation clientType = getClientTypeByName(clientTypes, typeName);
         if (clientType == null) {
@@ -63,8 +68,8 @@ public class DefaultClientTypeManager implements ClientTypeManager {
 
     private ClientTypeRepresentation getClientTypeByName(ClientTypesRepresentation clientTypes, String clientTypeName) {
         // Search realm clientTypes
-        if (clientTypes.getClientTypes() != null) {
-            for (ClientTypeRepresentation clientType : clientTypes.getClientTypes()) {
+        if (clientTypes.getRealmClientTypes() != null) {
+            for (ClientTypeRepresentation clientType : clientTypes.getRealmClientTypes()) {
                 if (clientTypeName.equals(clientType.getName())) {
                     return clientType;
                 }

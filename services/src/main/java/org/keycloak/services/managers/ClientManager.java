@@ -43,7 +43,6 @@ import org.keycloak.representations.adapters.config.PolicyEnforcerConfig;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.services.clienttype.ClientType;
 import org.keycloak.services.clienttype.ClientTypeManager;
-import org.keycloak.services.clienttype.ClientTypeProvider;
 import org.keycloak.sessions.AuthenticationSessionProvider;
 
 import java.net.URI;

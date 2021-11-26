@@ -297,4 +297,7 @@ public interface RealmResource {
 
     @Path("client-policies/profiles")
     ClientPoliciesProfilesResource clientPoliciesProfilesResource();
+
+    @Path("client-types")
+    ClientTypesResource clientTypes();
 }

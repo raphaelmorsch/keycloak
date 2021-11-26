@@ -28,7 +28,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class ClientTypesRepresentation {
 
     @JsonProperty("client-types")
-    private List<ClientTypeRepresentation> clientTypes;
+    private List<ClientTypeRepresentation> realmClientTypes;
 
     @JsonProperty("global-client-types")
     private List<ClientTypeRepresentation> globalClientTypes;
@@ -36,17 +36,17 @@ public class ClientTypesRepresentation {
     public ClientTypesRepresentation() {
     }
 
-    public ClientTypesRepresentation(List<ClientTypeRepresentation> clientTypes, List<ClientTypeRepresentation> globalClientTypes) {
-        this.clientTypes = clientTypes;
+    public ClientTypesRepresentation(List<ClientTypeRepresentation> realmClientTypes, List<ClientTypeRepresentation> globalClientTypes) {
+        this.realmClientTypes = realmClientTypes;
         this.globalClientTypes = globalClientTypes;
     }
 
-    public List<ClientTypeRepresentation> getClientTypes() {
-        return clientTypes;
+    public List<ClientTypeRepresentation> getRealmClientTypes() {
+        return realmClientTypes;
     }
 
-    public void setClientTypes(List<ClientTypeRepresentation> clientTypes) {
-        this.clientTypes = clientTypes;
+    public void setRealmClientTypes(List<ClientTypeRepresentation> realmClientTypes) {
+        this.realmClientTypes = realmClientTypes;
     }
 
     public List<ClientTypeRepresentation> getGlobalClientTypes() {
