@@ -18,6 +18,8 @@
 
 package org.keycloak.testsuite.client;
 
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,12 +36,14 @@ import org.keycloak.representations.idm.ClientTypesRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.services.clienttype.ClientType;
 import org.keycloak.services.clienttype.ClientTypeManager;
+import org.keycloak.services.clienttype.impl.DefaultClientTypeProviderFactory;
 import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
 import org.keycloak.testsuite.Assert;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.util.ClientBuilder;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
@@ -65,6 +69,9 @@ public class ClientTypesTest extends AbstractTestRealmKeycloakTest {
         Assert.assertTrue(clientRep.isServiceAccountsEnabled());
         Assert.assertFalse(clientRep.isPublicClient());
         Assert.assertFalse(clientRep.isBearerOnly());
+
+        // Check type not included as client attribute
+        Assert.assertThat("", not(clientRep.getAttributes().containsKey(ClientModel.TYPE)));
     }
 
     @Test
@@ -106,12 +113,12 @@ public class ClientTypesTest extends AbstractTestRealmKeycloakTest {
         testRealm().clients().get(clientRep.getId()).update(clientRep);
     }
 
+
     @Test
-    public void testClientTypesAdminRestAPI() {
+    public void testClientTypesAdminRestAPI_globalTypes() {
         ClientTypesRepresentation clientTypes = testRealm().clientTypes().getClientTypes(true);
 
-        // TODO:mposolda likely should not be null
-        Assert.assertNull(clientTypes.getRealmClientTypes());
+        Assert.assertEquals(0, clientTypes.getRealmClientTypes().size());
 
         List<String> globalClientTypeNames = clientTypes.getGlobalClientTypes().stream()
                 .map(ClientTypeRepresentation::getName)
@@ -133,13 +140,113 @@ public class ClientTypesTest extends AbstractTestRealmKeycloakTest {
         cfg = serviceAccountType.getConfig().get("tosUri");
         assertPropertyConfig("tosUri", cfg, false, null, null);
 
-        // TODO:mposolda test for updates and "includeGlobal=false"
+        // Test non-global does not return globals
+        ClientTypesRepresentation nonGlobal = testRealm().clientTypes().getClientTypes(false);
+        Assert.assertEquals(0, nonGlobal.getRealmClientTypes().size());
+        Assert.assertNull(nonGlobal.getGlobalClientTypes());
     }
+
+
+    @Test
+    public void testClientTypesAdminRestAPI_realmTypes() {
+        ClientTypesRepresentation clientTypes = testRealm().clientTypes().getClientTypes(true);
+
+        // Test invalid provider type should fail
+        ClientTypeRepresentation clientType = new ClientTypeRepresentation();
+        try {
+            clientType.setName("sla1");
+            clientType.setProvider("non-existent");
+            clientType.setConfig(new HashMap<>());
+            clientTypes.setRealmClientTypes(Arrays.asList(clientType));
+            testRealm().clientTypes().updateClientTypes(clientTypes);
+            Assert.fail("Not expected to update client types");
+        } catch (BadRequestException bre) {
+            // Expected
+        }
+
+        // Test attribute without applicable should fail
+        try {
+            clientType.setProvider(DefaultClientTypeProviderFactory.PROVIDER_ID);
+            ClientTypeRepresentation.PropertyConfig cfg = new ClientTypeRepresentation.PropertyConfig<>();
+            clientType.getConfig().put("standardFlowEnabled", cfg);
+            testRealm().clientTypes().updateClientTypes(clientTypes);
+            Assert.fail("Not expected to update client types");
+        } catch (BadRequestException bre) {
+            // Expected
+        }
+
+        // Test non-applicable attribute with default-value should fail
+        try {
+            ClientTypeRepresentation.PropertyConfig cfg = clientType.getConfig().get("standardFlowEnabled");
+            cfg.setApplicable(false);
+            cfg.setReadOnly(true);
+            cfg.setDefaultValue(true);
+            testRealm().clientTypes().updateClientTypes(clientTypes);
+            Assert.fail("Not expected to update client types");
+        } catch (BadRequestException bre) {
+            // Expected
+        }
+
+        // Update should be successful
+        ClientTypeRepresentation.PropertyConfig cfg = clientType.getConfig().get("standardFlowEnabled");
+        cfg.setApplicable(true);
+        testRealm().clientTypes().updateClientTypes(clientTypes);
+
+        // Test duplicate name should fail
+        ClientTypeRepresentation clientType2 = new ClientTypeRepresentation();
+        try {
+            clientTypes = testRealm().clientTypes().getClientTypes(true);
+            clientType2 = new ClientTypeRepresentation();
+            clientType2.setName("sla1");
+            clientType2.setProvider(DefaultClientTypeProviderFactory.PROVIDER_ID);
+            clientType2.setConfig(new HashMap<>());
+            clientTypes.getRealmClientTypes().add(clientType2);
+            testRealm().clientTypes().updateClientTypes(clientTypes);
+            Assert.fail("Not expected to update client types");
+        } catch (BadRequestException bre) {
+            // Expected
+        }
+
+        // Also test duplicated global name should fail
+        try {
+            clientType2.setName("service-account");
+            testRealm().clientTypes().updateClientTypes(clientTypes);
+            Assert.fail("Not expected to update client types");
+        } catch (BadRequestException bre) {
+            // Expected
+        }
+
+        // Different name should be fine
+        clientType2.setName("different");
+        testRealm().clientTypes().updateClientTypes(clientTypes);
+
+        // Assert updated
+        clientTypes = testRealm().clientTypes().getClientTypes(true);
+        assertNames(clientTypes.getRealmClientTypes(), "sla1", "different");
+        assertNames(clientTypes.getGlobalClientTypes(), "sla", "service-account");
+
+        // Test updating global won't update anything. Nothing will be added to globalTypes
+        clientType2.setName("moreDifferent");
+        clientTypes.getGlobalClientTypes().add(clientType2);
+        testRealm().clientTypes().updateClientTypes(clientTypes);
+
+        clientTypes = testRealm().clientTypes().getClientTypes(true);
+        assertNames(clientTypes.getRealmClientTypes(), "sla1", "different");
+        assertNames(clientTypes.getGlobalClientTypes(), "sla", "service-account");
+    }
+
+    private void assertNames(List<ClientTypeRepresentation> clientTypes, String... expectedNames) {
+        List<String> names = clientTypes.stream()
+                .map(ClientTypeRepresentation::getName)
+                .collect(Collectors.toList());
+        Assert.assertNames(names, expectedNames);
+    }
+
 
     private void assertPropertyConfig(String propertyName, ClientTypeRepresentation.PropertyConfig cfg, Boolean expectedApplicable, Boolean expectedReadOnly, Object expectedDefaultValue) {
         assertThat("'applicable' for property " + propertyName + " not equal", ObjectUtil.isEqualOrBothNull(expectedApplicable, cfg.getApplicable()));
         assertThat("'read-only' for property " + propertyName + " not equal", ObjectUtil.isEqualOrBothNull(expectedReadOnly, cfg.getReadOnly()));
-        assertThat("'default-value' for property " + propertyName + " not equal", ObjectUtil.isEqualOrBothNull(expectedDefaultValue, cfg.getDefaultValue()));
+        assertThat("'default-value' ;for property " + propertyName + " not equal", ObjectUtil.isEqualOrBothNull(expectedDefaultValue, cfg.getDefaultValue()));
     }
 
     private ClientRepresentation createClientWithType(String clientId, String clientType) {

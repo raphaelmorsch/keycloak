@@ -73,6 +73,7 @@ public class ClientTypesResource {
         try {
             return session.getProvider(ClientTypeManager.class).getClientTypes(realm, includeGlobalTypes);
         } catch (ClientTypeException e) {
+            logger.error(e.getMessage(), e);
             throw new BadRequestException(ErrorResponse.error(e.getMessage(), Response.Status.BAD_REQUEST));
         }
     }
@@ -85,6 +86,7 @@ public class ClientTypesResource {
         try {
             session.getProvider(ClientTypeManager.class).updateClientTypes(realm, clientTypes);
         } catch (ClientTypeException e) {
+            logger.error(e.getMessage(), e);
             return ErrorResponse.error(e.getMessage(), Response.Status.BAD_REQUEST);
         }
         return Response.noContent().build();

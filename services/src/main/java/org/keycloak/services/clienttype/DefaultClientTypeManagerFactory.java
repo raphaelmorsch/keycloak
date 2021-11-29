@@ -19,7 +19,7 @@
 package org.keycloak.services.clienttype;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.jboss.logging.Logger;
@@ -74,15 +74,7 @@ public class DefaultClientTypeManagerFactory implements ClientTypeManagerFactory
 
                     try {
                         ClientTypesRepresentation globalTypesRep  = JsonSerialization.readValue(getClass().getResourceAsStream("/keycloak-default-client-types.json"), ClientTypesRepresentation.class);
-
-                        List<ClientTypeRepresentation> globalTypes = new ArrayList<>();
-
-                        // Validate globalTypes in correct format
-                        for (ClientTypeRepresentation clientType : globalTypesRep.getRealmClientTypes()) {
-                            globalTypes.add(validateAndCastConfiguration(session, clientType));
-                        }
-
-                        this.globalClientTypes = globalTypes;
+                        this.globalClientTypes = DefaultClientTypeManager.validateAndCastConfiguration(session, globalTypesRep.getRealmClientTypes(), Collections.emptyList());
                     } catch (IOException e) {
                         throw new IllegalStateException("Failed to deserialize global proposed client types from JSON.", e);
                     }
@@ -92,13 +84,4 @@ public class DefaultClientTypeManagerFactory implements ClientTypeManagerFactory
         return globalClientTypes;
     }
 
-
-    private ClientTypeRepresentation validateAndCastConfiguration(KeycloakSession session, ClientTypeRepresentation clientType) {
-        ClientTypeProvider clientTypeProvider = session.getProvider(ClientTypeProvider.class, clientType.getProvider());
-        if (clientTypeProvider == null) {
-            logger.errorf("Did not found client type provider '%s' for the client type '%s'", clientType.getProvider(), clientType.getName());
-            throw new IllegalStateException("Did not found client type provider");
-        }
-        return clientTypeProvider.validateAndCastClientTypeConfig(clientType);
-    }
 }

@@ -18,13 +18,18 @@
 
 package org.keycloak.services.clienttype;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.jboss.logging.Logger;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.representations.idm.ClientTypeRepresentation;
 import org.keycloak.representations.idm.ClientTypesRepresentation;
+import org.keycloak.util.JsonSerialization;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
@@ -32,6 +37,9 @@ import org.keycloak.representations.idm.ClientTypesRepresentation;
 public class DefaultClientTypeManager implements ClientTypeManager {
 
     private static final Logger logger = Logger.getLogger(DefaultClientTypeManager.class);
+
+    // Realm attribute where are client types saved TODO:mposolda check if it is good place here
+    private static final String CLIENT_TYPE_REALM_ATTRIBUTE = "client-types";
 
     private final KeycloakSession session;
     private final List<ClientTypeRepresentation> globalClientTypes;
@@ -41,17 +49,42 @@ public class DefaultClientTypeManager implements ClientTypeManager {
         this.globalClientTypes = globalClientTypes;
     }
 
+
     @Override
     public ClientTypesRepresentation getClientTypes(RealmModel realm, boolean includeGlobal) throws ClientTypeException {
-        // TODO:mposolda merge global with the realm. Take "includeGlobal" into consideration.
-        // TODO:mposolda Don't need to validate global, but needs to validate realm-ones as they were possibly changed
-        return new ClientTypesRepresentation(null, globalClientTypes);
+        String asStr = realm.getAttribute(CLIENT_TYPE_REALM_ATTRIBUTE);
+        ClientTypesRepresentation result;
+        if (asStr == null) {
+            result = new ClientTypesRepresentation(new ArrayList<>(), null);
+        } else {
+            try {
+                // Skip validation here for performance reasons
+                result = JsonSerialization.readValue(asStr, ClientTypesRepresentation.class);
+            } catch (IOException ioe) {
+                throw new ClientTypeException("Failed to deserialize client types from JSON string", ioe);
+            }
+        }
+        if (includeGlobal) {
+            result.setGlobalClientTypes(globalClientTypes);
+        }
+        return result;
     }
+
 
     @Override
     public void updateClientTypes(RealmModel realm, ClientTypesRepresentation clientTypes) throws ClientTypeException {
-        // TODO:mposolda implement
+        // Validate before save
+        List<ClientTypeRepresentation> validatedClientTypes = validateAndCastConfiguration(session, clientTypes.getRealmClientTypes(), globalClientTypes);
+
+        ClientTypesRepresentation noGlobalsCopy = new ClientTypesRepresentation(validatedClientTypes, null);
+        try {
+            String asStr = JsonSerialization.writeValueAsString(noGlobalsCopy);
+            realm.setAttribute(CLIENT_TYPE_REALM_ATTRIBUTE, asStr);
+        } catch (IOException ioe) {
+            throw new ClientTypeException("Failed to serialize client types to String", ioe);
+        }
     }
+
 
     @Override
     public ClientType getClientType(KeycloakSession session, RealmModel realm, String typeName) throws ClientTypeException {
@@ -65,6 +98,39 @@ public class DefaultClientTypeManager implements ClientTypeManager {
         ClientTypeProvider provider = session.getProvider(ClientTypeProvider.class, clientType.getProvider());
         return provider.getClientType(clientType);
     }
+
+
+    static List<ClientTypeRepresentation> validateAndCastConfiguration(KeycloakSession session, List<ClientTypeRepresentation> clientTypes, List<ClientTypeRepresentation> globalTypes) {
+        Set<String> usedNames = globalTypes.stream()
+                .map(ClientTypeRepresentation::getName)
+                .collect(Collectors.toSet());
+
+        return clientTypes.stream()
+                .map(clientType -> validateAndCastConfiguration(session, clientType, usedNames))
+                .collect(Collectors.toList());
+    }
+
+
+    // TODO:mposolda some javadoc or comment about how this method works
+    private static ClientTypeRepresentation validateAndCastConfiguration(KeycloakSession session, ClientTypeRepresentation clientType, Set<String> currentNames) {
+        ClientTypeProvider clientTypeProvider = session.getProvider(ClientTypeProvider.class, clientType.getProvider());
+        if (clientTypeProvider == null) {
+            logger.errorf("Did not found client type provider '%s' for the client type '%s'", clientType.getProvider(), clientType.getName());
+            throw new ClientTypeException("Did not found client type provider");
+        }
+
+        // Validate name is not duplicated
+        if (currentNames.contains(clientType.getName())) {
+            logger.errorf("Duplicated client type name '%s'", clientType.getName());
+            throw new ClientTypeException("Duplicated client type name");
+        }
+
+        clientType = clientTypeProvider.validateAndCastClientTypeConfig(clientType);
+        currentNames.add(clientType.getName());
+
+        return clientType;
+    }
+
 
     private ClientTypeRepresentation getClientTypeByName(ClientTypesRepresentation clientTypes, String clientTypeName) {
         // Search realm clientTypes

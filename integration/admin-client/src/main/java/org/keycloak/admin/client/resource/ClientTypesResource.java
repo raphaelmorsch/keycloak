@@ -47,5 +47,5 @@ public interface ClientTypesResource {
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    Response updateClientTypes(final ClientTypesRepresentation clientTypes);
+    void updateClientTypes(final ClientTypesRepresentation clientTypes);
 }

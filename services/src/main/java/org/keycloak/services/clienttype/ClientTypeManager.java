@@ -39,6 +39,7 @@ public interface ClientTypeManager extends Provider {
     // TODO:mposolda check if "includeGlobal" is needed
     ClientTypesRepresentation getClientTypes(RealmModel realm, boolean includeGlobal) throws ClientTypeException;
 
+    // Implementation is supposed also to validate clientTypes before persisting them
     void updateClientTypes(RealmModel realm, ClientTypesRepresentation clientTypes) throws ClientTypeException;
 
     ClientType getClientType(KeycloakSession session, RealmModel realm, String typeName)  throws ClientTypeException;

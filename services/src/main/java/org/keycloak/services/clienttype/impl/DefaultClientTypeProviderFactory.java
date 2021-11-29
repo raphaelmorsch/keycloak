@@ -42,6 +42,8 @@ import org.keycloak.services.clienttype.ClientTypeProviderFactory;
  */
 public class DefaultClientTypeProviderFactory implements ClientTypeProviderFactory {
 
+    public static final String PROVIDER_ID = "default";
+
     private Map<String, PropertyDescriptor> clientRepresentationSetters;
 
     @Override
@@ -90,6 +92,6 @@ public class DefaultClientTypeProviderFactory implements ClientTypeProviderFacto
 
     @Override
     public String getId() {
-        return "default";
+        return PROVIDER_ID;
     }
 }
