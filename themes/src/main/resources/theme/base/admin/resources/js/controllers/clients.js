@@ -10,6 +10,11 @@ function getClientTypeByName(clientTypes, name) {
             return clientTypes['global-client-types'][i];
         }
     };
+    for (var i=0 ; i<clientTypes['client-types'].length ; i++) {
+        if (name === clientTypes['client-types'][i].name) {
+            return clientTypes['client-types'][i];
+        }
+    };
     return null;
 }
 
@@ -2000,6 +2005,10 @@ module.controller('CreateClientCtrl', function($scope, realm, clientTypes, clien
     $scope.realm = realm;
 
     $scope.clientTypeNames = [];
+    for (var i=0 ; i<clientTypes['client-types'].length ; i++) {
+        var name = clientTypes['client-types'][i].name;
+        $scope.clientTypeNames.push(name);
+    };
     for (var i=0 ; i<clientTypes['global-client-types'].length ; i++) {
         var name = clientTypes['global-client-types'][i].name;
         $scope.clientTypeNames.push(name);

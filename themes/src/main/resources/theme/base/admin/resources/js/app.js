@@ -507,6 +507,30 @@ module.config([ '$routeProvider', function($routeProvider) {
             },
             controller : 'ClientPoliciesEditConditionCtrl'
         })
+        .when('/realms/:realm/client-types/list', {
+            templateUrl : resourceUrl + '/partials/client-types-list.html',
+            resolve : {
+                realm : function(RealmLoader) {
+                    return RealmLoader();
+                },
+                clientTypes : function(ClientTypesLoader) {
+                    return ClientTypesLoader.loadClientTypes('true');
+                }
+            },
+            controller : 'ClientTypesListCtrl'
+        })
+        .when('/realms/:realm/client-types/json', {
+            templateUrl : resourceUrl + '/partials/client-types-json.html',
+            resolve : {
+                realm : function(RealmLoader) {
+                    return RealmLoader();
+                },
+                clientTypes : function(ClientTypesLoader) {
+                    return ClientTypesLoader.loadClientTypes('true');
+                }
+            },
+            controller : 'ClientTypesJsonCtrl'
+        })
         .when('/realms/:realm/keys', {
             templateUrl : resourceUrl + '/partials/realm-keys.html',
             resolve : {

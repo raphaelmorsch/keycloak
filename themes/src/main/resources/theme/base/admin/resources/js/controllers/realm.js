@@ -4209,6 +4209,74 @@ module.controller('ClientPoliciesEditConditionCtrl', function($scope, realm, ser
 
 });
 
+module.controller('ClientTypesListCtrl', function($scope, realm, clientTypes, ClientTypes, Dialog, Notifications, $route, $location) {
+    console.log('ClientTypesListCtrl');
+    $scope.realm = realm;
+    $scope.clientTypes = clientTypes;
+
+    // TODO:mposolda implement this
+//    $scope.removeClientProfile = function(clientProfile) {
+//        Dialog.confirmDelete(clientProfile.name, 'client profile', function() {
+//            console.log("Deleting client profile from the JSON: " + clientProfile.name);
+//
+//            for (var i = 0; i < $scope.clientProfiles.profiles.length; i++) {
+//                var currentProfile = $scope.clientProfiles.profiles[i];
+//                if (currentProfile.name === clientProfile.name) {
+//                    $scope.clientProfiles.profiles.splice(i, 1);
+//                    break;
+//                }
+//            }
+//
+//            ClientPoliciesProfiles.update({
+//                realm: realm.realm,
+//            }, $scope.clientProfiles, function () {
+//                $route.reload();
+//                Notifications.success("The client profile was deleted.");
+//            }, function (errorResponse) {
+//                $route.reload();
+//                var errDetails = (!errorResponse.data.errorMessage) ? "unknown error, please see the server log" : errorResponse.data.errorMessage
+//                Notifications.error('Failed to delete client profile: ' + errDetails);
+//            });
+//        });
+//    };
+
+});
+
+module.controller('ClientTypesJsonCtrl', function($scope, realm, clientTypes, ClientTypes, Dialog, Notifications, $route, $location) {
+    console.log('ClientTypesJsonCtrl');
+    $scope.realm = realm;
+    $scope.clientTypesString = angular.toJson(clientTypes, true);
+
+    $scope.save = function() {
+        var clientTypesObj = null;
+        try {
+            clientTypesObj = angular.fromJson($scope.clientTypesString);
+        } catch (e) {
+            Notifications.error("Provided JSON is incorrect: " + e.message);
+            console.log(e);
+            return;
+        }
+        var clientTypesCompressed = angular.toJson(clientTypesObj, false);
+
+        ClientTypes.update({
+            realm: realm.realm,
+        }, clientTypesCompressed,  function () {
+            $route.reload();
+            Notifications.success("The client types configuration was updated.");
+        }, function(errorResponse) {
+            var errDetails = (!errorResponse.data.errorMessage) ? "unknown error, please see the server log" : errorResponse.data.errorMessage
+            Notifications.error("Failed to update client types: " + errDetails);
+            console.log("Error response when updating client types JSON: Status: " + errorResponse.status +
+                    ", statusText: " + errorResponse.statusText + ", data: " + JSON.stringify(errorResponse.data));
+        });
+    };
+
+    $scope.reset = function() {
+        $route.reload();
+    };
+
+});
+
 module.controller('RealmImportCtrl', function($scope, realm, $route, 
                                               Notifications, $modal, $resource) {
     $scope.rawContent = {};
