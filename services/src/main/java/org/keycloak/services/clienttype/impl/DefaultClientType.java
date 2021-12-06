@@ -20,9 +20,11 @@ package org.keycloak.services.clienttype.impl;
 
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.JavaType;
 import org.jboss.logging.Logger;
 import org.keycloak.common.util.ObjectUtil;
 import org.keycloak.models.ClientModel;
@@ -32,6 +34,7 @@ import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ClientTypeRepresentation;
 import org.keycloak.services.clienttype.ClientType;
 import org.keycloak.services.clienttype.ClientTypeException;
+import org.keycloak.util.JsonSerialization;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
@@ -39,6 +42,9 @@ import org.keycloak.services.clienttype.ClientTypeException;
 public class DefaultClientType implements ClientType {
 
     private static final Logger logger = Logger.getLogger(DefaultClientType.class);
+
+    // Will be used as reference in JSON. Probably just temporary solution
+    private static final String REFERENCE_PREFIX = "ref::";
 
     private final KeycloakSession session;
     private final ClientTypeRepresentation clientType;
@@ -83,11 +89,30 @@ public class DefaultClientType implements ClientType {
             if (propertyConfig.getDefaultValue() != null) {
                 if (clientRepresentationSetters.containsKey(property.getKey())) {
                     // Java property on client representation
-                    Method setter = clientRepresentationSetters.get(property.getKey()).getWriteMethod();
                     try {
-                        setter.invoke(createdClient, propertyConfig.getDefaultValue());
+                        PropertyDescriptor propertyDescriptor = clientRepresentationSetters.get(property.getKey());
+                        Method setter = propertyDescriptor.getWriteMethod();
+                        Object defaultVal = propertyConfig.getDefaultValue();
+                        if (defaultVal instanceof String && defaultVal.toString().startsWith(REFERENCE_PREFIX)) {
+                            // Reference. We need to found referred value and call the setter with it
+                            String referredPropertyName = defaultVal.toString().substring(REFERENCE_PREFIX.length());
+                            Object referredPropertyVal = clientType.getReferencedProperties().get(referredPropertyName);
+                            if (referredPropertyVal == null) {
+                                logger.warnf("Reference '%s' not found used in property '%s' of client type '%s'", defaultVal.toString(), property.getKey(), clientType.getName());
+                                throw new ClientTypeException("Cannot set property on client");
+                            }
+
+                            // Generic collections
+                            Type genericType = setter.getGenericParameterTypes()[0];
+                            JavaType jacksonType = JsonSerialization.mapper.constructType(genericType);
+                            Object converted = JsonSerialization.mapper.convertValue(referredPropertyVal, jacksonType);
+
+                            setter.invoke(createdClient, converted);
+                        }  else {
+                            setter.invoke(createdClient, propertyConfig.getDefaultValue());
+                        }
                     } catch (Exception e) {
-                        logger.errorf("Cannot set property '%s' on client with value '%s'. Check configuration of the client type '%s'", property.getKey(), propertyConfig.getDefaultValue(), clientType.getName());
+                        logger.warnf("Cannot set property '%s' on client with value '%s'. Check configuration of the client type '%s'", property.getKey(), propertyConfig.getDefaultValue(), clientType.getName());
                         throw new ClientTypeException("Cannot set property on client", e);
                     }
                 } else {
@@ -130,7 +155,7 @@ public class DefaultClientType implements ClientType {
             try {
                 return getter.invoke(client);
             } catch (Exception e) {
-                logger.errorf("Cannot read property '%s' on client '%s'. Client type is '%s'", propertyName, client.getClientId(), clientType.getName());
+                logger.warnf("Cannot read property '%s' on client '%s'. Client type is '%s'", propertyName, client.getClientId(), clientType.getName());
                 throw new ClientTypeException("Cannot read property of client", e);
             }
         } else {

@@ -58,6 +58,26 @@
           "read-only": true,
           "default-value": true
         },
+        "protocolMappers": {
+          "applicable": true,
+          "read-only": true,
+          "default-value": "ref::protocolMappers"
+        },
+        "webOrigins": {
+          "applicable": true,
+          "read-only": true,
+          "default-value": [ "https://foo", "https://bar"]
+        },
+        "defaultClientScopes": {
+          "applicable": true,
+          "read-only": true,
+          "default-value": [ "address", "offline_access"]
+        },
+        "optionalClientScopes": {
+          "applicable": true,
+          "read-only": true,
+          "default-value": [ "profile", "email" ]
+        },
         "logoUri": {
           "applicable": false
         },
@@ -67,6 +87,30 @@
         "tosUri": {
           "applicable": false
         }
+      },
+      "referenced-properties": {
+        "protocolMappers": [
+          {
+            "name": "aud-account",
+            "protocol": "openid-connect",
+            "protocolMapper": "oidc-audience-mapper",
+            "config": {
+              "included.client.audience": "account",
+              "id.token.claim": "true",
+              "access.token.claim": "true"
+            }
+          },
+          {
+            "name": "aud-admin",
+            "protocol": "openid-connect",
+            "protocolMapper": "oidc-audience-mapper",
+            "config": {
+              "included.client.audience": "security-admin-console",
+              "id.token.claim": "true",
+              "access.token.claim": "true"
+            }
+          }
+        ]
       }
     }
   ]

@@ -18,6 +18,7 @@
 
 package org.keycloak.representations.idm;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -59,6 +60,17 @@ public class ClientTypeRepresentation {
 
     public void setConfig(Map<String, PropertyConfig> config) {
         this.config = config;
+    }
+
+    @JsonProperty("referenced-properties")
+    protected Map<String, Object> referencedProperties = new HashMap<>();
+
+    public Map<String, Object> getReferencedProperties() {
+        return referencedProperties;
+    }
+
+    public void setReferencedProperties(Map<String, Object> referencedProperties) {
+        this.referencedProperties = referencedProperties;
     }
 
     // TODO:mposolda remove "T" . It is probably redundant...
