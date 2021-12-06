@@ -94,22 +94,34 @@ public class DefaultClientType implements ClientType {
                         Method setter = propertyDescriptor.getWriteMethod();
                         Object defaultVal = propertyConfig.getDefaultValue();
                         if (defaultVal instanceof String && defaultVal.toString().startsWith(REFERENCE_PREFIX)) {
+                            // TODO:mposolda re-verityf or remove support for "ref::" entirely from the codebase
+                            throw new UnsupportedOperationException("Not supported to use ref:: references");
                             // Reference. We need to found referred value and call the setter with it
-                            String referredPropertyName = defaultVal.toString().substring(REFERENCE_PREFIX.length());
-                            Object referredPropertyVal = clientType.getReferencedProperties().get(referredPropertyName);
-                            if (referredPropertyVal == null) {
-                                logger.warnf("Reference '%s' not found used in property '%s' of client type '%s'", defaultVal.toString(), property.getKey(), clientType.getName());
-                                throw new ClientTypeException("Cannot set property on client");
+//                            String referredPropertyName = defaultVal.toString().substring(REFERENCE_PREFIX.length());
+//                            Object referredPropertyVal = clientType.getReferencedProperties().get(referredPropertyName);
+//                            if (referredPropertyVal == null) {
+//                                logger.warnf("Reference '%s' not found used in property '%s' of client type '%s'", defaultVal.toString(), property.getKey(), clientType.getName());
+//                                throw new ClientTypeException("Cannot set property on client");
+//                            }
+//
+//                            // Generic collections
+//                            Type genericType = setter.getGenericParameterTypes()[0];
+//                            JavaType jacksonType = JsonSerialization.mapper.constructType(genericType);
+//                            Object converted = JsonSerialization.mapper.convertValue(referredPropertyVal, jacksonType);
+//
+//                            setter.invoke(createdClient, converted);
+                        }  else {
+                            Type genericType = setter.getGenericParameterTypes()[0];
+
+                            Object converted;
+                            if (!defaultVal.getClass().equals(genericType)) {
+                                JavaType jacksonType = JsonSerialization.mapper.constructType(genericType);
+                                converted = JsonSerialization.mapper.convertValue(defaultVal, jacksonType);
+                            } else {
+                                converted = defaultVal;
                             }
 
-                            // Generic collections
-                            Type genericType = setter.getGenericParameterTypes()[0];
-                            JavaType jacksonType = JsonSerialization.mapper.constructType(genericType);
-                            Object converted = JsonSerialization.mapper.convertValue(referredPropertyVal, jacksonType);
-
                             setter.invoke(createdClient, converted);
-                        }  else {
-                            setter.invoke(createdClient, propertyConfig.getDefaultValue());
                         }
                     } catch (Exception e) {
                         logger.warnf("Cannot set property '%s' on client with value '%s'. Check configuration of the client type '%s'", property.getKey(), propertyConfig.getDefaultValue(), clientType.getName());

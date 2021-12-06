@@ -61,7 +61,18 @@
         "protocolMappers": {
           "applicable": true,
           "read-only": true,
-          "default-value": "ref::protocolMappers"
+          "default-value": [
+            {
+              "name": "aud-account",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-audience-mapper",
+              "config": {
+                "included.client.audience": "account",
+                "id.token.claim": "true",
+                "access.token.claim": "true"
+              }
+            }
+          ]
         },
         "webOrigins": {
           "applicable": true,
@@ -76,7 +87,7 @@
         "optionalClientScopes": {
           "applicable": true,
           "read-only": true,
-          "default-value": [ "profile", "email" ]
+          "default-value": [ "profile" ]
         },
         "logoUri": {
           "applicable": false
@@ -87,30 +98,6 @@
         "tosUri": {
           "applicable": false
         }
-      },
-      "referenced-properties": {
-        "protocolMappers": [
-          {
-            "name": "aud-account",
-            "protocol": "openid-connect",
-            "protocolMapper": "oidc-audience-mapper",
-            "config": {
-              "included.client.audience": "account",
-              "id.token.claim": "true",
-              "access.token.claim": "true"
-            }
-          },
-          {
-            "name": "aud-admin",
-            "protocol": "openid-connect",
-            "protocolMapper": "oidc-audience-mapper",
-            "config": {
-              "included.client.audience": "security-admin-console",
-              "id.token.claim": "true",
-              "access.token.claim": "true"
-            }
-          }
-        ]
       }
     }
   ]
