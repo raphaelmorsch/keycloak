@@ -32,8 +32,8 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ClientTypeRepresentation;
-import org.keycloak.services.clienttype.ClientType;
-import org.keycloak.services.clienttype.ClientTypeException;
+import org.keycloak.client.clienttype.ClientType;
+import org.keycloak.client.clienttype.ClientTypeException;
 import org.keycloak.util.JsonSerialization;
 
 /**
@@ -59,6 +59,11 @@ public class DefaultClientType implements ClientType {
     }
 
     @Override
+    public String getName() {
+        return clientType.getName();
+    }
+
+    @Override
     public boolean isApplicable(String optionName) {
         ClientTypeRepresentation.PropertyConfig cfg = clientType.getConfig().get(optionName);
 
@@ -75,7 +80,7 @@ public class DefaultClientType implements ClientType {
     }
 
     @Override
-    public <T> T getConfigValue(String optionName, Class<T> optionType) {
+    public <T> T getDefaultValue(String optionName, Class<T> optionType) {
         ClientTypeRepresentation.PropertyConfig cfg = clientType.getConfig().get(optionName);
 
         return (cfg != null && cfg.getDefaultValue() != null) ? optionType.cast(cfg.getDefaultValue()) : null;

@@ -24,7 +24,6 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -34,8 +33,8 @@ import org.keycloak.Config;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.services.clienttype.ClientTypeProvider;
-import org.keycloak.services.clienttype.ClientTypeProviderFactory;
+import org.keycloak.client.clienttype.ClientTypeProvider;
+import org.keycloak.client.clienttype.ClientTypeProviderFactory;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>

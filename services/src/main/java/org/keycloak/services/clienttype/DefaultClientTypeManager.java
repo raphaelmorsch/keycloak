@@ -25,10 +25,16 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.jboss.logging.Logger;
+import org.keycloak.client.clienttype.ClientType;
+import org.keycloak.client.clienttype.ClientTypeException;
+import org.keycloak.client.clienttype.ClientTypeManager;
+import org.keycloak.client.clienttype.ClientTypeProvider;
+import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.representations.idm.ClientTypeRepresentation;
 import org.keycloak.representations.idm.ClientTypesRepresentation;
+import org.keycloak.services.clienttype.client.TypeAwareClientModelDelegate;
 import org.keycloak.util.JsonSerialization;
 
 /**
@@ -87,7 +93,7 @@ public class DefaultClientTypeManager implements ClientTypeManager {
 
 
     @Override
-    public ClientType getClientType(KeycloakSession session, RealmModel realm, String typeName) throws ClientTypeException {
+    public ClientType getClientType(RealmModel realm, String typeName) throws ClientTypeException {
         ClientTypesRepresentation clientTypes = getClientTypes(realm, true);
         ClientTypeRepresentation clientType = getClientTypeByName(clientTypes, typeName);
         if (clientType == null) {
@@ -99,6 +105,15 @@ public class DefaultClientTypeManager implements ClientTypeManager {
         return provider.getClientType(clientType);
     }
 
+    @Override
+    public ClientModel augmentClient(ClientModel client) throws ClientTypeException {
+        if (client.getType() == null) {
+            return client;
+        } else {
+            ClientType clientType = getClientType(client.getRealm(), client.getType());
+            return new TypeAwareClientModelDelegate(clientType, () -> client);
+        }
+    }
 
     static List<ClientTypeRepresentation> validateAndCastConfiguration(KeycloakSession session, List<ClientTypeRepresentation> clientTypes, List<ClientTypeRepresentation> globalTypes) {
         Set<String> usedNames = globalTypes.stream()

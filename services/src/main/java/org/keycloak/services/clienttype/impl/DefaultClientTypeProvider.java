@@ -24,9 +24,9 @@ import java.util.Map;
 import org.jboss.logging.Logger;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.representations.idm.ClientTypeRepresentation;
-import org.keycloak.services.clienttype.ClientType;
-import org.keycloak.services.clienttype.ClientTypeException;
-import org.keycloak.services.clienttype.ClientTypeProvider;
+import org.keycloak.client.clienttype.ClientType;
+import org.keycloak.client.clienttype.ClientTypeException;
+import org.keycloak.client.clienttype.ClientTypeProvider;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>

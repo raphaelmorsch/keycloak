@@ -16,12 +16,12 @@
  *
  */
 
-package org.keycloak.services.clienttype;
+package org.keycloak.client.clienttype;
 
 import org.keycloak.provider.ProviderFactory;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public interface ClientTypeProviderFactory extends ProviderFactory<ClientTypeProvider> {
+public interface ClientTypeManagerFactory extends ProviderFactory<ClientTypeManager> {
 }

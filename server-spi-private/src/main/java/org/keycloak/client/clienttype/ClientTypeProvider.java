@@ -16,34 +16,26 @@
  *
  */
 
-package org.keycloak.services.clienttype;
+package org.keycloak.client.clienttype;
 
 import org.keycloak.provider.Provider;
-import org.keycloak.provider.ProviderFactory;
-import org.keycloak.provider.Spi;
+import org.keycloak.representations.idm.ClientTypeRepresentation;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public class ClientTypeSpi implements Spi {
+public interface ClientTypeProvider extends Provider {
+
+    // Return client types for the model returned
+    ClientType getClientType(ClientTypeRepresentation clientTypeRep);
+
+    // TODO:mposolda type-safety here. The returned clientType should have correctly casted client type configuration
+    // Also rename the method...
+    // Used when creating/updating clientType. The JSON configuration is validated to be checked if it matches the good format for client type
+    ClientTypeRepresentation validateAndCastClientTypeConfig(ClientTypeRepresentation clientType)  throws ClientTypeException;
 
     @Override
-    public boolean isInternal() {
-        return true;
+    default void close() {
     }
 
-    @Override
-    public String getName() {
-        return "client-type";
-    }
-
-    @Override
-    public Class<? extends Provider> getProviderClass() {
-        return ClientTypeProvider.class;
-    }
-
-    @Override
-    public Class<? extends ProviderFactory> getProviderFactoryClass() {
-        return ClientTypeProviderFactory.class;
-    }
 }

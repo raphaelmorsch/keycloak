@@ -16,7 +16,7 @@
  *
  */
 
-package org.keycloak.services.clienttype;
+package org.keycloak.client.clienttype;
 
 import org.keycloak.models.ClientModel;
 import org.keycloak.representations.idm.ClientRepresentation;
@@ -28,6 +28,8 @@ import org.keycloak.representations.idm.ClientRepresentation;
  */
 public interface ClientType {
 
+    String getName();
+
     // Augment client type at runtime
     // Can be property name (like "standardFlow" or "rootUrl") or attributeName (like "pkceEnabled")
     boolean isApplicable(String optionName);
@@ -36,7 +38,7 @@ public interface ClientType {
     boolean isReadOnly(String optionName);
 
     // Return the value of particular option (if it can be provided by clientType) or return null if this option is not provided by client type
-    <T> T getConfigValue(String optionName, Class<T> optionType);
+    <T> T getDefaultValue(String optionName, Class<T> optionType);
 
 
     // Augment at the client type

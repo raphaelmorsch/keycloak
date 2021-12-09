@@ -16,12 +16,34 @@
  *
  */
 
-package org.keycloak.services.clienttype;
+package org.keycloak.client.clienttype;
 
+import org.keycloak.provider.Provider;
 import org.keycloak.provider.ProviderFactory;
+import org.keycloak.provider.Spi;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public interface ClientTypeManagerFactory extends ProviderFactory<ClientTypeManager> {
+public class ClientTypeManagerSpi implements Spi {
+
+    @Override
+    public boolean isInternal() {
+        return true;
+    }
+
+    @Override
+    public String getName() {
+        return "client-type-manager";
+    }
+
+    @Override
+    public Class<? extends Provider> getProviderClass() {
+        return ClientTypeManager.class;
+    }
+
+    @Override
+    public Class<? extends ProviderFactory> getProviderFactoryClass() {
+        return ClientTypeManagerFactory.class;
+    }
 }

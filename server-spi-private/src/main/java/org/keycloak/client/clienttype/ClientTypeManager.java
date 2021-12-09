@@ -16,10 +16,10 @@
  *
  */
 
-package org.keycloak.services.clienttype;
+package org.keycloak.client.clienttype;
 
 
-import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.ClientModel;
 import org.keycloak.models.RealmModel;
 import org.keycloak.provider.Provider;
 import org.keycloak.representations.idm.ClientTypesRepresentation;
@@ -42,7 +42,10 @@ public interface ClientTypeManager extends Provider {
     // Implementation is supposed also to validate clientTypes before persisting them
     void updateClientTypes(RealmModel realm, ClientTypesRepresentation clientTypes) throws ClientTypeException;
 
-    ClientType getClientType(KeycloakSession session, RealmModel realm, String typeName)  throws ClientTypeException;
+    ClientType getClientType(RealmModel realm, String typeName)  throws ClientTypeException;
+
+    // Create client, which delegates to the particular client type
+    ClientModel augmentClient(ClientModel client) throws ClientTypeException;
 
     @Override
     default void close() {

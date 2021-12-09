@@ -16,7 +16,7 @@
  *
  */
 
-package org.keycloak.services.clienttype;
+package org.keycloak.client.clienttype;
 
 import org.keycloak.models.ModelException;
 

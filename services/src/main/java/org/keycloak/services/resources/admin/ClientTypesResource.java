@@ -36,8 +36,8 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.representations.idm.ClientTypesRepresentation;
 import org.keycloak.services.ErrorResponse;
-import org.keycloak.services.clienttype.ClientTypeException;
-import org.keycloak.services.clienttype.ClientTypeManager;
+import org.keycloak.client.clienttype.ClientTypeException;
+import org.keycloak.client.clienttype.ClientTypeManager;
 import org.keycloak.services.resources.admin.permissions.AdminPermissionEvaluator;
 
 /**

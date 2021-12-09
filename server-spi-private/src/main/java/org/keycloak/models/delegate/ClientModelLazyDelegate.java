@@ -77,7 +77,8 @@ public class ClientModelLazyDelegate implements ClientModel {
         this.delegateSupplier = delegateSupplier;
     }
 
-    private ClientModel getDelegate() {
+    // TODO:mposolda doublecheck if I need to change this in this PR
+    protected ClientModel getDelegate() {
         if (! delegate.isMarked()) {
             delegate.compareAndSet(null, delegateSupplier == null ? null : delegateSupplier.get(), false, true);
         }

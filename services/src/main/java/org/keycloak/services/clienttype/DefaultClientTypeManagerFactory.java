@@ -24,6 +24,8 @@ import java.util.List;
 
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
+import org.keycloak.client.clienttype.ClientTypeManager;
+import org.keycloak.client.clienttype.ClientTypeManagerFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.representations.idm.ClientTypeRepresentation;

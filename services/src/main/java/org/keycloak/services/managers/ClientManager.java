@@ -41,8 +41,8 @@ import org.keycloak.protocol.saml.SamlProtocol;
 import org.keycloak.representations.adapters.config.BaseRealmConfig;
 import org.keycloak.representations.adapters.config.PolicyEnforcerConfig;
 import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.services.clienttype.ClientType;
-import org.keycloak.services.clienttype.ClientTypeManager;
+import org.keycloak.client.clienttype.ClientType;
+import org.keycloak.client.clienttype.ClientTypeManager;
 import org.keycloak.sessions.AuthenticationSessionProvider;
 
 import java.net.URI;
@@ -85,7 +85,7 @@ public class ClientManager {
             // TODO:mposolda trace or remove this logging message
             logger.infof("Creating client '%s' with client type '%s'", rep.getClientId(), rep.getType());
             ClientTypeManager mgr = session.getProvider(ClientTypeManager.class);
-            ClientType clientType = mgr.getClientType(session, realm, rep.getType());
+            ClientType clientType = mgr.getClientType(realm, rep.getType());
             clientType.onCreate(rep);
         }
 
@@ -175,7 +175,13 @@ public class ClientManager {
             user.setServiceAccountClientLink(client.getId());
         }
 
-        // Add protocol mappers to retrieve clientId in access token
+        // Add protocol mappers to retrieve clientId in access token. Ignore this in case type is filled (protocol mappers can be explicitly specified for particular specific type)
+        if (client.getType() == null) {
+            addServiceAccountProtocolMappers(client);
+        }
+    }
+
+    private void addServiceAccountProtocolMappers(ClientModel client) {
         if (client.getProtocolMapperByName(OIDCLoginProtocol.LOGIN_PROTOCOL, ServiceAccountConstants.CLIENT_ID_PROTOCOL_MAPPER) == null) {
             logger.debugf("Creating service account protocol mapper '%s' for client '%s'", ServiceAccountConstants.CLIENT_ID_PROTOCOL_MAPPER, client.getClientId());
             ProtocolMapperModel protocolMapper = UserSessionNoteMapper.createClaimMapper(ServiceAccountConstants.CLIENT_ID_PROTOCOL_MAPPER,
