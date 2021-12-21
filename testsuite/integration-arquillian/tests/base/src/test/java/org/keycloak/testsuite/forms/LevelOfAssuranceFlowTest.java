@@ -18,13 +18,13 @@
 package org.keycloak.testsuite.forms;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import javax.ws.rs.core.UriBuilder;
 import org.jboss.arquillian.graphene.page.Page;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -42,21 +42,23 @@ import org.keycloak.representations.idm.EventRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
+import org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude;
 import org.keycloak.testsuite.authentication.PushButtonAuthenticatorFactory;
 import org.keycloak.testsuite.pages.ErrorPage;
 import org.keycloak.testsuite.pages.LoginUsernameOnlyPage;
 import org.keycloak.testsuite.pages.PasswordPage;
+import org.keycloak.testsuite.pages.PushTheButtonPage;
 import org.keycloak.testsuite.util.FlowUtil;
 import org.keycloak.util.JsonSerialization;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.support.ui.FluentWait;
+
+import static org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude.AuthServer.REMOTE;
 
 /**
  * Tests for Level Of Assurance conditions in authentication flow.
  *
  * @author <a href="mailto:sebastian.zoescher@prime-sign.com">Sebastian Zoescher</a>
  */
+@AuthServerContainerExclude(REMOTE)
 public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
 
     @Rule
@@ -69,9 +71,10 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     protected PasswordPage passwordPage;
 
     @Page
-    protected ErrorPage errorPage;
+    protected PushTheButtonPage pushTheButtonPage;
 
-    private FluentWait<WebDriver> wait;
+    @Page
+    protected ErrorPage errorPage;
 
     @Override
     public void configureTestRealm(RealmRepresentation testRealm) {
@@ -88,7 +91,6 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
 
     @Before
     public void setupFlow() {
-        wait = new FluentWait<>(driver).withTimeout(Duration.ofSeconds(10));
         final String newFlowAlias = "browser -  Level of Authentication FLow";
         testingClient.server(TEST_REALM_NAME).run(session -> FlowUtil.inCurrentRealm(session).copyBrowserFlow(newFlowAlias));
         testingClient.server(TEST_REALM_NAME)
@@ -124,6 +126,11 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
                 })
 
             ).defineAsBrowserFlow());
+    }
+
+    @After
+    public void after() {
+        BrowserFlowTest.revertFlows(testRealm(), "browser -  Level of Authentication FLow");
     }
 
     @Test
@@ -260,29 +267,23 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         ClaimsRepresentation claims = new ClaimsRepresentation();
         claims.setIdTokenClaims(Collections.singletonMap("acr", acrClaim));
 
-        try {
-            driver.navigate().to(UriBuilder.fromUri(oauth.getLoginFormUrl())
-                .queryParam("claims", "{0}")
-                .build(JsonSerialization.writeValueAsString(claims)).toString());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        oauth.claims(claims);
+        oauth.openLoginForm();
     }
 
     private void authenticateWithUsername() {
-        wait.until(driver -> loginUsernameOnlyPage.isCurrent());
+        loginUsernameOnlyPage.assertCurrent();
         loginUsernameOnlyPage.login("test-user@localhost");
     }
 
     private void authenticateWithPassword() {
-        wait.until(driver -> passwordPage.isCurrent());
+        passwordPage.assertCurrent();
         passwordPage.login("password");
     }
 
     private void authenticateWithButton() {
-        wait.until(driver -> driver.getTitle().equals("PushTheButton")
-            && !driver.findElements(By.name("submit1")).isEmpty());
-        driver.findElement(By.name("submit1")).click();
+        pushTheButtonPage.assertCurrent();
+        pushTheButtonPage.submit();
     }
 
     private void assertLoggedInWithAcr(String acr) {
