@@ -307,8 +307,10 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
                 return loa == null ? Integer.parseInt(acr) : loa;
             } catch (NumberFormatException e) {
                 // this is an unknown acr, we assume in case of an essential claim a very high LoA, and a minimum LoA if not essential
-                return Boolean.parseBoolean(authenticationSession.getClientNote(Constants.FORCE_LEVEL_OF_AUTHENTICATION)) 
-                    ? Constants.MAXIMUM_LOA : Constants.MINIMUM_LOA;
+                int fallbackLoA = Boolean.parseBoolean(authenticationSession.getClientNote(Constants.FORCE_LEVEL_OF_AUTHENTICATION))
+                        ? Constants.MAXIMUM_LOA : Constants.MINIMUM_LOA;
+                logger.warnf("Acr value '%s' is not a number and it is not mapped in the client mappings. Please doublecheck your client configuration or correct ACR passed in the parameters. Using %d as a fallback LoA", acr, fallbackLoA);
+                return fallbackLoA;
             }
         }).min().ifPresent(loa -> authenticationSession.setClientNote(Constants.REQUESTED_LEVEL_OF_AUTHENTICATION, String.valueOf(loa)));
 

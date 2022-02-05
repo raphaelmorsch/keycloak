@@ -37,16 +37,16 @@ public class AcrUtils {
     private static final Logger LOGGER = Logger.getLogger(AcrUtils.class);
 
     public static List<String> getRequiredAcrValues(String claimsParam) {
-        return getAcrValues(claimsParam, null, false);
+        return getAcrValues(claimsParam, null, true);
     }
 
     public static List<String> getAcrValues(String claimsParam, String acrValuesParam) {
-        return getAcrValues(claimsParam, acrValuesParam, true);
+        return getAcrValues(claimsParam, acrValuesParam, false);
     }
 
-    private static List<String> getAcrValues(String claimsParam, String acrValuesParam, boolean notEssential) {
+    private static List<String> getAcrValues(String claimsParam, String acrValuesParam, boolean essential) {
         List<String> acrValues = new ArrayList<>();
-        if (acrValuesParam != null && notEssential) {
+        if (acrValuesParam != null && !essential) {
             acrValues.addAll(Arrays.asList(acrValuesParam.split(" ")));
         }
         if (claimsParam != null) {
@@ -54,7 +54,7 @@ public class AcrUtils {
                 ClaimsRepresentation claims = JsonSerialization.readValue(claimsParam, ClaimsRepresentation.class);
                 ClaimsRepresentation.ClaimValue<String> acrClaim = claims.getClaimValue(IDToken.ACR, ClaimsRepresentation.ClaimContext.ID_TOKEN, String.class);
                 if (acrClaim != null) {
-                    if (notEssential || acrClaim.isEssential()) {
+                    if (!essential || acrClaim.isEssential()) {
                         if (acrClaim.getValues() != null) {
                             acrValues.addAll(acrClaim.getValues());
                         }
@@ -91,7 +91,8 @@ public class AcrUtils {
                     try {
                         mappedLoa = Integer.parseInt(acrValue);
                     } catch (NumberFormatException e) {
-                        // the acrValue cannot be mapped
+                        // the acrValue cannot be mapped. Usually should not happen
+                        LOGGER.warnf("Acr value '%s' cannot be mapped to int", acrValue);
                     }
                 }
                 if (mappedLoa != null && mappedLoa > maxLoa && loa >= mappedLoa) {
