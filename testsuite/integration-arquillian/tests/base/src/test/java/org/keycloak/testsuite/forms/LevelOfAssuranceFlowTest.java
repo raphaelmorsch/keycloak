@@ -265,7 +265,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         acrClaim.setValues(Arrays.asList(acrValues));
 
         ClaimsRepresentation claims = new ClaimsRepresentation();
-        claims.setIdTokenClaims(Collections.singletonMap("acr", acrClaim));
+        claims.setIdTokenClaims(Collections.singletonMap(IDToken.ACR, acrClaim));
 
         oauth.claims(claims);
         oauth.openLoginForm();
