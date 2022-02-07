@@ -48,7 +48,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     private final List<AuthenticationExecutionModel> executions;
     private final AuthenticationProcessor processor;
     private final AuthenticationFlowModel flow;
-    private boolean successful;
+    private boolean successful = false;
     private List<AuthenticationFlowException> afeList = new ArrayList<>();
 
     public DefaultAuthenticationFlow(AuthenticationProcessor processor, AuthenticationFlowModel flow) {
@@ -270,8 +270,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         if (requiredList.isEmpty()) {
             //check if an alternative is already successful, in case we are returning in the flow after an action
             if (alternativeList.stream().anyMatch(alternative -> processor.isSuccessful(alternative) || isSetupRequired(alternative))) {
-                successful = true;
-                return null;
+                return onFlowExecutionsSuccessful();
             }
 
             //handle alternative elements: the first alternative element to be satisfied is enough
@@ -282,8 +281,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                         return response;
                     }
                     if (processor.isSuccessful(alternative) || isSetupRequired(alternative)) {
-                        successful = true;
-                        return null;
+                        return onFlowExecutionsSuccessful();
                     }
                 } catch (AuthenticationFlowException afe) {
                     //consuming the error is not good here from an administrative point of view, but the user, since he has alternatives, should be able to go to another alternative and continue
@@ -292,7 +290,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 }
             }
         } else {
-            successful = requiredElementsSuccessful;
+            if (requiredElementsSuccessful) {
+                return onFlowExecutionsSuccessful();
+            }
         }
         return null;
     }
@@ -566,5 +566,27 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 }
             }
         }
+    }
+
+    // This is triggered when current flow is successful due the fact that it's executions passed.
+    // It is opportunity to do some last "generic" checks before considering whole authentication as successful
+    private Response onFlowExecutionsSuccessful() {
+        if (flow.isTopLevel()) {
+            // TODO:mposolda debug
+            logger.infof("Authentication successful of the top flow '%s'", flow.getAlias());
+
+            // Check
+            AuthenticationSessionModel authSession = processor.getAuthenticationSession();
+            if (AuthenticatorUtil.isLevelOfAuthenticationForced(authSession) && !AuthenticatorUtil.isLevelOfAuthenticationSatisfied(authSession) && !AuthenticatorUtil.isSSOAuthentication(authSession)) {
+                logger.warnf("Forced level of authentication did not meet the requirements. Requested level: %d, Current level: %d",
+                        AuthenticatorUtil.getRequestedLevelOfAuthentication(authSession), AuthenticatorUtil.getCurrentLevelOfAuthentication(authSession));
+
+                // TODO:mposolda properly handle once session-limits PR is merged
+                throw new AuthenticationFlowException(AuthenticationFlowError.ACCESS_DENIED);
+            }
+        }
+
+        successful = true;
+        return null;
     }
 }
