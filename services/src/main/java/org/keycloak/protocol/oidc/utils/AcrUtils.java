@@ -52,11 +52,15 @@ public class AcrUtils {
         if (claimsParam != null) {
             try {
                 ClaimsRepresentation claims = JsonSerialization.readValue(claimsParam, ClaimsRepresentation.class);
-                ClaimsRepresentation.ClaimValue<String> acrClaim = claims.getClaimValue(IDToken.ACR, ClaimsRepresentation.ClaimContext.ID_TOKEN, String.class);
-                if (acrClaim != null) {
-                    if (!essential || acrClaim.isEssential()) {
-                        if (acrClaim.getValues() != null) {
-                            acrValues.addAll(acrClaim.getValues());
+                if (claims == null) {
+                    LOGGER.warnf("Invalid claims parameter. Claims parameter should be JSON");
+                } else {
+                    ClaimsRepresentation.ClaimValue<String> acrClaim = claims.getClaimValue(IDToken.ACR, ClaimsRepresentation.ClaimContext.ID_TOKEN, String.class);
+                    if (acrClaim != null) {
+                        if (!essential || acrClaim.isEssential()) {
+                            if (acrClaim.getValues() != null) {
+                                acrValues.addAll(acrClaim.getValues());
+                            }
                         }
                     }
                 }

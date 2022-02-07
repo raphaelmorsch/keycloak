@@ -51,6 +51,7 @@ import org.keycloak.testsuite.pages.PushTheButtonPage;
 import org.keycloak.testsuite.util.FlowUtil;
 import org.keycloak.util.JsonSerialization;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude.AuthServer.REMOTE;
 
 /**
@@ -195,9 +196,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         assertLoggedInWithAcr("silver");
         // step-up to unknown acr
         openLoginFormWithAcrClaim(true, "uranium");
-        authenticateWithPassword();
-        authenticateWithButton();
-        wait.until(driver -> errorPage.isCurrent());
+        assertErrorPage();
     }
 
     @Test
@@ -205,6 +204,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         openLoginFormWithAcrClaim(true, "silver");
         authenticateWithUsername();
         assertLoggedInWithAcr("silver");
+        oauth.claims(null);
         oauth.openLoginForm();
         assertLoggedInWithAcr("0");
     }
@@ -233,7 +233,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         authenticateWithUsername();
         authenticateWithPassword();
         authenticateWithButton();
-        wait.until(driver -> errorPage.isCurrent());
+        assertErrorPage();
     }
 
     @Test
@@ -250,10 +250,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     @Test
     public void essentialUnknownClaimFails() {
         openLoginFormWithAcrClaim(true, "uranium");
-        authenticateWithUsername();
-        authenticateWithPassword();
-        authenticateWithButton();
-        wait.until(driver -> errorPage.isCurrent());
+        assertErrorPage();
     }
 
     @Test
@@ -320,5 +317,9 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         EventRepresentation loginEvent = events.expectLogin().detail(Details.USERNAME, "test-user@localhost").assertEvent();
         IDToken idToken = sendTokenRequestAndGetIDToken(loginEvent);
         Assert.assertEquals(acr, idToken.getAcr());
+    }
+
+    private void assertErrorPage() {
+        Assert.assertThat(true, is(errorPage.isCurrent()));
     }
 }
