@@ -251,7 +251,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             AuthenticationExecutionModel required = requiredIListIterator.next();
             //Conditional flows must be considered disabled (non-existent) if their condition evaluates to false.
             //If the flow has been processed before it will not be removed to consider its execution status.
-            if (required.isConditional() && !isProcessed(required) && isConditionalSubflowDisabled(required, true)) {
+            if (required.isConditional() && !isProcessed(required) && isConditionalSubflowDisabled(required)) {
                 requiredIListIterator.remove();
                 continue;
             }
@@ -327,10 +327,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     /**
      * Checks if the conditional subflow passed in parameter is disabled.
      * @param model
-     * @param storeResult whether to store the result of the conditional evaluations
      * @return
      */
-    boolean isConditionalSubflowDisabled(AuthenticationExecutionModel model, boolean storeResult) {
+    boolean isConditionalSubflowDisabled(AuthenticationExecutionModel model) {
         if (model == null || !model.isAuthenticatorFlow() || !model.isConditional()) {
             return false;
         };
@@ -341,8 +340,8 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 .filter(s -> s.isEnabled())
                 .collect(Collectors.toList());
         boolean conditionalSubflowDisabled = conditionalAuthenticatorList.isEmpty() || conditionalAuthenticatorList.stream()
-                .anyMatch(m -> conditionalNotMatched(m, modelList, storeResult));
-        logger.tracef("Conditional subflow '%s' is %s. Store result: %b", logExecutionAlias(model), conditionalSubflowDisabled ? "disabled" : "enabled", storeResult);
+                .anyMatch(m -> conditionalNotMatched(m, modelList));
+        logger.tracef("Conditional subflow '%s' is %s", logExecutionAlias(model), conditionalSubflowDisabled ? "disabled" : "enabled");
         return conditionalSubflowDisabled;
     }
 
@@ -358,26 +357,16 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         return factory;
     }
 
-    private boolean conditionalNotMatched(AuthenticationExecutionModel model, List<AuthenticationExecutionModel> executionList, boolean storeResult) {
+    private boolean conditionalNotMatched(AuthenticationExecutionModel model, List<AuthenticationExecutionModel> executionList) {
         AuthenticatorFactory factory = getAuthenticatorFactory(model);
         ConditionalAuthenticator authenticator = (ConditionalAuthenticator) createAuthenticator(factory);
         AuthenticationProcessor.Result context = processor.createAuthenticatorContext(model, authenticator, executionList);
 
-        boolean matchCondition;
-
-        // Retrieve previous evaluation result if any, else evaluate and store result for future re-evaluation
-        // TODO:mposolda just remove this? And also storeResults
-//        if (processor.isEvaluatedTrue(model)) {
-//            matchCondition = true;
-//        } else if (processor.isEvaluatedFalse(model)) {
-//            matchCondition = false;
-//        } else {
-            matchCondition = authenticator.matchCondition(context);
-//            if (storeResult) {
-                setExecutionStatus(model,
-                        matchCondition ? AuthenticationSessionModel.ExecutionStatus.EVALUATED_TRUE : AuthenticationSessionModel.ExecutionStatus.EVALUATED_FALSE);
-//            }
-//        }
+        // Always store result for future re-evaluation. It is a chance that some condition is evaluated multiple times during the flow,
+        // but this is expected as "conditions of condition" can be changed during the flow (EG. when acr level is reached or when user is added to the context)
+        boolean matchCondition = authenticator.matchCondition(context);
+        setExecutionStatus(model,
+                matchCondition ? AuthenticationSessionModel.ExecutionStatus.EVALUATED_TRUE : AuthenticationSessionModel.ExecutionStatus.EVALUATED_FALSE);
 
         return !matchCondition;
     }

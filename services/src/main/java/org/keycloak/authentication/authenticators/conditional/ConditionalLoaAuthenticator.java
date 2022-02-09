@@ -43,7 +43,7 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
         boolean result = (currentLoa < Constants.MINIMUM_LOA && requestedLoa < Constants.MINIMUM_LOA)
                 || ((configuredLoa == null || currentLoa < configuredLoa) && currentLoa < requestedLoa);
 
-        logger.infof("Checking condition '%s' : currentLoa: %d, requestedLoa: %d, configuredLoa: %d, evaluation result: %b",
+        logger.tracef("Checking condition '%s' : currentLoa: %d, requestedLoa: %d, configuredLoa: %d, evaluation result: %b",
                 context.getAuthenticatorConfig().getAlias(), currentLoa, requestedLoa, configuredLoa, result);
 
         return result;
