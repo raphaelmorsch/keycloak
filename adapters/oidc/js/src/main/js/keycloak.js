@@ -445,6 +445,10 @@ function Keycloak (config) {
             url += '&ui_locales=' + encodeURIComponent(options.locale);
         }
 
+        if (options && options.claims) {
+            url += '&claims=' + encodeURIComponent(options.claims);
+        }
+
         if (kc.pkceMethod) {
             var codeVerifier = generateCodeVerifier(96);
             callbackState.pkceCodeVerifier = codeVerifier;
@@ -676,6 +680,10 @@ function Keycloak (config) {
                 kc.login();
             }
         }
+    }
+
+    kc.claimsBuilder = function() {
+        return new ClaimsBuilder();
     }
 
     function getRealmUrl() {
@@ -1716,6 +1724,33 @@ function Keycloak (config) {
             }
         };
     }
+
+    var ClaimsBuilder = function() {
+        if (!(this instanceof ClaimsBuilder)) {
+            return new ClaimsBuilder();
+        }
+
+        var claims = {};
+        var cb = this;
+
+        cb.acr = function(requestedAcr, essential) {
+            claims = {
+                id_token: {
+                    acr: {
+                        values: requestedAcr,
+                        essential: essential
+                    }
+                }
+            }
+            return cb;
+        };
+
+        cb.build = function() {
+            return JSON.stringify(claims);
+        }
+
+    };
+
 }
 
 export default Keycloak;
