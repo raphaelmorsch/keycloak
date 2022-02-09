@@ -339,8 +339,10 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 .filter(this::isConditionalAuthenticator)
                 .filter(s -> s.isEnabled())
                 .collect(Collectors.toList());
-        return conditionalAuthenticatorList.isEmpty() || conditionalAuthenticatorList.stream()
+        boolean conditionalSubflowDisabled = conditionalAuthenticatorList.isEmpty() || conditionalAuthenticatorList.stream()
                 .anyMatch(m -> conditionalNotMatched(m, modelList, storeResult));
+        logger.tracef("Conditional subflow '%s' is %s. Store result: %b", logExecutionAlias(model), conditionalSubflowDisabled ? "disabled" : "enabled", storeResult);
+        return conditionalSubflowDisabled;
     }
 
     private boolean isConditionalAuthenticator(AuthenticationExecutionModel model) {
@@ -363,17 +365,18 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         boolean matchCondition;
 
         // Retrieve previous evaluation result if any, else evaluate and store result for future re-evaluation
-        if (processor.isEvaluatedTrue(model)) {
-            matchCondition = true;
-        } else if (processor.isEvaluatedFalse(model)) {
-            matchCondition = false;
-        } else {
+        // TODO:mposolda just remove this? And also storeResults
+//        if (processor.isEvaluatedTrue(model)) {
+//            matchCondition = true;
+//        } else if (processor.isEvaluatedFalse(model)) {
+//            matchCondition = false;
+//        } else {
             matchCondition = authenticator.matchCondition(context);
-            if (storeResult) {
+//            if (storeResult) {
                 setExecutionStatus(model,
                         matchCondition ? AuthenticationSessionModel.ExecutionStatus.EVALUATED_TRUE : AuthenticationSessionModel.ExecutionStatus.EVALUATED_FALSE);
-            }
-        }
+//            }
+//        }
 
         return !matchCondition;
     }
@@ -547,6 +550,8 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     private void setExecutionStatus(AuthenticationExecutionModel authExecutionModel, CommonClientSessionModel.ExecutionStatus status) {
         this.processor.getAuthenticationSession().setExecutionStatus(authExecutionModel.getId(), status);
 
+        logger.tracef("Set execution status: Execution: %s, status: %s", logExecutionAlias(authExecutionModel), status);
+
         if (authExecutionModel.isAuthenticatorFlow() && status == CommonClientSessionModel.ExecutionStatus.SUCCESS) {
             // Trigger callbacks after flow was successfully finished
             processor.getRealm().getAuthenticationExecutionsStream(authExecutionModel.getFlowId()).forEach(this::checkAuthCallback);
@@ -584,6 +589,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 // TODO:mposolda properly handle once session-limits PR is merged
                 throw new AuthenticationFlowException(AuthenticationFlowError.ACCESS_DENIED);
             }
+        } else {
+            // TODO:mposolda remove whole "else" as it is probably not logged in most cases
+            logger.infof("Authentication successful of the non-top flow '%s'", flow.getAlias());
         }
 
         successful = true;

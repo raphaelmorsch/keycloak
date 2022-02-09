@@ -180,7 +180,6 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         // doing step-up authentication to level 2
         openLoginFormWithAcrClaim(true, "gold");
         authenticateWithPassword();
-        authenticateWithButton();
         assertLoggedInWithAcr("gold");
         // step-up to level 3 needs password authentication because level 2 is not stored in user session
         openLoginFormWithAcrClaim(true, "3");
