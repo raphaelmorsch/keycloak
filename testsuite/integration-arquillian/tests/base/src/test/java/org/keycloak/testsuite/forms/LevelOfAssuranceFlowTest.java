@@ -195,7 +195,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         assertLoggedInWithAcr("silver");
         // step-up to unknown acr
         openLoginFormWithAcrClaim(true, "uranium");
-        assertErrorPage();
+        assertErrorPage("Invalid parameter: claims");
     }
 
     @Test
@@ -232,7 +232,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         authenticateWithUsername();
         authenticateWithPassword();
         authenticateWithButton();
-        assertErrorPage();
+        assertErrorPage("Authentication requirements not fulfilled");
     }
 
     @Test
@@ -249,7 +249,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     @Test
     public void essentialUnknownClaimFails() {
         openLoginFormWithAcrClaim(true, "uranium");
-        assertErrorPage();
+        assertErrorPage("Invalid parameter: claims");
     }
 
     @Test
@@ -318,7 +318,8 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         Assert.assertEquals(acr, idToken.getAcr());
     }
 
-    private void assertErrorPage() {
+    private void assertErrorPage(String expectedError) {
         Assert.assertThat(true, is(errorPage.isCurrent()));
+        Assert.assertEquals(expectedError, errorPage.getError());
     }
 }

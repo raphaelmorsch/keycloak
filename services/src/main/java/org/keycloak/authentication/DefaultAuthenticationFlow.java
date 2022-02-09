@@ -25,6 +25,7 @@ import org.keycloak.models.AuthenticationFlowModel;
 import org.keycloak.models.Constants;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.ServicesLogger;
+import org.keycloak.services.messages.Messages;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.CommonClientSessionModel;
 
@@ -577,21 +578,15 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     // It is opportunity to do some last "generic" checks before considering whole authentication as successful
     private Response onFlowExecutionsSuccessful() {
         if (flow.isTopLevel()) {
-            // TODO:mposolda debug
-            logger.infof("Authentication successful of the top flow '%s'", flow.getAlias());
+            logger.debugf("Authentication successful of the top flow '%s'", flow.getAlias());
 
             // Check
             AuthenticationSessionModel authSession = processor.getAuthenticationSession();
             if (AuthenticatorUtil.isLevelOfAuthenticationForced(authSession) && !AuthenticatorUtil.isLevelOfAuthenticationSatisfied(authSession) && !AuthenticatorUtil.isSSOAuthentication(authSession)) {
-                logger.warnf("Forced level of authentication did not meet the requirements. Requested level: %d, Current level: %d",
+                String details = String.format("Forced level of authentication did not meet the requirements. Requested level: %d, Fulfilled level: %d",
                         AuthenticatorUtil.getRequestedLevelOfAuthentication(authSession), AuthenticatorUtil.getCurrentLevelOfAuthentication(authSession));
-
-                // TODO:mposolda properly handle once session-limits PR is merged
-                throw new AuthenticationFlowException(AuthenticationFlowError.ACCESS_DENIED);
+                throw new AuthenticationFlowException(AuthenticationFlowError.GENERIC_AUTHENTICATION_ERROR, details, Messages.ACR_NOT_FULFILLED);
             }
-        } else {
-            // TODO:mposolda remove whole "else" as it is probably not logged in most cases
-            logger.infof("Authentication successful of the non-top flow '%s'", flow.getAlias());
         }
 
         successful = true;
