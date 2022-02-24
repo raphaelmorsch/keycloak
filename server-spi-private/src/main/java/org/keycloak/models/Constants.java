@@ -131,7 +131,10 @@ public final class Constants {
     public static final String CLIENT_POLICIES = "client-policies.policies";
 
 
+    // TODO:mposolda javadoc for those (maybe...)
+    public static final String LEVEL_OF_AUTHENTICATION = "level-of-authentication";
     public static final String LOA_MAP = "loa-map";
+
     public static final String REQUESTED_LEVEL_OF_AUTHENTICATION = "requested-level-of-authentication";
     public static final String FORCE_LEVEL_OF_AUTHENTICATION = "force-level-of-authentication";
     public static final String ACR_LOA_MAP = "acr.loa.map";

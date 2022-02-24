@@ -19,13 +19,9 @@
 package org.keycloak.authentication.authenticators.util;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -33,6 +29,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.jboss.logging.Logger;
 import org.keycloak.common.util.Time;
+import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.Constants;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
@@ -40,23 +37,34 @@ import org.keycloak.util.JsonSerialization;
 
 /**
  * TODO:mposolda
+ *
+ * TODO:mposolda more logging?
+ *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
 public class AcrStore {
 
     private static final Logger LOGGER = Logger.getLogger(AcrStore.class);
 
-    private final Function<String, String> getNote;
-    private final BiConsumer<String, String> setNote;
+    // TODO:mposolda comment or javadoc
+    private final Function<String, String> getNoteForMap;
+    private final BiConsumer<String, String> setNoteForMap;
+
+    private final Function<String, String> getNoteCurrentAuth;
+    private final BiConsumer<String, String> setNoteCurrentAuth;
 
     public AcrStore(AuthenticationSessionModel authSession) {
-        this.getNote = authSession::getAuthNote;
-        this.setNote = authSession::setAuthNote;
+        this.getNoteForMap = authSession::getAuthNote;
+        this.setNoteForMap = authSession::setAuthNote;
+        this.getNoteCurrentAuth = authSession::getAuthNote;
+        this.setNoteCurrentAuth = authSession::setAuthNote;
     }
 
-    public AcrStore(UserSessionModel userSession) {
-        this.getNote = userSession::getNote;
-        this.setNote = userSession::setNote;
+    public AcrStore(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
+        this.getNoteForMap = userSession::getNote;
+        this.setNoteForMap = (key, value) -> { throw new IllegalStateException("Should not be called"); };
+        this.getNoteCurrentAuth = clientSession::getNote;
+        this.setNoteCurrentAuth = (key, value) -> { throw new IllegalStateException("Should not be called"); };
     }
 
 
@@ -68,7 +76,8 @@ public class AcrStore {
      * @return
      */
     public boolean isLevelAuthenticated(int level, int maxAge) {
-        Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevels();
+        // TODO:mposolda This considers just the map. Which is probably OK
+        Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevelsMap();
         if (levels == null) return false;
 
         AcrLevelInfo levelInfo = levels.get(level);
@@ -86,7 +95,16 @@ public class AcrStore {
      *               should be prompted for re-authentication with this level (if this level is asked during authentication)
      */
     public void setLevelAuthenticated(int level, int maxAge) {
-        Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevels();
+        setLevelAuthenticatedToCurrentRequest(level);
+        setLevelAuthenticatedToMap(level, maxAge);
+    }
+
+    private void setLevelAuthenticatedToCurrentRequest(int level) {
+        setNoteCurrentAuth.accept(Constants.LEVEL_OF_AUTHENTICATION, String.valueOf(level));
+    }
+
+    private void setLevelAuthenticatedToMap(int level, int maxAge) {
+        Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevelsMap();
         if (levels == null) levels = new HashMap<>();
 
         AcrLevelInfo levelInfo = new AcrLevelInfo();
@@ -94,7 +112,7 @@ public class AcrStore {
         levelInfo.expiration = levelInfo.authTime + maxAge;
         levels.put(level, levelInfo);
 
-        saveCurrentAuthenticatedLevels(levels);
+        saveCurrentAuthenticatedLevelsMap(levels);
     }
 
 
@@ -103,8 +121,20 @@ public class AcrStore {
      * So if level X is expired, the highest returned level from this method can be at max (X-1).
      */
     public int getAuthenticatedLevel() {
+        int levelFromCurrentRequest = getAuthenticatedLevelCurrentRequest();
+        int levelFromSession = getAuthenticatedLevelFromMap();
+
+        return Math.max(levelFromCurrentRequest, levelFromSession);
+    }
+
+    private int getAuthenticatedLevelCurrentRequest() {
+        String authSessionLoaNote = getNoteCurrentAuth.apply(Constants.LEVEL_OF_AUTHENTICATION);
+        return authSessionLoaNote == null ? Constants.NO_LOA : Integer.parseInt(authSessionLoaNote);
+    }
+
+    private int getAuthenticatedLevelFromMap() {
         // No map found. User was not yet authenticated in this session
-        Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevels();
+        Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevelsMap();
         if (levels == null || levels.isEmpty()) return Constants.NO_LOA;
 
         // Map was already saved, so it is SSO authentication at minimum. Using "0" level as the minimum level in this case
@@ -125,8 +155,8 @@ public class AcrStore {
         return maxLevel;
     }
 
-    private Map<Integer, AcrLevelInfo> getCurrentAuthenticatedLevels() {
-        String loaMap = getNote(Constants.LOA_MAP);
+    private Map<Integer, AcrLevelInfo> getCurrentAuthenticatedLevelsMap() {
+        String loaMap = getNoteForMap.apply(Constants.LOA_MAP);
         if (loaMap == null) {
             return null;
         }
@@ -138,22 +168,13 @@ public class AcrStore {
         }
     }
 
-    private void saveCurrentAuthenticatedLevels(Map<Integer, AcrLevelInfo> levelInfoMap) {
+    private void saveCurrentAuthenticatedLevelsMap(Map<Integer, AcrLevelInfo> levelInfoMap) {
         try {
             String note = JsonSerialization.writeValueAsString(levelInfoMap);
-            setNote(Constants.LOA_MAP, note);
+            setNoteForMap.accept(Constants.LOA_MAP, note);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
-    }
-
-
-    private String getNote(String key) {
-        return getNote.apply(key);
-    }
-
-    private void setNote(String key, String value) {
-        setNote.accept(key, value);
     }
 
     // Track both expiration and authTime of current level in the userSession.

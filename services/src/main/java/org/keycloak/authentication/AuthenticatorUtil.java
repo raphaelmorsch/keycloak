@@ -21,6 +21,7 @@ import com.google.common.collect.Sets;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.authenticators.conditional.ConditionalLoaAuthenticator;
 import org.keycloak.authentication.authenticators.conditional.ConditionalLoaAuthenticatorFactory;
+import org.keycloak.authentication.authenticators.util.AcrStore;
 import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticatorConfigModel;
@@ -60,6 +61,7 @@ public class AuthenticatorUtil {
     }
 
     public static int getCurrentLevelOfAuthentication(AuthenticationSessionModel authSession) {
+        new AcrStore(authSession).getAuthenticatedLevel(authSession);
         String authSessionLoaNote = authSession.getAuthNote(Constants.LEVEL_OF_AUTHENTICATION);
         return authSessionLoaNote == null ? Constants.NO_LOA : Integer.parseInt(authSessionLoaNote);
     }
