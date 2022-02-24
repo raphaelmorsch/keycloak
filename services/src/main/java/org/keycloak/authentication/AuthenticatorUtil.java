@@ -55,22 +55,6 @@ public class AuthenticatorUtil {
         return Boolean.parseBoolean(authSession.getClientNote(Constants.FORCE_LEVEL_OF_AUTHENTICATION));
     }
 
-    public static int getRequestedLevelOfAuthentication(AuthenticationSessionModel authSession) {
-        String requiredLoa = authSession.getClientNote(Constants.REQUESTED_LEVEL_OF_AUTHENTICATION);
-        return requiredLoa == null ? Constants.NO_LOA : Integer.parseInt(requiredLoa);
-    }
-
-    public static int getCurrentLevelOfAuthentication(AuthenticationSessionModel authSession) {
-        new AcrStore(authSession).getAuthenticatedLevel(authSession);
-        String authSessionLoaNote = authSession.getAuthNote(Constants.LEVEL_OF_AUTHENTICATION);
-        return authSessionLoaNote == null ? Constants.NO_LOA : Integer.parseInt(authSessionLoaNote);
-    }
-
-    public static boolean isLevelOfAuthenticationSatisfied(AuthenticationSessionModel authSession) {
-        return AuthenticatorUtil.getRequestedLevelOfAuthentication(authSession)
-            <= AuthenticatorUtil.getCurrentLevelOfAuthentication(authSession);
-    }
-
     public static int getCurrentLevelOfAuthentication(AuthenticatedClientSessionModel clientSession) {
         String clientSessionLoaNote = clientSession.getNote(Constants.LEVEL_OF_AUTHENTICATION);
         return clientSessionLoaNote == null ? Constants.NO_LOA : Integer.parseInt(clientSessionLoaNote);

@@ -23,6 +23,7 @@ import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.AuthenticationFlowException;
 import org.keycloak.authentication.AuthenticatorUtil;
+import org.keycloak.authentication.authenticators.util.AcrStore;
 import org.keycloak.models.Constants;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
@@ -32,7 +33,7 @@ import org.keycloak.sessions.AuthenticationSessionModel;
 
 public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, AuthenticationFlowCallback {
     public static final String LEVEL = "loa-condition-level";
-    public static final String STORE_IN_USER_SESSION = "loa-store-in-user-session";
+    public static final String MAX_AGE = "max-age";
 
     private static final Logger logger = Logger.getLogger(ConditionalLoaAuthenticator.class);
 
@@ -45,41 +46,67 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
     @Override
     public boolean matchCondition(AuthenticationFlowContext context) {
         AuthenticationSessionModel authSession = context.getAuthenticationSession();
-        int currentLoa = AuthenticatorUtil.getCurrentLevelOfAuthentication(authSession);
-        int requestedLoa = AuthenticatorUtil.getRequestedLevelOfAuthentication(authSession);
+        AcrStore acrStore = new AcrStore(authSession);
+        int currentAuthenticationLoa = acrStore.getLevelOfAuthenticationFromCurrentAuthentication();
         Integer configuredLoa = getConfiguredLoa(context);
-        boolean result = (currentLoa < Constants.MINIMUM_LOA && requestedLoa < Constants.MINIMUM_LOA)
-                || ((configuredLoa == null || currentLoa < configuredLoa) && currentLoa < requestedLoa);
+        int requestedLoa = acrStore.getRequestedLevelOfAuthentication();
+        if (currentAuthenticationLoa < Constants.MINIMUM_LOA) {
+            logger.tracef("Condition '%s' evaluated to true due the user not yet reached any authentication level in this session, configuredLoa: %d, requestedLoa: %d",
+                    context.getAuthenticatorConfig().getAlias(), configuredLoa, requestedLoa);
+            return true;
+        } else {
+            if (configuredLoa == null) {
+                logger.warnf("Condition '%s' does not have configured loa. Please check your configuration. Configured level fallback to 0");
+                configuredLoa = 0;
+            }
+            if (requestedLoa < configuredLoa) {
+                logger.tracef("Condition '%s' evaluated to false due the requestedLoa '%d' smaller than configuredLoa '%d'. CurrentAuthenticationLoa: %d",
+                        context.getAuthenticatorConfig().getAlias(), configuredLoa, requestedLoa, currentAuthenticationLoa);
+                return false;
+            }
+            int maxAge = getMaxAge(context);
+            boolean result = (acrStore.isLevelAuthenticatedInPreviousAuth(configuredLoa, maxAge));
+            if (result) {
+                if (currentAuthenticationLoa < configuredLoa) {
+                    acrStore.setLevelAuthenticatedToCurrentRequest(configuredLoa);
+                }
+            }
+            logger.tracef("Checking condition '%s' : currentAuthenticationLoa: %d, requestedLoa: %d, configuredLoa: %d, evaluation result: %b",
+                    context.getAuthenticatorConfig().getAlias(), currentAuthenticationLoa, requestedLoa, configuredLoa, result);
 
-        logger.tracef("Checking condition '%s' : currentLoa: %d, requestedLoa: %d, configuredLoa: %d, evaluation result: %b",
-                context.getAuthenticatorConfig().getAlias(), currentLoa, requestedLoa, configuredLoa, result);
-
-        return result;
+            return result;
+        }
     }
 
     @Override
     public void onParentFlowSuccess(AuthenticationFlowContext context) {
-        AuthenticationSessionModel authSession = context.getAuthenticationSession();
         Integer newLoa = getConfiguredLoa(context);
         if (newLoa == null) {
             return;
         }
-        logger.tracef("Updating LoA to '%d' when authenticating session '%s'", newLoa, authSession.getParentSession().getId());
-        authSession.setAuthNote(Constants.LEVEL_OF_AUTHENTICATION, String.valueOf(newLoa));
-        if (isStoreInUserSession(context)) {
-            authSession.setUserSessionNote(Constants.LEVEL_OF_AUTHENTICATION, String.valueOf(newLoa));
+        int maxAge = getMaxAge(context);
+        if (maxAge == 0) {
+            logger.tracef("Skip updating authenticated level '%d' in condition '%s' for future authentications due max-age set to 0", newLoa, context.getAuthenticatorConfig().getAlias());
         }
+
+        AuthenticationSessionModel authSession = context.getAuthenticationSession();
+        AcrStore acrStore = new AcrStore(authSession);
+        logger.tracef("Updating LoA to '%d' when authenticating session '%s'", newLoa, authSession.getParentSession().getId());
+        acrStore.setLevelAuthenticated(newLoa, maxAge);
     }
 
     @Override
     public void onTopFlowSuccess() {
         AuthenticationSessionModel authSession = session.getContext().getAuthenticationSession();
+        AcrStore acrStore = new AcrStore(authSession);
 
-        if (AuthenticatorUtil.isLevelOfAuthenticationForced(authSession) && !AuthenticatorUtil.isLevelOfAuthenticationSatisfied(authSession) && !AuthenticatorUtil.isSSOAuthentication(authSession)) {
+        if (AuthenticatorUtil.isLevelOfAuthenticationForced(authSession) && !acrStore.isLevelOfAuthenticationSatisfiedFromCurrentAuthentication()) {
             String details = String.format("Forced level of authentication did not meet the requirements. Requested level: %d, Fulfilled level: %d",
-                    AuthenticatorUtil.getRequestedLevelOfAuthentication(authSession), AuthenticatorUtil.getCurrentLevelOfAuthentication(authSession));
+                    acrStore.getRequestedLevelOfAuthentication(), acrStore.getLevelOfAuthenticationFromCurrentAuthentication());
             throw new AuthenticationFlowException(AuthenticationFlowError.GENERIC_AUTHENTICATION_ERROR, details, Messages.ACR_NOT_FULFILLED);
         }
+
+        authSession.setUserSessionNote(Constants.LOA_MAP, authSession.getAuthNote(Constants.LOA_MAP));
     }
 
     private Integer getConfiguredLoa(AuthenticationFlowContext context) {
@@ -91,12 +118,12 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
         }
     }
 
-    private boolean isStoreInUserSession(AuthenticationFlowContext context) {
+    private int getMaxAge(AuthenticationFlowContext context) {
         try {
-            return Boolean.parseBoolean(context.getAuthenticatorConfig().getConfig().get(STORE_IN_USER_SESSION));
+            return Integer.parseInt(context.getAuthenticatorConfig().getConfig().get(MAX_AGE));
         } catch (NullPointerException | NumberFormatException e) {
-            logger.errorv("Invalid configuration: {0}", STORE_IN_USER_SESSION);
-            return false;
+            logger.errorf("Invalid max age configured for condition '%s'. Fallback to 0", context.getAuthenticatorConfig().getAlias());
+            return 0;
         }
     }
 

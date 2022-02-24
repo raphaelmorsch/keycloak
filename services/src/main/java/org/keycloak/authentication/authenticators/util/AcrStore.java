@@ -28,6 +28,7 @@ import java.util.function.Function;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.jboss.logging.Logger;
+import org.keycloak.authentication.AuthenticatorUtil;
 import org.keycloak.common.util.Time;
 import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.Constants;
@@ -47,24 +48,25 @@ public class AcrStore {
     private static final Logger LOGGER = Logger.getLogger(AcrStore.class);
 
     // TODO:mposolda comment or javadoc
-    private final Function<String, String> getNoteForMap;
-    private final BiConsumer<String, String> setNoteForMap;
-
-    private final Function<String, String> getNoteCurrentAuth;
-    private final BiConsumer<String, String> setNoteCurrentAuth;
+    private final AuthenticationSessionModel authSession;
 
     public AcrStore(AuthenticationSessionModel authSession) {
-        this.getNoteForMap = authSession::getAuthNote;
-        this.setNoteForMap = authSession::setAuthNote;
-        this.getNoteCurrentAuth = authSession::getAuthNote;
-        this.setNoteCurrentAuth = authSession::setAuthNote;
+        this.authSession = authSession;
     }
 
-    public AcrStore(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
-        this.getNoteForMap = userSession::getNote;
-        this.setNoteForMap = (key, value) -> { throw new IllegalStateException("Should not be called"); };
-        this.getNoteCurrentAuth = clientSession::getNote;
-        this.setNoteCurrentAuth = (key, value) -> { throw new IllegalStateException("Should not be called"); };
+    public int getRequestedLevelOfAuthentication() {
+        String requiredLoa = authSession.getClientNote(Constants.REQUESTED_LEVEL_OF_AUTHENTICATION);
+        return requiredLoa == null ? Constants.NO_LOA : Integer.parseInt(requiredLoa);
+    }
+
+    public boolean isLevelOfAuthenticationSatisfiedFromPreviousAuthentication() {
+        return getRequestedLevelOfAuthentication()
+                <= getAuthenticatedLevelFromPreviousAuthentication();
+    }
+
+    public boolean isLevelOfAuthenticationSatisfiedFromCurrentAuthentication() {
+        return getRequestedLevelOfAuthentication()
+                <= getAuthenticatedLevelCurrentAuthentication();
     }
 
 
@@ -75,7 +77,7 @@ public class AcrStore {
      * @param maxAge maxAge for which this level is considered valid
      * @return
      */
-    public boolean isLevelAuthenticated(int level, int maxAge) {
+    public boolean isLevelAuthenticatedInPreviousAuth(int level, int maxAge) {
         // TODO:mposolda This considers just the map. Which is probably OK
         Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevelsMap();
         if (levels == null) return false;
@@ -85,6 +87,12 @@ public class AcrStore {
 
         int currentTime = Time.currentTime();
         return levelInfo.authTime + maxAge >= currentTime;
+    }
+
+    // TODO:mposolda javadoc
+    public int getLevelOfAuthenticationFromCurrentAuthentication() {
+        String authSessionLoaNote = authSession.getAuthNote(Constants.LEVEL_OF_AUTHENTICATION);
+        return authSessionLoaNote == null ? Constants.NO_LOA : Integer.parseInt(authSessionLoaNote);
     }
 
     /**
@@ -99,8 +107,8 @@ public class AcrStore {
         setLevelAuthenticatedToMap(level, maxAge);
     }
 
-    private void setLevelAuthenticatedToCurrentRequest(int level) {
-        setNoteCurrentAuth.accept(Constants.LEVEL_OF_AUTHENTICATION, String.valueOf(level));
+    public void setLevelAuthenticatedToCurrentRequest(int level) {
+        authSession.setAuthNote(Constants.LEVEL_OF_AUTHENTICATION, String.valueOf(level));
     }
 
     private void setLevelAuthenticatedToMap(int level, int maxAge) {
@@ -121,18 +129,18 @@ public class AcrStore {
      * So if level X is expired, the highest returned level from this method can be at max (X-1).
      */
     public int getAuthenticatedLevel() {
-        int levelFromCurrentRequest = getAuthenticatedLevelCurrentRequest();
-        int levelFromSession = getAuthenticatedLevelFromMap();
+        int levelFromCurrentRequest = getAuthenticatedLevelCurrentAuthentication();
+        int levelFromSession = getAuthenticatedLevelFromPreviousAuthentication();
 
         return Math.max(levelFromCurrentRequest, levelFromSession);
     }
 
-    private int getAuthenticatedLevelCurrentRequest() {
-        String authSessionLoaNote = getNoteCurrentAuth.apply(Constants.LEVEL_OF_AUTHENTICATION);
+    private int getAuthenticatedLevelCurrentAuthentication() {
+        String authSessionLoaNote = authSession.getAuthNote(Constants.LEVEL_OF_AUTHENTICATION);
         return authSessionLoaNote == null ? Constants.NO_LOA : Integer.parseInt(authSessionLoaNote);
     }
 
-    private int getAuthenticatedLevelFromMap() {
+    public int getAuthenticatedLevelFromPreviousAuthentication() {
         // No map found. User was not yet authenticated in this session
         Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevelsMap();
         if (levels == null || levels.isEmpty()) return Constants.NO_LOA;
@@ -156,7 +164,7 @@ public class AcrStore {
     }
 
     private Map<Integer, AcrLevelInfo> getCurrentAuthenticatedLevelsMap() {
-        String loaMap = getNoteForMap.apply(Constants.LOA_MAP);
+        String loaMap = authSession.getAuthNote(Constants.LOA_MAP);
         if (loaMap == null) {
             return null;
         }
@@ -171,7 +179,7 @@ public class AcrStore {
     private void saveCurrentAuthenticatedLevelsMap(Map<Integer, AcrLevelInfo> levelInfoMap) {
         try {
             String note = JsonSerialization.writeValueAsString(levelInfoMap);
-            setNoteForMap.accept(Constants.LOA_MAP, note);
+            authSession.setAuthNote(Constants.LOA_MAP, note);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }

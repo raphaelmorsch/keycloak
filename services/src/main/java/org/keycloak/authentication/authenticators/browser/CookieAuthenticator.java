@@ -19,7 +19,7 @@ package org.keycloak.authentication.authenticators.browser;
 
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.Authenticator;
-import org.keycloak.authentication.AuthenticatorUtil;
+import org.keycloak.authentication.authenticators.util.AcrStore;
 import org.keycloak.models.Constants;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
@@ -49,22 +49,25 @@ public class CookieAuthenticator implements Authenticator {
         } else {
             AuthenticationSessionModel authSession = context.getAuthenticationSession();
             LoginProtocol protocol = context.getSession().getProvider(LoginProtocol.class, authSession.getProtocol());
-            authSession.setAuthNote(Constants.LEVEL_OF_AUTHENTICATION, authResult.getSession().getNote(Constants.LEVEL_OF_AUTHENTICATION));
+            authSession.setAuthNote(Constants.LOA_MAP, authResult.getSession().getNote(Constants.LOA_MAP));
             context.setUser(authResult.getUser());
+            AcrStore acrStore = new AcrStore(authSession);
 
             // Cookie re-authentication is skipped if re-authentication is required
             if (protocol.requireReauthentication(authResult.getSession(), authSession)) {
                 // Full re-authentication, so we start with no loa
-                authSession.setAuthNote(Constants.LEVEL_OF_AUTHENTICATION, String.valueOf(Constants.NO_LOA));
+                acrStore.setLevelAuthenticatedToCurrentRequest(Constants.NO_LOA);
                 context.setForwardedInfoMessage(Messages.REAUTHENTICATE);
                 context.attempted();
-            } else if (!AuthenticatorUtil.isLevelOfAuthenticationSatisfied(authSession)) {
+            } else if (!acrStore.isLevelOfAuthenticationSatisfiedFromPreviousAuthentication()) {
                 // Step-up authentication, we keep the loa from the existing user session.
                 // The cookie alone is not enough and other authentications must follow.
+                // TODO:mposolda I am not sure if this method is strictly needed. Maybe we can just set remove this "if" entirely and let the conditions to do their
+                acrStore.setLevelAuthenticatedToCurrentRequest(acrStore.getAuthenticatedLevel());
                 context.attempted();
             } else {
-                // Cookie only authentication, no loa is returned
-                authSession.setAuthNote(Constants.LEVEL_OF_AUTHENTICATION, String.valueOf(Constants.NO_LOA));
+                // Cookie only authentication
+                acrStore.setLevelAuthenticatedToCurrentRequest(acrStore.getAuthenticatedLevel());
                 authSession.setAuthNote(AuthenticationManager.SSO_AUTH, "true");
                 context.attachUserSession(authResult.getSession());
                 context.success();

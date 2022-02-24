@@ -25,6 +25,7 @@ import org.keycloak.OAuthErrorException;
 import org.keycloak.TokenCategory;
 import org.keycloak.TokenVerifier;
 import org.keycloak.authentication.AuthenticatorUtil;
+import org.keycloak.authentication.authenticators.util.AcrStore;
 import org.keycloak.broker.oidc.OIDCIdentityProvider;
 import org.keycloak.broker.provider.IdentityBrokerException;
 import org.keycloak.cluster.ClusterProvider;
@@ -556,7 +557,7 @@ public class TokenManager {
             userSession.setNote(entry.getKey(), entry.getValue());
         }
 
-        clientSession.setNote(Constants.LEVEL_OF_AUTHENTICATION, String.valueOf(AuthenticatorUtil.getCurrentLevelOfAuthentication(authSession)));
+        clientSession.setNote(Constants.LEVEL_OF_AUTHENTICATION, String.valueOf(new AcrStore(authSession).getLevelOfAuthenticationFromCurrentAuthentication()));
         clientSession.setTimestamp(Time.currentTime());
 
         // Remove authentication session now
