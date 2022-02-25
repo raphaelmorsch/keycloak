@@ -33,7 +33,8 @@ import org.keycloak.sessions.AuthenticationSessionModel;
 
 public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, AuthenticationFlowCallback {
     public static final String LEVEL = "loa-condition-level";
-    public static final String MAX_AGE = "max-age";
+    public static final String MAX_AGE = "loa-max-age";
+    public static final int DEFAULT_MAX_AGE = 36000; // 10 days
 
     private static final Logger logger = Logger.getLogger(ConditionalLoaAuthenticator.class);
 
@@ -106,6 +107,8 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
             throw new AuthenticationFlowException(AuthenticationFlowError.GENERIC_AUTHENTICATION_ERROR, details, Messages.ACR_NOT_FULFILLED);
         }
 
+        logger.tracef("Current authentication level %d when authenticating authSession '%s'. Adding authenticated levels to user session note for future authentications: %s",
+                acrStore.getLevelOfAuthenticationFromCurrentAuthentication(), authSession.getParentSession().getId(), authSession.getAuthNote(Constants.LOA_MAP));
         authSession.setUserSessionNote(Constants.LOA_MAP, authSession.getAuthNote(Constants.LOA_MAP));
     }
 

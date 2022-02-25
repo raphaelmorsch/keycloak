@@ -117,7 +117,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
                             subFlow.addAuthenticatorExecution(Requirement.REQUIRED, ConditionalLoaAuthenticatorFactory.PROVIDER_ID,
                                     config -> {
                                         config.getConfig().put(ConditionalLoaAuthenticator.LEVEL, "1");
-                                        config.getConfig().put(ConditionalLoaAuthenticator.STORE_IN_USER_SESSION, "true");
+                                        config.getConfig().put(ConditionalLoaAuthenticator.MAX_AGE, String.valueOf(ConditionalLoaAuthenticator.DEFAULT_MAX_AGE));
                                     });
 
                             // username input for level 1

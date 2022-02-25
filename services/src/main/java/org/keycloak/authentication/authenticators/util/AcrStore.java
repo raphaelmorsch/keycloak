@@ -125,6 +125,7 @@ public class AcrStore {
 
 
     /**
+     * TODO:mposolda remove this method?
      * @return highest achieved authenticated level, which is not expired. There must not be any other expired level lower than returned level.
      * So if level X is expired, the highest returned level from this method can be at max (X-1).
      */
