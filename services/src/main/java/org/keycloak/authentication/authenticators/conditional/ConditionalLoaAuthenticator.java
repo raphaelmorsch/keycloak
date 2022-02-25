@@ -49,38 +49,37 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
         AuthenticationSessionModel authSession = context.getAuthenticationSession();
         AcrStore acrStore = new AcrStore(authSession);
         int currentAuthenticationLoa = acrStore.getLevelOfAuthenticationFromCurrentAuthentication();
-        Integer configuredLoa = getConfiguredLoa(context);
+        int configuredLoa = getConfiguredLoa(context);
         int requestedLoa = acrStore.getRequestedLevelOfAuthentication();
         if (currentAuthenticationLoa < Constants.MINIMUM_LOA) {
             logger.tracef("Condition '%s' evaluated to true due the user not yet reached any authentication level in this session, configuredLoa: %d, requestedLoa: %d",
                     context.getAuthenticatorConfig().getAlias(), configuredLoa, requestedLoa);
             return true;
         } else {
-            if (configuredLoa == null) {
-                logger.warnf("Condition '%s' does not have configured loa. Please check your configuration. Configured level fallback to 0");
-                configuredLoa = 0;
-            }
             if (requestedLoa < configuredLoa) {
                 logger.tracef("Condition '%s' evaluated to false due the requestedLoa '%d' smaller than configuredLoa '%d'. CurrentAuthenticationLoa: %d",
                         context.getAuthenticatorConfig().getAlias(), configuredLoa, requestedLoa, currentAuthenticationLoa);
                 return false;
             }
             int maxAge = getMaxAge(context);
-            boolean result = (acrStore.isLevelAuthenticatedInPreviousAuth(configuredLoa, maxAge));
-            if (result) {
+            boolean previouslyAuthenticated = (acrStore.isLevelAuthenticatedInPreviousAuth(configuredLoa, maxAge));
+            if (previouslyAuthenticated) {
                 if (currentAuthenticationLoa < configuredLoa) {
                     acrStore.setLevelAuthenticatedToCurrentRequest(configuredLoa);
                 }
             }
             logger.tracef("Checking condition '%s' : currentAuthenticationLoa: %d, requestedLoa: %d, configuredLoa: %d, evaluation result: %b",
-                    context.getAuthenticatorConfig().getAlias(), currentAuthenticationLoa, requestedLoa, configuredLoa, result);
+                    context.getAuthenticatorConfig().getAlias(), currentAuthenticationLoa, requestedLoa, configuredLoa, !previouslyAuthenticated);
 
-            return result;
+            return !previouslyAuthenticated;
         }
     }
 
     @Override
     public void onParentFlowSuccess(AuthenticationFlowContext context) {
+        AuthenticationSessionModel authSession = context.getAuthenticationSession();
+        AcrStore acrStore = new AcrStore(authSession);
+
         Integer newLoa = getConfiguredLoa(context);
         if (newLoa == null) {
             return;
@@ -88,12 +87,12 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
         int maxAge = getMaxAge(context);
         if (maxAge == 0) {
             logger.tracef("Skip updating authenticated level '%d' in condition '%s' for future authentications due max-age set to 0", newLoa, context.getAuthenticatorConfig().getAlias());
+            acrStore.setLevelAuthenticatedToCurrentRequest(newLoa);
+        } else {
+            logger.tracef("Updating LoA to '%d' in the condition '%s' when authenticating session '%s'. Max age is %d.",
+                    newLoa, context.getAuthenticatorConfig().getAlias(), authSession.getParentSession().getId(), maxAge);
+            acrStore.setLevelAuthenticated(newLoa, maxAge);
         }
-
-        AuthenticationSessionModel authSession = context.getAuthenticationSession();
-        AcrStore acrStore = new AcrStore(authSession);
-        logger.tracef("Updating LoA to '%d' when authenticating session '%s'", newLoa, authSession.getParentSession().getId());
-        acrStore.setLevelAuthenticated(newLoa, maxAge);
     }
 
     @Override
@@ -112,12 +111,12 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
         authSession.setUserSessionNote(Constants.LOA_MAP, authSession.getAuthNote(Constants.LOA_MAP));
     }
 
-    private Integer getConfiguredLoa(AuthenticationFlowContext context) {
+    private int getConfiguredLoa(AuthenticationFlowContext context) {
         try {
             return Integer.parseInt(context.getAuthenticatorConfig().getConfig().get(LEVEL));
         } catch (NullPointerException | NumberFormatException e) {
-            logger.errorv("Invalid configuration: {0}", LEVEL);
-            return null;
+            logger.errorf("Invalid configuration '%s' when evaluating condition '%s'. Fallback to 0", LEVEL, context.getAuthenticatorConfig().getAlias());
+            return 0;
         }
     }
 

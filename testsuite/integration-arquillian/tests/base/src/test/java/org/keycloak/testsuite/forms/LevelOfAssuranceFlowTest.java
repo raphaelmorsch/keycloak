@@ -221,7 +221,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         assertLoggedInWithAcr("silver");
         oauth.claims(null);
         oauth.openLoginForm();
-        assertLoggedInWithAcr("0");
+        assertLoggedInWithAcr("silver"); // Return silver without need to re-authenticate due maxAge for "silver" condition did not timed-out yet
     }
 
     @Test
@@ -230,7 +230,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         authenticateWithUsername();
         assertLoggedInWithAcr("silver");
         openLoginFormWithAcrClaim(true, "silver");
-        assertLoggedInWithAcr("0");
+        assertLoggedInWithAcr("silver"); // Return previous level due maxAge for "silver" condition did not timed-out yet
     }
 
     @Test
@@ -239,7 +239,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         authenticateWithUsername();
         assertLoggedInWithAcr("silver");
         openLoginFormWithAcrClaim(false, "iron");
-        assertLoggedInWithAcr("0");
+        assertLoggedInWithAcr("silver"); // Return silver without need to re-authenticate due maxAge for "silver" condition did not timed-out yet
     }
 
     @Test
@@ -359,13 +359,13 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         authenticateWithPassword();
         assertLoggedInWithAcr("gold");
 
-        // Value from essential ACR should have preference
+        // Value from essential ACR from claims parameter should have preference over the client default
         openLoginFormWithAcrClaim(true, "silver");
-        assertLoggedInWithAcr("0");
+        assertLoggedInWithAcr("silver");
 
-        // Value from non-essential ACR should have preference
+        // Value from non-essential ACR from claims parameter should have preference over the client default
         openLoginFormWithAcrClaim(false, "silver");
-        assertLoggedInWithAcr("0");
+        assertLoggedInWithAcr("silver");
 
         // Revert
         testClientRep.getAttributes().put(Constants.DEFAULT_ACR_VALUES, null);
