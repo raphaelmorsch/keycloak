@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static org.keycloak.services.managers.AuthenticationManager.FORCED_REAUTHENTICATION;
 import static org.keycloak.services.managers.AuthenticationManager.SSO_AUTH;
 
 public class AuthenticatorUtil {
@@ -49,6 +50,10 @@ public class AuthenticatorUtil {
 
     public static boolean isSSOAuthentication(AuthenticationSessionModel authSession) {
         return "true".equals(authSession.getAuthNote(SSO_AUTH));
+    }
+
+    public static boolean isForcedReauthentication(AuthenticationSessionModel authSession) {
+        return "true".equals(authSession.getAuthNote(FORCED_REAUTHENTICATION));
     }
 
     public static boolean isLevelOfAuthenticationForced(AuthenticationSessionModel authSession) {

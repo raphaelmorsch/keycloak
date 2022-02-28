@@ -78,6 +78,10 @@ public class AcrStore {
      * @return
      */
     public boolean isLevelAuthenticatedInPreviousAuth(int level, int maxAge) {
+        // In case of re-authentication requested from client (EG. by "prompt=login" or "max_age=0", the LoA from previous authentications are not
+        // considered. User needs to re-authenticate all requested levels again.
+        if (AuthenticatorUtil.isForcedReauthentication(authSession)) return false;
+
         // TODO:mposolda This considers just the map. Which is probably OK
         Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevelsMap();
         if (levels == null) return false;

@@ -57,6 +57,7 @@ public class CookieAuthenticator implements Authenticator {
             if (protocol.requireReauthentication(authResult.getSession(), authSession)) {
                 // Full re-authentication, so we start with no loa
                 acrStore.setLevelAuthenticatedToCurrentRequest(Constants.NO_LOA);
+                authSession.setAuthNote(AuthenticationManager.FORCED_REAUTHENTICATION, "true");
                 context.setForwardedInfoMessage(Messages.REAUTHENTICATE);
                 context.attempted();
             } else if (!acrStore.isLevelOfAuthenticationSatisfiedFromPreviousAuthentication()) {

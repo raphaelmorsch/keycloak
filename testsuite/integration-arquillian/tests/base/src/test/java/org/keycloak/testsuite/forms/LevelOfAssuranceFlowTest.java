@@ -32,19 +32,22 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.keycloak.admin.client.resource.ClientResource;
-import org.keycloak.authentication.authenticators.browser.PasswordFormFactory;
-import org.keycloak.authentication.authenticators.browser.UsernameFormFactory;
+import org.keycloak.authentication.authenticators.browser.OTPFormAuthenticatorFactory;
+import org.keycloak.authentication.authenticators.browser.UsernamePasswordFormFactory;
 import org.keycloak.authentication.authenticators.conditional.ConditionalLoaAuthenticator;
 import org.keycloak.authentication.authenticators.conditional.ConditionalLoaAuthenticatorFactory;
 import org.keycloak.events.Details;
 import org.keycloak.models.AuthenticationExecutionModel.Requirement;
 import org.keycloak.models.Constants;
+import org.keycloak.models.utils.TimeBasedOTP;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
+import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.representations.ClaimsRepresentation;
 import org.keycloak.representations.IDToken;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.EventRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
@@ -52,11 +55,15 @@ import org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude;
 import org.keycloak.testsuite.authentication.PushButtonAuthenticatorFactory;
 import org.keycloak.testsuite.client.KeycloakTestingClient;
 import org.keycloak.testsuite.pages.ErrorPage;
+import org.keycloak.testsuite.pages.LoginPage;
+import org.keycloak.testsuite.pages.LoginTotpPage;
 import org.keycloak.testsuite.pages.LoginUsernameOnlyPage;
 import org.keycloak.testsuite.pages.PasswordPage;
 import org.keycloak.testsuite.pages.PushTheButtonPage;
 import org.keycloak.testsuite.util.FlowUtil;
 import org.keycloak.testsuite.util.OAuthClient;
+import org.keycloak.testsuite.util.RealmRepUtil;
+import org.keycloak.testsuite.util.UserBuilder;
 import org.keycloak.util.JsonSerialization;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -74,10 +81,12 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     public AssertEvents events = new AssertEvents(this);
 
     @Page
-    protected LoginUsernameOnlyPage loginUsernameOnlyPage;
+    protected LoginPage loginPage;
 
     @Page
-    protected PasswordPage passwordPage;
+    protected LoginTotpPage loginTotpPage;
+
+    private TimeBasedOTP totp = new TimeBasedOTP();
 
     @Page
     protected PushTheButtonPage pushTheButtonPage;
@@ -89,6 +98,10 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     public void configureTestRealm(RealmRepresentation testRealm) {
         try {
             findTestApp(testRealm).setAttributes(Collections.singletonMap(Constants.ACR_LOA_MAP, getAcrToLoaMappingForClient()));
+            UserRepresentation user = RealmRepUtil.findUser(testRealm, "test-user@localhost");
+            UserBuilder.edit(user)
+                    .totpSecret("totpSecret")
+                    .otpEnabled();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -125,7 +138,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
                                     });
 
                             // username input for level 1
-                            subFlow.addAuthenticatorExecution(Requirement.REQUIRED, UsernameFormFactory.PROVIDER_ID);
+                            subFlow.addAuthenticatorExecution(Requirement.REQUIRED, UsernamePasswordFormFactory.PROVIDER_ID);
                         })
 
                         // level 2 authentication
@@ -137,7 +150,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
                                     });
 
                             // password required for level 2
-                            subFlow.addAuthenticatorExecution(Requirement.REQUIRED, PasswordFormFactory.PROVIDER_ID);
+                            subFlow.addAuthenticatorExecution(Requirement.REQUIRED, OTPFormAuthenticatorFactory.PROVIDER_ID);
                         })
 
                         // level 3 authentication
@@ -164,7 +177,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     public void loginWithoutAcr() {
         oauth.openLoginForm();
         // Authentication without specific LOA results in level 1 authentication
-        authenticateWithUsername();
+        authenticateWithUsernamePassword();
         assertLoggedInWithAcr("silver");
     }
 
@@ -172,7 +185,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     public void loginWithAcr1() {
         // username input for level 1
         openLoginFormWithAcrClaim(true, "silver");
-        authenticateWithUsername();
+        authenticateWithUsernamePassword();
         assertLoggedInWithAcr("silver");
 
     }
@@ -181,8 +194,8 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     public void loginWithAcr2() {
         // username and password input for level 2
         openLoginFormWithAcrClaim(true, "gold");
-        authenticateWithUsername();
-        authenticateWithPassword();
+        authenticateWithUsernamePassword();
+        authenticateWithTotp();
         assertLoggedInWithAcr("gold");
     }
 
@@ -190,8 +203,8 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     public void loginWithAcr3() {
         // username, password input and finally push button for level 3
         openLoginFormWithAcrClaim(true, "3");
-        authenticateWithUsername();
-        authenticateWithPassword();
+        authenticateWithUsernamePassword();
+        authenticateWithTotp();
         authenticateWithButton();
         // ACR 3 is returned because it was requested, although there is no mapping for it
         assertLoggedInWithAcr("3");
@@ -201,15 +214,15 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     public void stepupAuthentication() {
         // logging in to level 1
         openLoginFormWithAcrClaim(true, "silver");
-        authenticateWithUsername();
+        authenticateWithUsernamePassword();
         assertLoggedInWithAcr("silver");
         // doing step-up authentication to level 2
         openLoginFormWithAcrClaim(true, "gold");
-        authenticateWithPassword();
+        authenticateWithTotp();
         assertLoggedInWithAcr("gold");
         // step-up to level 3 needs password authentication because level 2 is not stored in user session
         openLoginFormWithAcrClaim(true, "3");
-        authenticateWithPassword();
+        authenticateWithTotp();
         authenticateWithButton();
         assertLoggedInWithAcr("3");
     }
@@ -217,7 +230,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     @Test
     public void stepupToUnknownEssentialAcrFails() {
         openLoginFormWithAcrClaim(true, "silver");
-        authenticateWithUsername();
+        authenticateWithUsernamePassword();
         assertLoggedInWithAcr("silver");
         // step-up to unknown acr
         openLoginFormWithAcrClaim(true, "uranium");
@@ -227,7 +240,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     @Test
     public void reauthenticationWithNoAcr() {
         openLoginFormWithAcrClaim(true, "silver");
-        authenticateWithUsername();
+        authenticateWithUsernamePassword();
         assertLoggedInWithAcr("silver");
         oauth.claims(null);
         oauth.openLoginForm();
@@ -237,7 +250,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     @Test
     public void reauthenticationWithReachedAcr() {
         openLoginFormWithAcrClaim(true, "silver");
-        authenticateWithUsername();
+        authenticateWithUsernamePassword();
         assertLoggedInWithAcr("silver");
         openLoginFormWithAcrClaim(true, "silver");
         assertLoggedInWithAcr("silver"); // Return previous level due maxAge for "silver" condition did not timed-out yet
@@ -246,7 +259,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     @Test
     public void reauthenticationWithOptionalUnknownAcr() {
         openLoginFormWithAcrClaim(true, "silver");
-        authenticateWithUsername();
+        authenticateWithUsernamePassword();
         assertLoggedInWithAcr("silver");
         openLoginFormWithAcrClaim(false, "iron");
         assertLoggedInWithAcr("silver"); // Return silver without need to re-authenticate due maxAge for "silver" condition did not timed-out yet
@@ -255,8 +268,8 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     @Test
     public void essentialClaimNotReachedFails() {
         openLoginFormWithAcrClaim(true, "4");
-        authenticateWithUsername();
-        authenticateWithPassword();
+        authenticateWithUsernamePassword();
+        authenticateWithTotp();
         authenticateWithButton();
         assertErrorPage("Authentication requirements not fulfilled");
     }
@@ -264,8 +277,8 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     @Test
     public void optionalClaimNotReachedSucceeds() {
         openLoginFormWithAcrClaim(false, "4");
-        authenticateWithUsername();
-        authenticateWithPassword();
+        authenticateWithUsernamePassword();
+        authenticateWithTotp();
         authenticateWithButton();
         // the reached loa is 3, but there is no mapping for it, and it was not explicitly
         // requested, so the highest known and reached ACR is returned
@@ -281,7 +294,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     @Test
     public void optionalUnknownClaimSucceeds() {
         openLoginFormWithAcrClaim(false, "iron");
-        authenticateWithUsername();
+        authenticateWithUsernamePassword();
         assertLoggedInWithAcr("silver");
     }
 
@@ -290,24 +303,24 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         driver.navigate().to(UriBuilder.fromUri(oauth.getLoginFormUrl())
             .queryParam("acr_values", "gold 3")
             .build().toString());
-        authenticateWithUsername();
-        authenticateWithPassword();
+        authenticateWithUsernamePassword();
+        authenticateWithTotp();
         assertLoggedInWithAcr("gold");
     }
 
     @Test
     public void multipleEssentialAcrValues() {
         openLoginFormWithAcrClaim(true, "gold", "3");
-        authenticateWithUsername();
-        authenticateWithPassword();
+        authenticateWithUsernamePassword();
+        authenticateWithTotp();
         assertLoggedInWithAcr("gold");
     }
 
     @Test
     public void multipleOptionalAcrValues() {
         openLoginFormWithAcrClaim(false, "gold", "3");
-        authenticateWithUsername();
-        authenticateWithPassword();
+        authenticateWithUsernamePassword();
+        authenticateWithTotp();
         assertLoggedInWithAcr("gold");
     }
 
@@ -330,8 +343,8 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         testClient.update(testClientRep);
 
         openLoginFormWithAcrClaim(true, "realm:gold");
-        authenticateWithUsername();
-        authenticateWithPassword();
+        authenticateWithUsernamePassword();
+        authenticateWithTotp();
         assertLoggedInWithAcr("realm:gold");
 
         // Add "acr-to-loa" back to the client. Client mapping will be used instead of realm mapping
@@ -342,7 +355,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         assertErrorPage("Invalid parameter: claims");
 
         openLoginFormWithAcrClaim(true, "gold");
-        authenticateWithPassword();
+        authenticateWithTotp();
         assertLoggedInWithAcr("gold");
 
         // Rollback
@@ -359,14 +372,14 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
 
         // Should request client to authenticate with silver
         oauth.openLoginForm();
-        authenticateWithUsername();
+        authenticateWithUsernamePassword();
         assertLoggedInWithAcr("silver");
 
         // Re-configure to level gold
         OIDCAdvancedConfigWrapper.fromClientRepresentation(testClientRep).setAttributeMultivalued(Constants.DEFAULT_ACR_VALUES, Arrays.asList("gold"));
         testClient.update(testClientRep);
         oauth.openLoginForm();
-        authenticateWithPassword();
+        authenticateWithTotp();
         assertLoggedInWithAcr("gold");
 
         // Value from essential ACR from claims parameter should have preference over the client default
@@ -431,8 +444,8 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
 
         // Authentication
         openLoginFormWithAcrClaim(true, "3");
-        authenticateWithUsername();
-        authenticateWithPassword();
+        authenticateWithUsernamePassword();
+        authenticateWithTotp();
         authenticateWithButton();
         assertLoggedInWithAcr("3");
 
@@ -460,12 +473,12 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     // asking for "acr=2" . User should be asked for re-authentication with various authenticators in various cases.
     @Test
     public void testMaxAgeConditionWithAcr() {
-        configureStepUpFlow(testingClient, 300, 300, 200);
+        configureStepUpFlow(testingClient, 300, 200, 200);
 
         // Authentication
         openLoginFormWithAcrClaim(true, "3");
-        authenticateWithUsername();
-        authenticateWithPassword();
+        authenticateWithUsernamePassword();
+        authenticateWithTotp();
         authenticateWithButton();
         assertLoggedInWithAcr("3");
 
@@ -476,17 +489,49 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         // Time offset to 210
         setTimeOffset(210);
 
-        // Re-auth 2: Should ask user for re-authentication with level3. Level1 and level2 did not yet expired and should be automatic
+        // Re-auth 2: Should ask user for re-authentication with level2 and level3. Level1 did not yet expired and should be automatic
         openLoginFormWithAcrClaim(true, "3");
+        authenticateWithTotp();
         authenticateWithButton();
         assertLoggedInWithAcr("3");
 
         // Time offset to 310
         setTimeOffset(310);
 
-        // Re-auth 3: Should ask user for re-authentication with level1 (which is automatic due username known) and level2. Level3 did not yet expired and should be automatic
+        // Re-auth 3: Should ask user for re-authentication with level1. Level2 and Level3 did not yet expired and should be automatic
         openLoginFormWithAcrClaim(true, "3");
-        authenticateWithPassword();
+        reauthenticateWithPassword();
+        assertLoggedInWithAcr("3");
+    }
+
+    // Authenticate with LoA=3 and then send request with "prompt=login" to force re-authentication
+    @Test
+    public void testMaxAgeConditionWithForcedReauthentication() {
+        configureStepUpFlow(testingClient, 300, 300, 300);
+
+        // Authentication
+        openLoginFormWithAcrClaim(true, "3");
+        authenticateWithUsernamePassword();
+        authenticateWithTotp();
+        authenticateWithButton();
+        assertLoggedInWithAcr("3");
+
+        // Send request with prompt=login . User should be asked to re-authenticate with level 1
+        oauth.claims(null);
+        oauth.prompt(OIDCLoginProtocol.PROMPT_VALUE_LOGIN);
+        oauth.openLoginForm();
+        reauthenticateWithPassword();
+        assertLoggedInWithAcr("silver");
+
+        // Request with prompt=login together with "acr=2" . User should be asked to re-authenticate with level 2
+        openLoginFormWithAcrClaim(true, "gold");
+        reauthenticateWithPassword();
+        authenticateWithTotp();
+        assertLoggedInWithAcr("gold");
+
+        // Request with "acr=3", but without prompt. User should be automatically authenticated
+        oauth.prompt(null);
+        openLoginFormWithAcrClaim(true, "3");
         assertLoggedInWithAcr("3");
     }
 
@@ -506,14 +551,20 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         oauth.openLoginForm();
     }
 
-    private void authenticateWithUsername() {
-        loginUsernameOnlyPage.assertCurrent();
-        loginUsernameOnlyPage.login("test-user@localhost");
+    private void authenticateWithUsernamePassword() {
+        loginPage.assertCurrent();
+        loginPage.login("test-user@localhost", "password");
     }
 
-    private void authenticateWithPassword() {
-        passwordPage.assertCurrent();
-        passwordPage.login("password");
+    private void reauthenticateWithPassword() {
+        loginPage.assertCurrent();
+        Assert.assertEquals("test-user@localhost", loginPage.getAttemptedUsername());
+        loginPage.login("password");
+    }
+
+    private void authenticateWithTotp() {
+        loginTotpPage.assertCurrent();
+        loginTotpPage.login(totp.generateTOTP("totpSecret"));
     }
 
     private void authenticateWithButton() {
