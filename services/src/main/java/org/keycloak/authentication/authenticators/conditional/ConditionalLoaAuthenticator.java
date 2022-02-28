@@ -58,7 +58,7 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
         } else {
             if (requestedLoa < configuredLoa) {
                 logger.tracef("Condition '%s' evaluated to false due the requestedLoa '%d' smaller than configuredLoa '%d'. CurrentAuthenticationLoa: %d",
-                        context.getAuthenticatorConfig().getAlias(), configuredLoa, requestedLoa, currentAuthenticationLoa);
+                        context.getAuthenticatorConfig().getAlias(), requestedLoa, configuredLoa, currentAuthenticationLoa);
                 return false;
             }
             int maxAge = getMaxAge(context);
@@ -100,14 +100,14 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
         AuthenticationSessionModel authSession = session.getContext().getAuthenticationSession();
         AcrStore acrStore = new AcrStore(authSession);
 
+        logger.tracef("Finished authentication at level %d when authenticating authSession '%s'.", acrStore.getLevelOfAuthenticationFromCurrentAuthentication(), authSession.getParentSession().getId());
         if (AuthenticatorUtil.isLevelOfAuthenticationForced(authSession) && !acrStore.isLevelOfAuthenticationSatisfiedFromCurrentAuthentication()) {
             String details = String.format("Forced level of authentication did not meet the requirements. Requested level: %d, Fulfilled level: %d",
                     acrStore.getRequestedLevelOfAuthentication(), acrStore.getLevelOfAuthenticationFromCurrentAuthentication());
             throw new AuthenticationFlowException(AuthenticationFlowError.GENERIC_AUTHENTICATION_ERROR, details, Messages.ACR_NOT_FULFILLED);
         }
 
-        logger.tracef("Current authentication level %d when authenticating authSession '%s'. Adding authenticated levels to user session note for future authentications: %s",
-                acrStore.getLevelOfAuthenticationFromCurrentAuthentication(), authSession.getParentSession().getId(), authSession.getAuthNote(Constants.LOA_MAP));
+        logger.tracef("Updating authenticated levels in authSession '%s' to user session note for future authentications: %s", authSession.getParentSession().getId(), authSession.getAuthNote(Constants.LOA_MAP));
         authSession.setUserSessionNote(Constants.LOA_MAP, authSession.getAuthNote(Constants.LOA_MAP));
     }
 

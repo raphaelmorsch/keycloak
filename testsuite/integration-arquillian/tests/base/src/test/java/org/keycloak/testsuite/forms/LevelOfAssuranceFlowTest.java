@@ -108,6 +108,10 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     }
 
     public static void configureStepUpFlow(KeycloakTestingClient testingClient) {
+        configureStepUpFlow(testingClient, ConditionalLoaAuthenticator.DEFAULT_MAX_AGE, 0, 0);
+    }
+
+    private static void configureStepUpFlow(KeycloakTestingClient testingClient, int maxAge1, int maxAge2, int maxAge3) {
         final String newFlowAlias = "browser -  Level of Authentication FLow";
         testingClient.server(TEST_REALM_NAME).run(session -> FlowUtil.inCurrentRealm(session).copyBrowserFlow(newFlowAlias));
         testingClient.server(TEST_REALM_NAME)
@@ -117,7 +121,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
                             subFlow.addAuthenticatorExecution(Requirement.REQUIRED, ConditionalLoaAuthenticatorFactory.PROVIDER_ID,
                                     config -> {
                                         config.getConfig().put(ConditionalLoaAuthenticator.LEVEL, "1");
-                                        config.getConfig().put(ConditionalLoaAuthenticator.MAX_AGE, String.valueOf(ConditionalLoaAuthenticator.DEFAULT_MAX_AGE));
+                                        config.getConfig().put(ConditionalLoaAuthenticator.MAX_AGE, String.valueOf(maxAge1));
                                     });
 
                             // username input for level 1
@@ -127,7 +131,10 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
                         // level 2 authentication
                         .addSubFlowExecution(Requirement.CONDITIONAL, subFlow -> {
                             subFlow.addAuthenticatorExecution(Requirement.REQUIRED, ConditionalLoaAuthenticatorFactory.PROVIDER_ID,
-                                    config -> config.getConfig().put(ConditionalLoaAuthenticator.LEVEL, "2"));
+                                    config -> {
+                                        config.getConfig().put(ConditionalLoaAuthenticator.LEVEL, "2");
+                                        config.getConfig().put(ConditionalLoaAuthenticator.MAX_AGE, String.valueOf(maxAge2));
+                                    });
 
                             // password required for level 2
                             subFlow.addAuthenticatorExecution(Requirement.REQUIRED, PasswordFormFactory.PROVIDER_ID);
@@ -136,7 +143,10 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
                         // level 3 authentication
                         .addSubFlowExecution(Requirement.CONDITIONAL, subFlow -> {
                             subFlow.addAuthenticatorExecution(Requirement.REQUIRED, ConditionalLoaAuthenticatorFactory.PROVIDER_ID,
-                                    config -> config.getConfig().put(ConditionalLoaAuthenticator.LEVEL, "3"));
+                                    config -> {
+                                        config.getConfig().put(ConditionalLoaAuthenticator.LEVEL, "3");
+                                        config.getConfig().put(ConditionalLoaAuthenticator.MAX_AGE, String.valueOf(maxAge3));
+                                    });
 
                             // simply push button for level 3
                             subFlow.addAuthenticatorExecution(Requirement.REQUIRED, PushButtonAuthenticatorFactory.PROVIDER_ID);
@@ -411,6 +421,73 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         testClient.update(testClientRep);
         realmRep.getAttributes().remove(Constants.ACR_LOA_MAP);
         testRealm().update(realmRep);
+    }
+
+    // After initial authentication with "acr=2", there will be further re-authentication requests sent in different intervals
+    // without "acr" parameter. User should be always re-authenticated due SSO, but with different acr levels due their gradual expirations
+    @Test
+    public void testMaxAgeConditionWithSSO() {
+        configureStepUpFlow(testingClient, 300, 300, 200);
+
+        // Authentication
+        openLoginFormWithAcrClaim(true, "3");
+        authenticateWithUsername();
+        authenticateWithPassword();
+        authenticateWithButton();
+        assertLoggedInWithAcr("3");
+
+        // Re-auth 1: Should be automatically authenticated and still return "3"
+        oauth.claims(null);
+        oauth.openLoginForm();
+        assertLoggedInWithAcr("3");
+
+        // Time offset to 210
+        setTimeOffset(210);
+
+        // Re-auth 2: Should return level 2 (gold) due level 3 expired
+        oauth.openLoginForm();
+        assertLoggedInWithAcr("gold");
+
+        // Time offset to 310
+        setTimeOffset(310);
+
+        // Re-auth 3: Should return level 0 (copper) due levels 1 and 2 expired
+        oauth.openLoginForm();
+        assertLoggedInWithAcr("copper");
+    }
+
+    // After initial authentication with "acr=2", there will be further re-authentication requests sent in different intervals
+    // asking for "acr=2" . User should be asked for re-authentication with various authenticators in various cases.
+    @Test
+    public void testMaxAgeConditionWithAcr() {
+        configureStepUpFlow(testingClient, 300, 300, 200);
+
+        // Authentication
+        openLoginFormWithAcrClaim(true, "3");
+        authenticateWithUsername();
+        authenticateWithPassword();
+        authenticateWithButton();
+        assertLoggedInWithAcr("3");
+
+        // Re-auth 1: Should be automatically authenticated and still return "3"
+        openLoginFormWithAcrClaim(true, "3");
+        assertLoggedInWithAcr("3");
+
+        // Time offset to 210
+        setTimeOffset(210);
+
+        // Re-auth 2: Should ask user for re-authentication with level3. Level1 and level2 did not yet expired and should be automatic
+        openLoginFormWithAcrClaim(true, "3");
+        authenticateWithButton();
+        assertLoggedInWithAcr("3");
+
+        // Time offset to 310
+        setTimeOffset(310);
+
+        // Re-auth 3: Should ask user for re-authentication with level1 (which is automatic due username known) and level2. Level3 did not yet expired and should be automatic
+        openLoginFormWithAcrClaim(true, "3");
+        authenticateWithPassword();
+        assertLoggedInWithAcr("3");
     }
 
     public void openLoginFormWithAcrClaim(boolean essential, String... acrValues) {
