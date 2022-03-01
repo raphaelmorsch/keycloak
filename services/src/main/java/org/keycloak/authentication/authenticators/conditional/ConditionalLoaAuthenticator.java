@@ -91,7 +91,7 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
         } else {
             logger.tracef("Updating LoA to '%d' in the condition '%s' when authenticating session '%s'. Max age is %d.",
                     newLoa, context.getAuthenticatorConfig().getAlias(), authSession.getParentSession().getId(), maxAge);
-            acrStore.setLevelAuthenticated(newLoa, maxAge);
+            acrStore.setLevelAuthenticated(newLoa);
         }
     }
 

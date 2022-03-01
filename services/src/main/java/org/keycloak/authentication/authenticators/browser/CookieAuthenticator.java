@@ -60,18 +60,21 @@ public class CookieAuthenticator implements Authenticator {
                 authSession.setAuthNote(AuthenticationManager.FORCED_REAUTHENTICATION, "true");
                 context.setForwardedInfoMessage(Messages.REAUTHENTICATE);
                 context.attempted();
-            } else if (!acrStore.isLevelOfAuthenticationSatisfiedFromPreviousAuthentication()) {
-                // Step-up authentication, we keep the loa from the existing user session.
-                // The cookie alone is not enough and other authentications must follow.
-                // TODO:mposolda I am not sure if this method is strictly needed. Maybe we can just set remove this "if" entirely and let the conditions to do their
-                acrStore.setLevelAuthenticatedToCurrentRequest(acrStore.getAuthenticatedLevelFromPreviousAuthentication());
-                context.attempted();
             } else {
-                // Cookie only authentication
-                acrStore.setLevelAuthenticatedToCurrentRequest(acrStore.getAuthenticatedLevelFromPreviousAuthentication());
-                authSession.setAuthNote(AuthenticationManager.SSO_AUTH, "true");
-                context.attachUserSession(authResult.getSession());
-                context.success();
+                int previouslyAuthenticatedLevel = acrStore.getAuthenticatedLevelFromPreviousAuthentication();
+                if (acrStore.getRequestedLevelOfAuthentication() > previouslyAuthenticatedLevel) {
+                    // Step-up authentication, we keep the loa from the existing user session.
+                    // The cookie alone is not enough and other authentications must follow.
+                    // TODO:mposolda I am not sure if this method is strictly needed. Maybe we can just set remove this "if" entirely and let the conditions to do their
+                    acrStore.setLevelAuthenticatedToCurrentRequest(acrStore.getAuthenticatedLevelFromPreviousAuthentication());
+                    context.attempted();
+                } else {
+                    // Cookie only authentication
+                    acrStore.setLevelAuthenticatedToCurrentRequest(acrStore.getAuthenticatedLevelFromPreviousAuthentication());
+                    authSession.setAuthNote(AuthenticationManager.SSO_AUTH, "true");
+                    context.attachUserSession(authResult.getSession());
+                    context.success();
+                }
             }
         }
 

@@ -32,6 +32,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.keycloak.admin.client.resource.ClientResource;
+import org.keycloak.authentication.AuthenticationFlow;
 import org.keycloak.authentication.authenticators.browser.OTPFormAuthenticatorFactory;
 import org.keycloak.authentication.authenticators.browser.UsernamePasswordFormFactory;
 import org.keycloak.authentication.authenticators.conditional.ConditionalLoaAuthenticator;
@@ -57,13 +58,12 @@ import org.keycloak.testsuite.client.KeycloakTestingClient;
 import org.keycloak.testsuite.pages.ErrorPage;
 import org.keycloak.testsuite.pages.LoginPage;
 import org.keycloak.testsuite.pages.LoginTotpPage;
-import org.keycloak.testsuite.pages.LoginUsernameOnlyPage;
-import org.keycloak.testsuite.pages.PasswordPage;
 import org.keycloak.testsuite.pages.PushTheButtonPage;
 import org.keycloak.testsuite.util.FlowUtil;
 import org.keycloak.testsuite.util.OAuthClient;
 import org.keycloak.testsuite.util.RealmRepUtil;
 import org.keycloak.testsuite.util.UserBuilder;
+import org.keycloak.testsuite.util.WaitUtils;
 import org.keycloak.util.JsonSerialization;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -166,6 +166,11 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
                         })
 
                 ).defineAsBrowserFlow());
+    }
+
+    private void reconfigureStepUpFlow(int maxAge1, int maxAge2, int maxAge3) {
+        BrowserFlowTest.revertFlows(testRealm(), "browser -  Level of Authentication FLow");
+        configureStepUpFlow(testingClient, maxAge1, maxAge2, maxAge3);
     }
 
     @After
@@ -440,7 +445,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     // without "acr" parameter. User should be always re-authenticated due SSO, but with different acr levels due their gradual expirations
     @Test
     public void testMaxAgeConditionWithSSO() {
-        configureStepUpFlow(testingClient, 300, 300, 200);
+        reconfigureStepUpFlow(300, 300, 200);
 
         // Authentication
         openLoginFormWithAcrClaim(true, "3");
@@ -473,7 +478,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     // asking for "acr=2" . User should be asked for re-authentication with various authenticators in various cases.
     @Test
     public void testMaxAgeConditionWithAcr() {
-        configureStepUpFlow(testingClient, 300, 200, 200);
+        reconfigureStepUpFlow(300, 200, 200);
 
         // Authentication
         openLoginFormWithAcrClaim(true, "3");
@@ -507,7 +512,7 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
     // Authenticate with LoA=3 and then send request with "prompt=login" to force re-authentication
     @Test
     public void testMaxAgeConditionWithForcedReauthentication() {
-        configureStepUpFlow(testingClient, 300, 300, 300);
+        reconfigureStepUpFlow(300, 300, 300);
 
         // Authentication
         openLoginFormWithAcrClaim(true, "3");
@@ -534,6 +539,31 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         openLoginFormWithAcrClaim(true, "3");
         assertLoggedInWithAcr("3");
     }
+
+
+    @Test
+    public void testChangingLoaConditionConfiguration() {
+        // Authentication
+        oauth.openLoginForm();
+        authenticateWithUsernamePassword();
+        assertLoggedInWithAcr("silver");
+
+        setTimeOffset(120);
+
+
+        // Change condition configuration to 60
+        reconfigureStepUpFlow(60, 0, 0);
+
+        // Re-authenticate without "acr". Should return 0 (copper) due the SSO
+        oauth.openLoginForm();
+        assertLoggedInWithAcr("copper");
+
+        // Re-authenticate with requested ACR=1 (silver). User should be asked to re-authenticate
+        openLoginFormWithAcrClaim(true, "silver");
+        reauthenticateWithPassword();
+        assertLoggedInWithAcr("silver");
+    }
+
 
     public void openLoginFormWithAcrClaim(boolean essential, String... acrValues) {
         openLoginFormWithAcrClaim(oauth, essential, acrValues);

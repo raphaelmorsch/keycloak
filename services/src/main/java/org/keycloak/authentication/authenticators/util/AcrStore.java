@@ -59,6 +59,7 @@ public class AcrStore {
         return requiredLoa == null ? Constants.NO_LOA : Integer.parseInt(requiredLoa);
     }
 
+    // TODO:mposolda remove this method?
     public boolean isLevelOfAuthenticationSatisfiedFromPreviousAuthentication() {
         return getRequestedLevelOfAuthentication()
                 <= getAuthenticatedLevelFromPreviousAuthentication();
@@ -83,14 +84,14 @@ public class AcrStore {
         if (AuthenticatorUtil.isForcedReauthentication(authSession)) return false;
 
         // TODO:mposolda This considers just the map. Which is probably OK
-        Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevelsMap();
+        Map<Integer, Integer> levels = getCurrentAuthenticatedLevelsMap();
         if (levels == null) return false;
 
-        AcrLevelInfo levelInfo = levels.get(level);
-        if (levelInfo == null) return false;
+        Integer levelAuthTime = levels.get(level);
+        if (levelAuthTime == null) return false;
 
         int currentTime = Time.currentTime();
-        return levelInfo.authTime + maxAge >= currentTime;
+        return levelAuthTime + maxAge >= currentTime;
     }
 
     // TODO:mposolda javadoc
@@ -103,26 +104,21 @@ public class AcrStore {
      * Save authenticated level to userSession
      *
      * @param level level to save
-     * @param maxAge maxAge for the particular level in seconds. After this time, the level is not considered valid anymore and user
-     *               should be prompted for re-authentication with this level (if this level is asked during authentication)
      */
-    public void setLevelAuthenticated(int level, int maxAge) {
+    public void setLevelAuthenticated(int level) {
         setLevelAuthenticatedToCurrentRequest(level);
-        setLevelAuthenticatedToMap(level, maxAge);
+        setLevelAuthenticatedToMap(level);
     }
 
     public void setLevelAuthenticatedToCurrentRequest(int level) {
         authSession.setAuthNote(Constants.LEVEL_OF_AUTHENTICATION, String.valueOf(level));
     }
 
-    private void setLevelAuthenticatedToMap(int level, int maxAge) {
-        Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevelsMap();
+    private void setLevelAuthenticatedToMap(int level) {
+        Map<Integer, Integer> levels = getCurrentAuthenticatedLevelsMap();
         if (levels == null) levels = new HashMap<>();
 
-        AcrLevelInfo levelInfo = new AcrLevelInfo();
-        levelInfo.authTime = Time.currentTime();
-        levelInfo.expiration = levelInfo.authTime + maxAge;
-        levels.put(level, levelInfo);
+        levels.put(level, Time.currentTime());
 
         saveCurrentAuthenticatedLevelsMap(levels);
     }
@@ -147,17 +143,24 @@ public class AcrStore {
 
     public int getAuthenticatedLevelFromPreviousAuthentication() {
         // No map found. User was not yet authenticated in this session
-        Map<Integer, AcrLevelInfo> levels = getCurrentAuthenticatedLevelsMap();
+        Map<Integer, Integer> levels = getCurrentAuthenticatedLevelsMap();
         if (levels == null || levels.isEmpty()) return Constants.NO_LOA;
 
         // Map was already saved, so it is SSO authentication at minimum. Using "0" level as the minimum level in this case
         int maxLevel = Constants.MINIMUM_LOA;
         int currentTime = Time.currentTime();
 
+        Map<Integer, Integer> configuredMaxAges = LoAUtil.getLoaMaxAgesConfiguredInRealmBrowserFlow(authSession.getRealm());
         levels = new TreeMap<>(levels);
 
-        for (Map.Entry<Integer, AcrLevelInfo> entry : levels.entrySet()) {
-            int levelExpiration = entry.getValue().expiration;
+        for (Map.Entry<Integer, Integer> entry : levels.entrySet()) {
+            Integer levelMaxAge = configuredMaxAges.get(entry.getKey());
+            if (levelMaxAge == null) {
+                LOGGER.warnf("No condition found for level '%d' in the authentication flow", entry.getKey());
+                levelMaxAge = 0;
+            }
+            int levelAuthTime = entry.getValue();
+            int levelExpiration = levelAuthTime + levelMaxAge;
             if (currentTime <= levelExpiration) {
                 maxLevel = entry.getKey();
             } else {
@@ -168,38 +171,27 @@ public class AcrStore {
         return maxLevel;
     }
 
-    private Map<Integer, AcrLevelInfo> getCurrentAuthenticatedLevelsMap() {
+    // Key is level number. Value is level authTime
+    private Map<Integer, Integer> getCurrentAuthenticatedLevelsMap() {
         String loaMap = authSession.getAuthNote(Constants.LOA_MAP);
         if (loaMap == null) {
             return null;
         }
         try {
-            return JsonSerialization.readValue(loaMap, new TypeReference<Map<Integer, AcrLevelInfo>>() {});
+            return JsonSerialization.readValue(loaMap, new TypeReference<Map<Integer, Integer>>() {});
         } catch (IOException e) {
             LOGGER.warnf("Invalid format of the LoA map. Saved value was: %s", loaMap);
             throw new IllegalStateException(e);
         }
     }
 
-    private void saveCurrentAuthenticatedLevelsMap(Map<Integer, AcrLevelInfo> levelInfoMap) {
+    private void saveCurrentAuthenticatedLevelsMap(Map<Integer, Integer> levelInfoMap) {
         try {
             String note = JsonSerialization.writeValueAsString(levelInfoMap);
             authSession.setAuthNote(Constants.LOA_MAP, note);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
-    }
-
-    // Track both expiration and authTime of current level in the userSession.
-    // We use expiration to check latest achieved level. We use authTime during authentication
-    // (expiration may not be sufficient in case that condition configuration changed in the authentication flow and condition expiration in the configuration was set to lower value)
-    private static class AcrLevelInfo {
-
-        @JsonProperty("authTime")
-        private Integer authTime;
-
-        @JsonProperty("expiration")
-        private Integer expiration;
     }
 
 }

@@ -22,6 +22,7 @@ import org.keycloak.OAuth2Constants;
 import org.keycloak.authentication.AuthenticatorUtil;
 import org.keycloak.authentication.ClientAuthenticator;
 import org.keycloak.authentication.ClientAuthenticatorFactory;
+import org.keycloak.authentication.authenticators.util.LoAUtil;
 import org.keycloak.crypto.CekManagementProvider;
 import org.keycloak.crypto.ClientSignatureVerifierProvider;
 import org.keycloak.crypto.ContentEncryptionProvider;
@@ -264,7 +265,7 @@ public class OIDCWellKnownProvider implements WellKnownProvider {
         List<String> result = new ArrayList<>(realmAcrLoaMap.keySet());
 
         // Add LoA levels configured in authentication flow in addition to the realm values
-        result.addAll(AuthenticatorUtil.getLoAConfiguredInRealmBrowserFlow(realm)
+        result.addAll(LoAUtil.getLoAConfiguredInRealmBrowserFlow(realm)
                 .map(String::valueOf)
                 .collect(Collectors.toList()));
         return result;
