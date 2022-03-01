@@ -75,13 +75,13 @@ public class LoAUtil {
             Map<Integer, Integer> loas = loaConditions.stream()
                     .map(authExecution -> realm.getAuthenticatorConfigById(authExecution.getAuthenticatorConfig()))
                     .filter(Objects::nonNull)
-                    .filter(authConfig -> getLevelFromLoaConditionExecution(authConfig) != null)
-                    .collect(Collectors.toMap(LoAUtil::getLevelFromLoaConditionExecution, LoAUtil::getMaxAgeFromLoaConditionExecution));
+                    .filter(authConfig -> getLevelFromLoaConditionConfiguration(authConfig) != null)
+                    .collect(Collectors.toMap(LoAUtil::getLevelFromLoaConditionConfiguration, LoAUtil::getMaxAgeFromLoaConditionConfiguration));
             return loas;
         }
     }
 
-    private static Integer getLevelFromLoaConditionExecution(AuthenticatorConfigModel loaConditionConfig) {
+    public static Integer getLevelFromLoaConditionConfiguration(AuthenticatorConfigModel loaConditionConfig) {
         String levelAsStr = loaConditionConfig.getConfig().get(ConditionalLoaAuthenticator.LEVEL);
         try {
             // Check it can be cast to number
@@ -92,13 +92,20 @@ public class LoAUtil {
         }
     }
 
-    private static int getMaxAgeFromLoaConditionExecution(AuthenticatorConfigModel loaConditionConfig) {
-        String maxAgeAsStr = loaConditionConfig.getConfig().get(ConditionalLoaAuthenticator.MAX_AGE);
+    public static int getMaxAgeFromLoaConditionConfiguration(AuthenticatorConfigModel loaConditionConfig) {
         try {
-            // Check it can be cast to number
-            return Integer.parseInt(maxAgeAsStr);
+            return Integer.parseInt(loaConditionConfig.getConfig().get(ConditionalLoaAuthenticator.MAX_AGE));
         } catch (NullPointerException | NumberFormatException e) {
-            logger.warnf("Invalid max age '%s' configured for the configuration of LoA condition with alias '%s'. Level should be number.", maxAgeAsStr, loaConditionConfig.getAlias());
+            // Backwards compatibility with Keycloak 17
+            String storeLoaInUserSession = loaConditionConfig.getConfig().get(ConditionalLoaAuthenticator.STORE_IN_USER_SESSION);
+            if (storeLoaInUserSession != null) {
+                int maxAge = Boolean.parseBoolean(storeLoaInUserSession) ? ConditionalLoaAuthenticator.DEFAULT_MAX_AGE : 0;
+                logger.warnf("Max age not configured for condition '%s' in the authentication flow. Fallback to %d based on the configuration option %s from previous version",
+                        loaConditionConfig.getAlias(), maxAge, ConditionalLoaAuthenticator.STORE_IN_USER_SESSION);
+                return maxAge;
+            }
+
+            logger.errorf("Invalid max age configured for condition '%s'. Fallback to 0", loaConditionConfig.getAlias());
             return 0;
         }
     }

@@ -557,8 +557,6 @@ public class TokenManager {
             userSession.setNote(entry.getKey(), entry.getValue());
         }
 
-        // TODO:mposolda remove this
-        logger.infof("Moving loa %s from authSession to client session of client '%s", String.valueOf(new AcrStore(authSession).getLevelOfAuthenticationFromCurrentAuthentication()), client.getClientId());
         clientSession.setNote(Constants.LEVEL_OF_AUTHENTICATION, String.valueOf(new AcrStore(authSession).getLevelOfAuthenticationFromCurrentAuthentication()));
         clientSession.setTimestamp(Time.currentTime());
 

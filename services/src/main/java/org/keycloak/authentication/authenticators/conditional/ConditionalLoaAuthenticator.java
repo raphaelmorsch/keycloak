@@ -24,6 +24,7 @@ import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.AuthenticationFlowException;
 import org.keycloak.authentication.AuthenticatorUtil;
 import org.keycloak.authentication.authenticators.util.AcrStore;
+import org.keycloak.authentication.authenticators.util.LoAUtil;
 import org.keycloak.models.Constants;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
@@ -35,6 +36,10 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
     public static final String LEVEL = "loa-condition-level";
     public static final String MAX_AGE = "loa-max-age";
     public static final int DEFAULT_MAX_AGE = 36000; // 10 days
+
+    // Only for backwards compatibility with Keycloak 17
+    @Deprecated
+    public static final String STORE_IN_USER_SESSION = "loa-store-in-user-session";
 
     private static final Logger logger = Logger.getLogger(ConditionalLoaAuthenticator.class);
 
@@ -112,21 +117,12 @@ public class ConditionalLoaAuthenticator implements ConditionalAuthenticator, Au
     }
 
     private int getConfiguredLoa(AuthenticationFlowContext context) {
-        try {
-            return Integer.parseInt(context.getAuthenticatorConfig().getConfig().get(LEVEL));
-        } catch (NullPointerException | NumberFormatException e) {
-            logger.errorf("Invalid configuration '%s' when evaluating condition '%s'. Fallback to 0", LEVEL, context.getAuthenticatorConfig().getAlias());
-            return 0;
-        }
+        Integer level = LoAUtil.getLevelFromLoaConditionConfiguration(context.getAuthenticatorConfig());
+        return level==null ? 0 : level;
     }
 
     private int getMaxAge(AuthenticationFlowContext context) {
-        try {
-            return Integer.parseInt(context.getAuthenticatorConfig().getConfig().get(MAX_AGE));
-        } catch (NullPointerException | NumberFormatException e) {
-            logger.errorf("Invalid max age configured for condition '%s'. Fallback to 0", context.getAuthenticatorConfig().getAlias());
-            return 0;
-        }
+        return LoAUtil.getMaxAgeFromLoaConditionConfiguration(context.getAuthenticatorConfig());
     }
 
     @Override

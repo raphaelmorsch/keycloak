@@ -32,7 +32,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.keycloak.admin.client.resource.ClientResource;
-import org.keycloak.authentication.AuthenticationFlow;
 import org.keycloak.authentication.authenticators.browser.OTPFormAuthenticatorFactory;
 import org.keycloak.authentication.authenticators.browser.UsernamePasswordFormFactory;
 import org.keycloak.authentication.authenticators.conditional.ConditionalLoaAuthenticator;
@@ -562,6 +561,58 @@ public class LevelOfAssuranceFlowTest extends AbstractTestRealmKeycloakTest {
         openLoginFormWithAcrClaim(true, "silver");
         reauthenticateWithPassword();
         assertLoggedInWithAcr("silver");
+    }
+
+
+    // Backwards compatibility with Keycloak 17 when condition was configured with option "Store Loa in User Session"
+    @Test
+    public void testBackwardsCompatibilityForLoaConditionConfig() {
+        // Reconfigure to the format of Keycloak 17 with option "Store Loa in User Session"
+        BrowserFlowTest.revertFlows(testRealm(), "browser -  Level of Authentication FLow");
+        final String newFlowAlias = "browser -  Level of Authentication FLow";
+        testingClient.server(TEST_REALM_NAME).run(session -> FlowUtil.inCurrentRealm(session).copyBrowserFlow(newFlowAlias));
+        testingClient.server(TEST_REALM_NAME)
+                .run(session -> FlowUtil.inCurrentRealm(session).selectFlow(newFlowAlias).inForms(forms -> forms.clear()
+                        // level 1 authentication
+                        .addSubFlowExecution(Requirement.CONDITIONAL, subFlow -> {
+                            subFlow.addAuthenticatorExecution(Requirement.REQUIRED, ConditionalLoaAuthenticatorFactory.PROVIDER_ID,
+                                    config -> {
+                                        config.getConfig().put(ConditionalLoaAuthenticator.LEVEL, "1");
+                                        config.getConfig().put(ConditionalLoaAuthenticator.STORE_IN_USER_SESSION, "true");
+                                    });
+
+                            // username input for level 1
+                            subFlow.addAuthenticatorExecution(Requirement.REQUIRED, UsernamePasswordFormFactory.PROVIDER_ID);
+                        })
+
+                        // level 2 authentication
+                        .addSubFlowExecution(Requirement.CONDITIONAL, subFlow -> {
+                            subFlow.addAuthenticatorExecution(Requirement.REQUIRED, ConditionalLoaAuthenticatorFactory.PROVIDER_ID,
+                                    config -> {
+                                        config.getConfig().put(ConditionalLoaAuthenticator.LEVEL, "2");
+                                        config.getConfig().put(ConditionalLoaAuthenticator.STORE_IN_USER_SESSION, "false");
+                                    });
+
+                            // password required for level 2
+                            subFlow.addAuthenticatorExecution(Requirement.REQUIRED, OTPFormAuthenticatorFactory.PROVIDER_ID);
+                        })
+
+                        // level 3 authentication
+                        .addSubFlowExecution(Requirement.CONDITIONAL, subFlow -> {
+                            subFlow.addAuthenticatorExecution(Requirement.REQUIRED, ConditionalLoaAuthenticatorFactory.PROVIDER_ID,
+                                    config -> {
+                                        config.getConfig().put(ConditionalLoaAuthenticator.LEVEL, "3");
+                                        config.getConfig().put(ConditionalLoaAuthenticator.STORE_IN_USER_SESSION, "false");
+                                    });
+
+                            // simply push button for level 3
+                            subFlow.addAuthenticatorExecution(Requirement.REQUIRED, PushButtonAuthenticatorFactory.PROVIDER_ID);
+                        })
+
+                ).defineAsBrowserFlow());
+
+        // Tests that re-authentication always needed for levels 2 and 3
+        stepupAuthentication();
     }
 
 
