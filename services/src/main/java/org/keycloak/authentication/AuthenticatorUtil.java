@@ -19,7 +19,6 @@ package org.keycloak.authentication;
 
 import com.google.common.collect.Sets;
 import org.jboss.logging.Logger;
-import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.Constants;
 import org.keycloak.models.RealmModel;
@@ -48,15 +47,6 @@ public class AuthenticatorUtil {
 
     public static boolean isForcedReauthentication(AuthenticationSessionModel authSession) {
         return "true".equals(authSession.getAuthNote(FORCED_REAUTHENTICATION));
-    }
-
-    public static boolean isLevelOfAuthenticationForced(AuthenticationSessionModel authSession) {
-        return Boolean.parseBoolean(authSession.getClientNote(Constants.FORCE_LEVEL_OF_AUTHENTICATION));
-    }
-
-    public static int getCurrentLevelOfAuthentication(AuthenticatedClientSessionModel clientSession) {
-        String clientSessionLoaNote = clientSession.getNote(Constants.LEVEL_OF_AUTHENTICATION);
-        return clientSessionLoaNote == null ? Constants.NO_LOA : Integer.parseInt(clientSessionLoaNote);
     }
 
     /**

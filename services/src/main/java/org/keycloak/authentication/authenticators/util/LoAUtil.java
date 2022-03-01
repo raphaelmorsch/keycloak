@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Red Hat, Inc. and/or its affiliates
+ * Copyright 2022 Red Hat, Inc. and/or its affiliates
  * and other contributors as indicated by the @author tags.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +18,10 @@
 
 package org.keycloak.authentication.authenticators.util;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -32,6 +29,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticatorUtil;
 import org.keycloak.authentication.authenticators.conditional.ConditionalLoaAuthenticator;
 import org.keycloak.authentication.authenticators.conditional.ConditionalLoaAuthenticatorFactory;
+import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticatorConfigModel;
 import org.keycloak.models.Constants;
@@ -43,6 +41,15 @@ import org.keycloak.models.RealmModel;
 public class LoAUtil {
 
     private static final Logger logger = Logger.getLogger(LoAUtil.class);
+
+    /**
+     * @param clientSession
+     * @return current level from client session
+     */
+    public static int getCurrentLevelOfAuthentication(AuthenticatedClientSessionModel clientSession) {
+        String clientSessionLoaNote = clientSession.getNote(Constants.LEVEL_OF_AUTHENTICATION);
+        return clientSessionLoaNote == null ? Constants.NO_LOA : Integer.parseInt(clientSessionLoaNote);
+    }
 
 
     /**
@@ -60,6 +67,7 @@ public class LoAUtil {
             return Stream.concat(Stream.of(Constants.MINIMUM_LOA), loaMaxAges.keySet().stream());
         }
     }
+
 
     /**
      * @param realm
@@ -81,6 +89,7 @@ public class LoAUtil {
         }
     }
 
+
     public static Integer getLevelFromLoaConditionConfiguration(AuthenticatorConfigModel loaConditionConfig) {
         String levelAsStr = loaConditionConfig.getConfig().get(ConditionalLoaAuthenticator.LEVEL);
         try {
@@ -91,6 +100,7 @@ public class LoAUtil {
             return null;
         }
     }
+
 
     public static int getMaxAgeFromLoaConditionConfiguration(AuthenticatorConfigModel loaConditionConfig) {
         try {

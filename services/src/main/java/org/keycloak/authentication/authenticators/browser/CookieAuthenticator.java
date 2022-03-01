@@ -61,16 +61,15 @@ public class CookieAuthenticator implements Authenticator {
                 context.setForwardedInfoMessage(Messages.REAUTHENTICATE);
                 context.attempted();
             } else {
-                int previouslyAuthenticatedLevel = acrStore.getAuthenticatedLevelFromPreviousAuthentication();
+                int previouslyAuthenticatedLevel = acrStore.getHighestAuthenticatedLevelFromPreviousAuthentication();
                 if (acrStore.getRequestedLevelOfAuthentication() > previouslyAuthenticatedLevel) {
                     // Step-up authentication, we keep the loa from the existing user session.
                     // The cookie alone is not enough and other authentications must follow.
-                    // TODO:mposolda I am not sure if this method is strictly needed. Maybe we can just set remove this "if" entirely and let the conditions to do their
-                    acrStore.setLevelAuthenticatedToCurrentRequest(acrStore.getAuthenticatedLevelFromPreviousAuthentication());
+                    acrStore.setLevelAuthenticatedToCurrentRequest(previouslyAuthenticatedLevel);
                     context.attempted();
                 } else {
                     // Cookie only authentication
-                    acrStore.setLevelAuthenticatedToCurrentRequest(acrStore.getAuthenticatedLevelFromPreviousAuthentication());
+                    acrStore.setLevelAuthenticatedToCurrentRequest(previouslyAuthenticatedLevel);
                     authSession.setAuthNote(AuthenticationManager.SSO_AUTH, "true");
                     context.attachUserSession(authResult.getSession());
                     context.success();
