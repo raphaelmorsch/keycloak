@@ -46,6 +46,7 @@ import org.keycloak.representations.LogoutToken;
 import org.keycloak.representations.RefreshToken;
 import org.keycloak.services.CorsErrorResponseException;
 import org.keycloak.services.ErrorPage;
+import org.keycloak.services.ErrorPageException;
 import org.keycloak.services.ErrorResponseException;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.context.LogoutRequestContext;
@@ -128,19 +129,28 @@ public class LogoutEndpoint {
     @GET
     @NoCache
     public Response logout(@QueryParam(OIDCLoginProtocol.REDIRECT_URI_PARAM) String redirectUri, // deprecated
-                           @QueryParam("id_token_hint") String encodedIdToken,
+                           @QueryParam(OIDCLoginProtocol.ID_TOKEN_HINT) String encodedIdToken,
                            @QueryParam(OIDCLoginProtocol.POST_LOGOUT_REDIRECT_URI_PARAM) String postLogoutRedirectUri,
-                           @QueryParam("state") String state,
+                           @QueryParam(OIDCLoginProtocol.STATE_PARAM) String state,
+                           @QueryParam(OIDCLoginProtocol.UI_LOCALES_PARAM) String uiLocales, // TODO:mposolda implement ui_locales
                            @QueryParam("initiating_idp") String initiatingIdp) {
-        // id_token_hint is required with post_logout_redirect_uri
-        if(postLogoutRedirectUri != null && encodedIdToken == null) {
+        if (redirectUri != null) {
+            // TODO:mposolda implement backwards compatibility switch
             event.event(EventType.LOGOUT);
-            event.error(Errors.INVALID_TOKEN);
-            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.COULD_NOT_OBTAIN_TOKEN);
+            event.error(Errors.INVALID_REQUEST);
+            logger.warnf("Parameter 'redirect_uri' no longer supported. Please use 'post_logout_redirect_uri' with 'id_token_hint' for this endpoint. Alternatively enable backwards compatibility option.");
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_PARAMETER, OIDCLoginProtocol.REDIRECT_URI_PARAM);
+        }
+
+        if (postLogoutRedirectUri != null && encodedIdToken == null) {
+            event.event(EventType.LOGOUT);
+            event.error(Errors.INVALID_REQUEST);
+            logger.warnf("Parameter 'id_token_hint' is required when 'post_logout_redirect_uri' is used.");
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.MISSING_PARAMETER, OIDCLoginProtocol.ID_TOKEN_HINT);
         }
 
         IDToken idToken = null;
-        if (encodedIdToken != null && !encodedIdToken.equals("Doug")) {
+        if (encodedIdToken != null) {
             try {
                 idToken = tokenManager.verifyIDTokenSignature(session, encodedIdToken);
                 TokenVerifier.createWithoutSignature(idToken).tokenType(TokenUtil.TOKEN_TYPE_ID).verify();
