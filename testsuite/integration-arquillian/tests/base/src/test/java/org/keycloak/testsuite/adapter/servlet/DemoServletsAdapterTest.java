@@ -77,6 +77,9 @@ import org.keycloak.testsuite.adapter.page.TokenRefreshPage;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.AppServerContainer;
 import org.keycloak.testsuite.arquillian.annotation.DisableFeature;
+import org.keycloak.testsuite.pages.InfoPage;
+import org.keycloak.testsuite.pages.LogoutConfirmPage;
+import org.keycloak.testsuite.util.OAuthClient;
 import org.keycloak.testsuite.util.ServerURLs;
 import org.keycloak.testsuite.utils.arquillian.ContainerConstants;
 import org.keycloak.testsuite.auth.page.account.Applications;
@@ -160,6 +163,12 @@ public class DemoServletsAdapterTest extends AbstractServletsAdapterTest {
     @Page
     @JavascriptBrowser
     protected OIDCLogin jsDriverTestRealmLoginPage;
+
+    @Page
+    protected LogoutConfirmPage logoutConfirmPage;
+
+    @Page
+    protected InfoPage infoPage;
 
     @Page
     protected CustomerPortal customerPortal;
@@ -1092,16 +1101,24 @@ public class DemoServletsAdapterTest extends AbstractServletsAdapterTest {
                 .assertEvent();
 
 
-        driver.navigate().to(testRealmPage.getOIDCLogoutUrl() + "?post_logout_redirect_uri=" + customerPortal + "&id_token_hint=Doug");
+
+        String logoutUrl = oauth.realm("demo")
+                .getLogoutUrl()
+                .build();
+        driver.navigate().to(logoutUrl);
+
+        logoutConfirmPage.assertCurrent();
+        logoutConfirmPage.confirmLogout();
+        infoPage.assertCurrent();
+        driver.navigate().to(customerPortal.toString());
+
         assertCurrentUrlStartsWithLoginUrlOf(testRealmPage);
 
         assertEvents.expectLogout(null)
                 .realm(realm.getId())
                 .user(userId)
                 .session(AssertEvents.isUUID())
-                .detail(Details.REDIRECT_URI,
-                        org.hamcrest.Matchers.anyOf(org.hamcrest.Matchers.equalTo(customerPortal.getInjectedUrl().toString()),
-                                org.hamcrest.Matchers.equalTo(customerPortal.getInjectedUrl().toString() + "/")))
+                .removeDetail(Details.REDIRECT_URI)
                 .assertEvent();
 
         assertEvents.assertEmpty();

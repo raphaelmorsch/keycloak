@@ -149,6 +149,7 @@ public class AccountFormService extends AbstractSecuredLocalService {
     }
 
     public void init() {
+        session.getContext().setClient(client);
         eventStore = session.getProvider(EventStoreProvider.class);
 
         account = session.getProvider(AccountProvider.class).setRealm(realm).setUriInfo(session.getContext().getUri()).setHttpHeaders(headers);
@@ -188,6 +189,7 @@ public class AccountFormService extends AbstractSecuredLocalService {
 
             ClientSessionContext clientSessionCtx = DefaultClientSessionContext.fromClientSessionScopeParameter(auth.getClientSession(), session);
             IDToken idToken = new TokenManager().responseBuilder(realm, client, event, session, userSession, clientSessionCtx).accessToken(authResult.getToken()).generateIDToken().getIdToken();
+            idToken.issuedFor(client.getClientId());
             account.setIdTokenHint(session.tokens().encodeAndEncrypt(idToken));
         }
 

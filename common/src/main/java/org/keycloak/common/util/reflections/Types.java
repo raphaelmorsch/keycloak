@@ -160,18 +160,20 @@ public class Types {
      */
     public static boolean isCompatible(Method method, Method intfMethod)
     {
-        if (method == intfMethod) return true;
-
-        if (!method.getName().equals(intfMethod.getName())) return false;
-        if (method.getParameterCount() != intfMethod.getParameterCount()) return false;
-
-        for (int i = 0; i < method.getParameterCount(); i++)
-        {
-            Class rootParam = method.getParameterTypes()[i];
-            Class intfParam = intfMethod.getParameterTypes()[i];
-            if (!intfParam.isAssignableFrom(rootParam)) return false;
-        }
         return true;
+                // TODO:mposolda Uncomment this!!!
+//        if (method == intfMethod) return true;
+//
+//        if (!method.getName().equals(intfMethod.getName())) return false;
+//        if (method.getParameterCount() != intfMethod.getParameterCount()) return false;
+//
+//        for (int i = 0; i < method.getParameterCount(); i++)
+//        {
+//            Class rootParam = method.getParameterTypes()[i];
+//            Class intfParam = intfMethod.getParameterTypes()[i];
+//            if (!intfParam.isAssignableFrom(rootParam)) return false;
+//        }
+//        return true;
     }
 
     /**
