@@ -168,6 +168,7 @@ public class LogoutEndpoint {
             if (client != null) {
                 validatedUri = RedirectUtils.verifyRedirectUri(session, redirect, client);
             } else {
+                // TODO:mposolda make sure this is allowed just if the backwards compatibility switch is enabled!!!
                 validatedUri = RedirectUtils.verifyRealmRedirectUri(session, redirect);
             }
             if (validatedUri == null) {
@@ -199,8 +200,7 @@ public class LogoutEndpoint {
         if (authResult != null) {
             userSession = userSession != null ? userSession : authResult.getSession();
             return initiateBrowserLogout(userSession, redirect, state, initiatingIdp);
-        }
-        else if (userSession != null) {
+        } else if (userSession != null) {
             // identity cookie is missing but there's valid id_token_hint which matches session cookie => continue with browser logout
             if (idToken != null && idToken.getSessionState().equals(AuthenticationManager.getSessionIdFromSessionCookie(session))) {
                 return initiateBrowserLogout(userSession, redirect, state, initiatingIdp);
@@ -495,7 +495,7 @@ public class LogoutEndpoint {
 
     private void checkTokenIssuedAt(IDToken token, UserSessionModel userSession) throws OAuthErrorException {
         if (token.getIssuedAt() + 1 < userSession.getStarted()) {
-            throw new OAuthErrorException(OAuthErrorException.INVALID_GRANT, "Refresh toked issued before the user session started");
+            throw new OAuthErrorException(OAuthErrorException.INVALID_GRANT, "Toked issued before the user session started");
         }
     }
 
