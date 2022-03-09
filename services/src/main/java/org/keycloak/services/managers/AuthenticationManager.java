@@ -84,7 +84,6 @@ import org.keycloak.services.resources.LoginActionsService;
 import org.keycloak.services.resources.RealmsResource;
 import org.keycloak.services.util.AuthorizationContextUtil;
 import org.keycloak.services.util.CookieHelper;
-import org.keycloak.services.util.DefaultClientSessionContext;
 import org.keycloak.services.util.P3PHelper;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.CommonClientSessionModel;
@@ -313,9 +312,9 @@ public class AuthenticationManager {
         return backchannelLogoutResponse;
     }
 
-    private static AuthenticationSessionModel createOrJoinLogoutSession(KeycloakSession session, RealmModel realm, final AuthenticationSessionManager asm, UserSessionModel userSession, boolean browserCookie) {
+    public static AuthenticationSessionModel createOrJoinLogoutSession(KeycloakSession session, RealmModel realm, final AuthenticationSessionManager asm, UserSessionModel userSession, boolean browserCookie) {
         // Account management client is used as a placeholder
-        ClientModel client = SystemClientUtil.getSystemClient(realm);
+        ClientModel client = session.getContext().getClient() != null ? session.getContext().getClient() : SystemClientUtil.getSystemClient(realm);
 
         String authSessionId;
         RootAuthenticationSessionModel rootLogoutSession = null;
@@ -328,9 +327,11 @@ public class AuthenticationManager {
         if (rootLogoutSession != null) {
             authSessionId = rootLogoutSession.getId();
             browserCookiePresent = true;
-        } else {
+        } else if (userSession != null) {
             authSessionId = userSession.getId();
             rootLogoutSession = session.authenticationSessions().getRootAuthenticationSession(realm, authSessionId);
+        } else {
+            authSessionId = KeycloakModelUtils.generateId();
         }
 
         if (rootLogoutSession == null) {
@@ -666,7 +667,7 @@ public class AuthenticationManager {
                 .setEventBuilder(event);
 
 
-        Response response = protocol.finishLogout(userSession);
+        Response response = protocol.finishBrowserLogout(userSession);
 
         // It may be possible that there are some client sessions that are still in LOGGING_OUT state
         long numberOfUnconfirmedSessions = userSession.getAuthenticatedClientSessions().values().stream()

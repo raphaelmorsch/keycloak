@@ -52,6 +52,7 @@ import org.keycloak.services.managers.AuthenticationSessionManager;
 import org.keycloak.protocol.oidc.utils.OAuth2Code;
 import org.keycloak.protocol.oidc.utils.OAuth2CodeParser;
 import org.keycloak.services.managers.ResourceAdminManager;
+import org.keycloak.services.messages.Messages;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.util.TokenUtil;
 
@@ -351,7 +352,7 @@ public class OIDCLoginProtocol implements LoginProtocol {
     }
 
     @Override
-    public Response finishLogout(UserSessionModel userSession) {
+    public Response finishBrowserLogout(UserSessionModel userSession) {
         String redirectUri = userSession.getNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
         String state = userSession.getNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM);
         event.event(EventType.LOGOUT);
@@ -363,15 +364,20 @@ public class OIDCLoginProtocol implements LoginProtocol {
         if (frontChannelLogoutHandler != null) {
             return frontChannelLogoutHandler.renderLogoutPage(redirectUri);
         }
+
+        // TODO:mposolda make sure that this redirect is done just in case when "consentRequired=false"
         if (redirectUri != null) {
             UriBuilder uriBuilder = UriBuilder.fromUri(redirectUri);
             if (state != null)
                 uriBuilder.queryParam(STATE_PARAM, state);
             return Response.status(302).location(uriBuilder.build()).build();
         } else {
-            // TODO Empty content with ok makes no sense. Should it display a page? Or use noContent?
-            session.getProvider(SecurityHeadersProvider.class).options().allowEmptyContentType();
-            return Response.ok().build();
+            // TODO:mposolda test both cases with and without the link
+            LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class).setSuccess(Messages.SUCCESS_LOGOUT);
+            if (session.getContext().getClient() == null) {
+                loginForm.setAttribute(Constants.SKIP_LINK, true);
+            }
+            return loginForm.createInfoPage();
         }
     }
 
