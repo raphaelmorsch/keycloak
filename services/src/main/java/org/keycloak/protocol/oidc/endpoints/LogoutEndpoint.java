@@ -33,11 +33,15 @@ import org.keycloak.events.EventType;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.headers.SecurityHeadersProvider;
 import org.keycloak.locale.LocaleSelectorProvider;
+import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.Constants;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
 import org.keycloak.models.UserSessionModel;
+import org.keycloak.models.utils.SystemClientUtil;
+import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.BackchannelLogoutResponse;
 import org.keycloak.protocol.oidc.LogoutTokenValidationCode;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
@@ -55,11 +59,15 @@ import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.context.LogoutRequestContext;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.managers.AuthenticationSessionManager;
+import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.services.managers.UserSessionManager;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.services.resources.Cors;
+import org.keycloak.services.resources.LoginActionsService;
+import org.keycloak.services.resources.SessionCodeChecks;
 import org.keycloak.services.util.MtlsHoKTokenUtil;
 import org.keycloak.sessions.AuthenticationSessionModel;
+import org.keycloak.sessions.CommonClientSessionModel;
 import org.keycloak.util.TokenUtil;
 
 import javax.ws.rs.Consumes;
@@ -80,6 +88,7 @@ import java.util.stream.Stream;
 
 import static org.keycloak.models.UserSessionModel.State.LOGGED_OUT;
 import static org.keycloak.models.UserSessionModel.State.LOGGING_OUT;
+import static org.keycloak.services.resources.LoginActionsService.SESSION_CODE;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
@@ -217,6 +226,12 @@ public class LogoutEndpoint {
             LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class)
                     .setAuthenticationSession(authSession);
 
+            // Client was not sent in id_token_hint. We will display logout confirmation screen to the user in this case
+            if (client == null) {
+                clearAuthSessionAfterRequest = false;
+                return displayLogoutConfirmationScreen(loginForm, authSession, client);
+            }
+
             // authenticate identity cookie, but ignore an access token timeout as we're logging out anyways.
             AuthenticationManager.AuthResult authResult = AuthenticationManager.authenticateIdentityCookie(session, realm, false);
             if (authResult != null) {
@@ -260,6 +275,76 @@ public class LogoutEndpoint {
             }
         }
     }
+
+    private Response displayLogoutConfirmationScreen(LoginFormsProvider loginForm, AuthenticationSessionModel authSession, ClientModel client) {
+        ClientSessionCode<AuthenticationSessionModel> accessCode = new ClientSessionCode<>(session, realm, authSession);
+        accessCode.setAction(AuthenticatedClientSessionModel.Action.LOGGING_OUT.name());
+
+        if (client == null) {
+            loginForm.setAttribute(Constants.SKIP_LINK, true);
+        }
+
+        return loginForm
+                .setClientSessionCode(accessCode.getOrGenerateCode())
+                .createLogoutConfirmPage();
+    }
+
+    @Path("/logout-confirm")
+    @POST
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    public Response logoutConfirmAction() {
+        MultivaluedMap<String, String> formData = request.getDecodedFormParameters();
+        event.event(EventType.LOGOUT);
+        String code = formData.getFirst(SESSION_CODE);
+        String clientId = session.getContext().getUri().getQueryParameters().getFirst(Constants.CLIENT_ID);
+
+        // TODO:mposolda not 100% sure I need this variable. But maybe yes as links to "Back to client" should not be displayed in this case
+        boolean systemClientNeeded = false;
+        if (clientId == null) {
+            clientId = SystemClientUtil.getSystemClient(realm).getClientId();
+            systemClientNeeded = true;
+        }
+
+        String tabId = session.getContext().getUri().getQueryParameters().getFirst(Constants.TAB_ID);
+
+        // TODO:mposolda Probably trace message
+        logger.infof("Logout confirmed. sessionCode=%s, clientId=%s, tabId=%s", code, clientId, tabId);
+
+        // TODO:mposolda implement this
+        SessionCodeChecks checks = new SessionCodeChecks(realm, session.getContext().getUri(), request, clientConnection, session, event, null, code, null, clientId, tabId, null);
+        checks.initialVerify();
+        if (!checks.verifyActiveAndValidAction(AuthenticationSessionModel.Action.LOGGING_OUT.name(), ClientSessionCode.ActionType.LOGIN) || !formData.containsKey("confirmLogout")) {
+            // TODO:mposolda probably debug message
+            AuthenticationSessionModel authSession = checks.getAuthenticationSession();
+            logger.infof("Failed verification during logout. sessionCode=%s, clientId=%s, tabId=%s, authSessionId=%s",
+                    authSession != null ? authSession.getParentSession().getId() : "unknown");
+
+            // TODO:mposolda test this (test that when this is not used, account client URLs are shown, which is incorrect)
+            if (systemClientNeeded) {
+                // Cleanup system client URL to avoid links to account management
+                session.getProvider(LoginFormsProvider.class).setAttribute(Constants.SKIP_LINK, true);
+            }
+
+            return ErrorPage.error(session, authSession, Response.Status.BAD_REQUEST, Messages.FAILED_LOGOUT);
+        }
+
+        // TODO:mposolda trace and add more info
+        logger.infof("Logout code successfully verified");
+//        SessionCodeChecks checks = checksForCode(null, code, null, clientId, tabId, REQUIRED_ACTION);
+//        if (!checks.verifyRequiredAction(AuthenticationSessionModel.Action.OAUTH_GRANT.name())) {
+//            return checks.getResponse();
+//        }
+//
+//        AuthenticationSessionModel authSession = checks.getAuthenticationSession();
+//
+//        initLoginEvent(authSession);
+//
+//        UserModel user = authSession.getAuthenticatedUser();
+//        ClientModel client = authSession.getClient();
+
+        return null;
+    }
+
 
     /**
      * Logout a session via a non-browser invocation.  Similar signature to refresh token except there is no grant_type.

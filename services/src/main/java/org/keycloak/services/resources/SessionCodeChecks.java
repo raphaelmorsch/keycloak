@@ -201,6 +201,7 @@ public class SessionCodeChecks {
         if (authSession == null) {
             return false;
         }
+        session.getContext().setAuthenticationSession(authSession);
 
         // Check cached response from previous action request
         response = BrowserHistoryHelper.getInstance().loadSavedResponse(session, authSession);
@@ -270,15 +271,18 @@ public class SessionCodeChecks {
                 // In case that is replayed action, but sent to the same FORM like actual FORM, we just re-render the page
                 if (ObjectUtil.isEqualOrBothNull(execution, authSession.getAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION))) {
                     String latestFlowPath = authSession.getAuthNote(AuthenticationProcessor.CURRENT_FLOW_PATH);
-                    URI redirectUri = getLastExecutionUrl(latestFlowPath, execution, tabId);
+                    if (latestFlowPath != null) {
+                        URI redirectUri = getLastExecutionUrl(latestFlowPath, execution, tabId);
 
-                    logger.debugf("Invalid action code, but execution matches. So just redirecting to %s", redirectUri);
-                    authSession.setAuthNote(LoginActionsService.FORWARDED_ERROR_MESSAGE_NOTE, Messages.EXPIRED_ACTION);
-                    response = Response.status(Response.Status.FOUND).location(redirectUri).build();
-                } else {
-                    response = showPageExpired(authSession);
+                        logger.debugf("Invalid action code, but execution matches. So just redirecting to %s", redirectUri);
+                        authSession.setAuthNote(LoginActionsService.FORWARDED_ERROR_MESSAGE_NOTE, Messages.EXPIRED_ACTION);
+                        response = Response.status(Response.Status.FOUND).location(redirectUri).build();
+                        return false;
+                    }
                 }
+                response = showPageExpired(authSession);
                 return false;
+
             }
 
 
