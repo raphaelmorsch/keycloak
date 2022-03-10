@@ -154,6 +154,7 @@ public class AuthenticationManager {
     public static final String KEYCLOAK_SESSION_COOKIE = "KEYCLOAK_SESSION";
     public static final String KEYCLOAK_REMEMBER_ME = "KEYCLOAK_REMEMBER_ME";
     public static final String KEYCLOAK_LOGOUT_PROTOCOL = "KEYCLOAK_LOGOUT_PROTOCOL";
+    public static final String LOGOUT_INITIATING_IDP = "LOGOUT_INITIATING_IDP";
     private static final TokenTypeCheck VALIDATE_IDENTITY_COOKIE = new TokenTypeCheck(TokenUtil.TOKEN_TYPE_KEYCLOAK_ID);
 
     public static boolean isSessionValid(RealmModel realm, UserSessionModel userSession) {
@@ -594,8 +595,7 @@ public class AuthenticationManager {
                                          UserSessionModel userSession,
                                          UriInfo uriInfo,
                                          ClientConnection connection,
-                                         HttpHeaders headers,
-                                         String initiatingIdp) {
+                                         HttpHeaders headers) {
         if (userSession == null) return null;
 
         if (logger.isDebugEnabled()) {
@@ -616,6 +616,7 @@ public class AuthenticationManager {
         }
 
         String brokerId = userSession.getNote(Details.IDENTITY_PROVIDER);
+        String initiatingIdp = logoutAuthSession.getAuthNote(AuthenticationManager.LOGOUT_INITIATING_IDP);
         if (brokerId != null && !brokerId.equals(initiatingIdp)) {
             IdentityProvider identityProvider = IdentityBrokerService.getIdentityProvider(session, realm, brokerId);
             response = identityProvider.keycloakInitiatedBrowserLogout(session, userSession, uriInfo, realm);
@@ -667,7 +668,7 @@ public class AuthenticationManager {
                 .setEventBuilder(event);
 
 
-        Response response = protocol.finishBrowserLogout(userSession);
+        Response response = protocol.finishBrowserLogout(userSession, logoutAuthSession);
 
         // It may be possible that there are some client sessions that are still in LOGGING_OUT state
         long numberOfUnconfirmedSessions = userSession.getAuthenticatedClientSessions().values().stream()

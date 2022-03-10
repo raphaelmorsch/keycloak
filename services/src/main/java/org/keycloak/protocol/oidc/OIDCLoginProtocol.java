@@ -41,6 +41,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.protocol.LoginProtocol;
+import org.keycloak.protocol.oidc.endpoints.LogoutEndpoint;
 import org.keycloak.protocol.oidc.utils.OIDCRedirectUriBuilder;
 import org.keycloak.protocol.oidc.utils.OIDCResponseMode;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
@@ -74,7 +75,6 @@ public class OIDCLoginProtocol implements LoginProtocol {
 
     public static final String LOGIN_PROTOCOL = "openid-connect";
     public static final String STATE_PARAM = "state";
-    public static final String LOGOUT_STATE_PARAM = "OIDC_LOGOUT_STATE_PARAM";
     public static final String SCOPE_PARAM = "scope";
     public static final String CODE_PARAM = "code";
     public static final String RESPONSE_TYPE_PARAM = "response_type";
@@ -93,7 +93,11 @@ public class OIDCLoginProtocol implements LoginProtocol {
     public static final String ACR_PARAM = "acr_values";
     public static final String ID_TOKEN_HINT = "id_token_hint";
 
+    public static final String LOGOUT_STATE_PARAM = "OIDC_LOGOUT_STATE_PARAM";
     public static final String LOGOUT_REDIRECT_URI = "OIDC_LOGOUT_REDIRECT_URI";
+    public static final String LOGOUT_VALIDATED_ID_TOKEN_SESSION_STATE = "OIDC_LOGOUT_VALIDATED_ID_TOKEN_SESSION_STATE";
+    public static final String LOGOUT_VALIDATED_ID_TOKEN_ISSUED_AT = "OIDC_LOGOUT_VALIDATED_ID_TOKEN_ISSUED_AT";
+
     public static final String ISSUER = "iss";
 
     public static final String RESPONSE_MODE_PARAM = "response_mode";
@@ -352,10 +356,10 @@ public class OIDCLoginProtocol implements LoginProtocol {
     }
 
     @Override
-    public Response finishBrowserLogout(UserSessionModel userSession) {
-        String redirectUri = userSession.getNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
-        String state = userSession.getNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM);
+    public Response finishBrowserLogout(UserSessionModel userSession, AuthenticationSessionModel logoutSession) {
         event.event(EventType.LOGOUT);
+
+        String redirectUri = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
         if (redirectUri != null) {
             event.detail(Details.REDIRECT_URI, redirectUri);
         }
@@ -365,20 +369,7 @@ public class OIDCLoginProtocol implements LoginProtocol {
             return frontChannelLogoutHandler.renderLogoutPage(redirectUri);
         }
 
-        // TODO:mposolda make sure that this redirect is done just in case when "consentRequired=false"
-        if (redirectUri != null) {
-            UriBuilder uriBuilder = UriBuilder.fromUri(redirectUri);
-            if (state != null)
-                uriBuilder.queryParam(STATE_PARAM, state);
-            return Response.status(302).location(uriBuilder.build()).build();
-        } else {
-            // TODO:mposolda test both cases with and without the link
-            LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class).setSuccess(Messages.SUCCESS_LOGOUT);
-            if (session.getContext().getClient() == null) {
-                loginForm.setAttribute(Constants.SKIP_LINK, true);
-            }
-            return loginForm.createInfoPage();
-        }
+        return LogoutEndpoint.sendResponseAfterLogoutFinished(session, logoutSession);
     }
 
 

@@ -200,78 +200,43 @@ public class LogoutEndpoint {
             }
         }
 
-        UserSessionModel userSession = null;
-        if (idToken != null) {
-            try {
-                userSession = session.sessions().getUserSession(realm, idToken.getSessionState());
-
-                if (userSession != null) {
-                    checkTokenIssuedAt(idToken, userSession);
-                }
-            } catch (OAuthErrorException e) {
-                event.event(EventType.LOGOUT);
-                event.error(Errors.INVALID_TOKEN);
-                return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.SESSION_NOT_ACTIVE);
-            }
-        }
-
-        AuthenticationSessionModel authSession = AuthenticationManager.createOrJoinLogoutSession(session, realm, new AuthenticationSessionManager(session), userSession, true);
-        session.getContext().setAuthenticationSession(authSession);
+        // TODO:mposolda doublecheck that creating authSession here is really needed
+        AuthenticationSessionModel logoutSession = AuthenticationManager.createOrJoinLogoutSession(session, realm, new AuthenticationSessionManager(session), null, true);
+        session.getContext().setAuthenticationSession(logoutSession);
         boolean clearAuthSessionAfterRequest = true;
         try {
             if (uiLocales != null) {
                 // TODO:mposolda test UI locales for various screens
-                authSession.setAuthNote(LocaleSelectorProvider.CLIENT_REQUEST_LOCALE, uiLocales);
+                logoutSession.setAuthNote(LocaleSelectorProvider.CLIENT_REQUEST_LOCALE, uiLocales);
             }
+            if (validatedRedirectUri != null) {
+                logoutSession.setAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI, validatedRedirectUri);
+            }
+            if (state != null) {
+                logoutSession.setAuthNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM, state);
+            }
+            if (initiatingIdp != null) {
+                logoutSession.setAuthNote(AuthenticationManager.LOGOUT_INITIATING_IDP, initiatingIdp);
+            }
+            if (idToken != null) {
+                logoutSession.setAuthNote(OIDCLoginProtocol.LOGOUT_VALIDATED_ID_TOKEN_SESSION_STATE, idToken.getSessionState());
+            }
+
             LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class)
-                    .setAuthenticationSession(authSession);
+                    .setAuthenticationSession(logoutSession);
 
             // Client was not sent in id_token_hint. We will display logout confirmation screen to the user in this case
             if (client == null) {
                 clearAuthSessionAfterRequest = false;
-                return displayLogoutConfirmationScreen(loginForm, authSession, client);
+                return displayLogoutConfirmationScreen(loginForm, logoutSession, client);
             }
 
             // authenticate identity cookie, but ignore an access token timeout as we're logging out anyways.
-            AuthenticationManager.AuthResult authResult = AuthenticationManager.authenticateIdentityCookie(session, realm, false);
-            if (authResult != null) {
-                userSession = userSession != null ? userSession : authResult.getSession();
-                clearAuthSessionAfterRequest = false;
-                return initiateBrowserLogout(userSession, validatedRedirectUri, state, initiatingIdp);
-            } else if (userSession != null) {
-                // identity cookie is missing but there's valid id_token_hint which matches session cookie => continue with browser logout
-                if (idToken != null && idToken.getSessionState().equals(AuthenticationManager.getSessionIdFromSessionCookie(session))) {
-                    clearAuthSessionAfterRequest = false;
-                    return initiateBrowserLogout(userSession, validatedRedirectUri, state, initiatingIdp);
-                }
-                // check if the user session is not logging out or already logged out
-                // this might happen when a backChannelLogout is already initiated from AuthenticationManager.authenticateIdentityCookie
-                if (userSession.getState() != LOGGING_OUT && userSession.getState() != LOGGED_OUT) {
-                    clearAuthSessionAfterRequest = false;
-                    // non browser logout
-                    event.event(EventType.LOGOUT);
-                    AuthenticationManager.backchannelLogout(session, realm, userSession, session.getContext().getUri(), clientConnection, headers, true);
-                    event.user(userSession.getUser()).session(userSession).success();
-                }
-            }
-
-            // TODO:mposolda doublecheck that redirect is done just for clients with consentRequired=false
-            if (validatedRedirectUri != null) {
-                UriBuilder uriBuilder = UriBuilder.fromUri(validatedRedirectUri);
-                if (state != null) uriBuilder.queryParam(OIDCLoginProtocol.STATE_PARAM, state);
-                return Response.status(302).location(uriBuilder.build()).build();
-            } else {
-                // It can happen in some cases that user was already logged-out before.
-                // But we don't need to differentiate between these cases and rather always display same message to the user
-                loginForm.setSuccess(Messages.SUCCESS_LOGOUT);
-                if (client == null) {
-                    loginForm.setAttribute(Constants.SKIP_LINK, true);
-                }
-                return loginForm.createInfoPage();
-            }
+            return doBrowserLogout(logoutSession, clearAuthSessionAfterRequest);
         } finally {
+            // TODO:mposolda figure the cases related to "clearAuthSessionAfterRequest"
             if (clearAuthSessionAfterRequest) {
-                new AuthenticationSessionManager(session).removeAuthenticationSession(realm, authSession, true);
+                new AuthenticationSessionManager(session).removeAuthenticationSession(realm, logoutSession, true);
             }
         }
     }
@@ -328,21 +293,81 @@ public class LogoutEndpoint {
             return ErrorPage.error(session, authSession, Response.Status.BAD_REQUEST, Messages.FAILED_LOGOUT);
         }
 
-        // TODO:mposolda trace and add more info
+        // TODO:mposolda trace and add more info - this false is placeholder
         logger.infof("Logout code successfully verified");
-//        SessionCodeChecks checks = checksForCode(null, code, null, clientId, tabId, REQUIRED_ACTION);
-//        if (!checks.verifyRequiredAction(AuthenticationSessionModel.Action.OAUTH_GRANT.name())) {
-//            return checks.getResponse();
-//        }
-//
-//        AuthenticationSessionModel authSession = checks.getAuthenticationSession();
-//
-//        initLoginEvent(authSession);
-//
-//        UserModel user = authSession.getAuthenticatedUser();
-//        ClientModel client = authSession.getClient();
+        return doBrowserLogout(checks.getAuthenticationSession(), false);
+    }
 
-        return null;
+
+    // Method triggered after user eventually confirmed that he wants to logout and all other checks were performed
+    // TODO:mposolda figure the cases related to "clearAuthSessionAfterRequest" . Probably it doesn't makes sense to pass it as a parameter here
+    private Response doBrowserLogout(AuthenticationSessionModel logoutSession, boolean clearAuthSessionAfterRequest) {
+        LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class);
+
+        UserSessionModel userSession = null;
+        String userSessionIdFromIdToken = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_VALIDATED_ID_TOKEN_SESSION_STATE);
+        String idTokenIssuedAtStr = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_VALIDATED_ID_TOKEN_ISSUED_AT);
+        if (userSessionIdFromIdToken != null && idTokenIssuedAtStr != null) {
+            try {
+                userSession = session.sessions().getUserSession(realm, userSessionIdFromIdToken);
+
+                if (userSession != null) {
+                    Integer idTokenIssuedAt = Integer.parseInt(idTokenIssuedAtStr);
+                    checkTokenIssuedAt(idTokenIssuedAt, userSession);
+                }
+            } catch (OAuthErrorException e) {
+                event.event(EventType.LOGOUT);
+                event.error(Errors.INVALID_TOKEN);
+                return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.SESSION_NOT_ACTIVE);
+            }
+        }
+
+        // authenticate identity cookie, but ignore an access token timeout as we're logging out anyways.
+        AuthenticationManager.AuthResult authResult = AuthenticationManager.authenticateIdentityCookie(session, realm, false);
+        if (authResult != null) {
+            userSession = userSession != null ? userSession : authResult.getSession();
+            clearAuthSessionAfterRequest = false;
+            return initiateBrowserLogout(userSession);
+        } else if (userSession != null) {
+            // identity cookie is missing but there's valid id_token_hint which matches session cookie => continue with browser logout
+            if (userSessionIdFromIdToken.equals(AuthenticationManager.getSessionIdFromSessionCookie(session))) {
+                clearAuthSessionAfterRequest = false;
+                return initiateBrowserLogout(userSession);
+            }
+            // check if the user session is not logging out or already logged out
+            // this might happen when a backChannelLogout is already initiated from AuthenticationManager.authenticateIdentityCookie
+            if (userSession.getState() != LOGGING_OUT && userSession.getState() != LOGGED_OUT) {
+                clearAuthSessionAfterRequest = false;
+                // non browser logout
+                event.event(EventType.LOGOUT);
+                AuthenticationManager.backchannelLogout(session, realm, userSession, session.getContext().getUri(), clientConnection, headers, true);
+                event.user(userSession.getUser()).session(userSession).success();
+            }
+        }
+
+        return sendResponseAfterLogoutFinished(session, logoutSession);
+    }
+
+
+    // TODO:mposolda test both cases when this method is called
+    public static Response sendResponseAfterLogoutFinished(KeycloakSession session, AuthenticationSessionModel logoutSession) {
+        String redirectUri = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
+        String state = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM);
+
+        // TODO:mposolda make sure that this automatic redirect is done just in case when "consentRequired=false"
+        if (redirectUri != null) {
+            UriBuilder uriBuilder = UriBuilder.fromUri(redirectUri);
+            if (state != null)
+                uriBuilder.queryParam(OIDCLoginProtocol.STATE_PARAM, state);
+            return Response.status(302).location(uriBuilder.build()).build();
+        } else {
+            // TODO:mposolda test both cases with and without the link
+            LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class).setSuccess(Messages.SUCCESS_LOGOUT);
+            if (session.getContext().getClient() == null) {
+                loginForm.setAttribute(Constants.SKIP_LINK, true);
+            }
+            return loginForm.createInfoPage();
+        }
     }
 
 
@@ -399,7 +424,7 @@ public class LogoutEndpoint {
             }
 
             if (userSessionModel != null) {
-                checkTokenIssuedAt(token, userSessionModel);
+                checkTokenIssuedAt(token.getIssuedAt(), userSessionModel);
                 logout(userSessionModel, offline);
             }
         } catch (OAuthErrorException e) {
@@ -613,18 +638,16 @@ public class LogoutEndpoint {
         }
     }
 
-    private void checkTokenIssuedAt(IDToken token, UserSessionModel userSession) throws OAuthErrorException {
-        if (token.getIssuedAt() + 1 < userSession.getStarted()) {
+    private void checkTokenIssuedAt(int idTokenIssuedAt, UserSessionModel userSession) throws OAuthErrorException {
+        if (idTokenIssuedAt + 1 < userSession.getStarted()) {
             throw new OAuthErrorException(OAuthErrorException.INVALID_GRANT, "Toked issued before the user session started");
         }
     }
 
-    private Response initiateBrowserLogout(UserSessionModel userSession, String validatedRedirectUri, String state, String initiatingIdp ) {
-        if (validatedRedirectUri != null) userSession.setNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI, validatedRedirectUri);
-        if (state != null) userSession.setNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM, state);
+    private Response initiateBrowserLogout(UserSessionModel userSession) {
         userSession.setNote(AuthenticationManager.KEYCLOAK_LOGOUT_PROTOCOL, OIDCLoginProtocol.LOGIN_PROTOCOL);
         logger.debug("Initiating OIDC browser logout"); // TODO:mposolda more details to this debug message
-        Response response =  AuthenticationManager.browserLogout(session, realm, userSession, session.getContext().getUri(), clientConnection, headers, initiatingIdp);
+        Response response =  AuthenticationManager.browserLogout(session, realm, userSession, session.getContext().getUri(), clientConnection, headers);
         // TODO:mposolda more details to this debug message. Perhaps more details about the fact if logout failed or not as it is misleading to display "finishing" if logout is not yet finished
         // Maybe it is better to remove this message altogether or change signature of AuthenticationManager.browserLogout to return more context
         logger.debug("finishing OIDC browser logout");

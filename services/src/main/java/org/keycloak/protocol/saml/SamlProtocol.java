@@ -672,7 +672,7 @@ public class SamlProtocol implements LoginProtocol {
     }
 
     @Override
-    public Response finishBrowserLogout(UserSessionModel userSession) {
+    public Response finishBrowserLogout(UserSessionModel userSession, AuthenticationSessionModel authSession) {
         logger.debug("finishLogout");
         String logoutBindingUri = userSession.getNote(SAML_LOGOUT_BINDING_URI);
         if (logoutBindingUri == null) {
