@@ -24,11 +24,9 @@
             </form>
 
             <div id="kc-info-message">
-                <#if logoutConfirm.skipLink??>
+                <#if logoutConfirm.skipLink>
                 <#else>
-                    <#if pageRedirectUri?has_content>
-                        <p><a href="${pageRedirectUri}">${kcSanitize(msg("backToApplication"))?no_esc}</a></p>
-                    <#elseif (client.baseUrl)?has_content>
+                    <#if (client.baseUrl)?has_content>
                         <p><a href="${client.baseUrl}">${kcSanitize(msg("backToApplication"))?no_esc}</a></p>
                     </#if>
                 </#if>

@@ -224,13 +224,12 @@ public class LogoutEndpoint {
         LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class)
                 .setAuthenticationSession(logoutSession);
 
-        // Client was not sent in id_token_hint. We will display logout confirmation screen to the user in this case
-        if (client == null) {
+        // Client was not sent in id_token_hint or has consentRequired. We will display logout confirmation screen to the user in this case
+        if (client == null || client.isConsentRequired()) {
             return displayLogoutConfirmationScreen(loginForm, logoutSession, client);
+        } else {
+            return doBrowserLogout(logoutSession);
         }
-
-        // authenticate identity cookie, but ignore an access token timeout as we're logging out anyways.
-        return doBrowserLogout(logoutSession);
     }
 
     private Response displayLogoutConfirmationScreen(LoginFormsProvider loginForm, AuthenticationSessionModel authSession, ClientModel client) {
