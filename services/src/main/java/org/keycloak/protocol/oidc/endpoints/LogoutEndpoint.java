@@ -68,6 +68,7 @@ import org.keycloak.services.resources.SessionCodeChecks;
 import org.keycloak.services.util.MtlsHoKTokenUtil;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.CommonClientSessionModel;
+import org.keycloak.sessions.RootAuthenticationSessionModel;
 import org.keycloak.util.TokenUtil;
 
 import javax.ws.rs.Consumes;
@@ -203,42 +204,33 @@ public class LogoutEndpoint {
         // TODO:mposolda doublecheck that creating authSession here is really needed
         AuthenticationSessionModel logoutSession = AuthenticationManager.createOrJoinLogoutSession(session, realm, new AuthenticationSessionManager(session), null, true);
         session.getContext().setAuthenticationSession(logoutSession);
-        boolean clearAuthSessionAfterRequest = true;
-        try {
-            if (uiLocales != null) {
-                // TODO:mposolda test UI locales for various screens
-                logoutSession.setAuthNote(LocaleSelectorProvider.CLIENT_REQUEST_LOCALE, uiLocales);
-            }
-            if (validatedRedirectUri != null) {
-                logoutSession.setAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI, validatedRedirectUri);
-            }
-            if (state != null) {
-                logoutSession.setAuthNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM, state);
-            }
-            if (initiatingIdp != null) {
-                logoutSession.setAuthNote(AuthenticationManager.LOGOUT_INITIATING_IDP, initiatingIdp);
-            }
-            if (idToken != null) {
-                logoutSession.setAuthNote(OIDCLoginProtocol.LOGOUT_VALIDATED_ID_TOKEN_SESSION_STATE, idToken.getSessionState());
-            }
-
-            LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class)
-                    .setAuthenticationSession(logoutSession);
-
-            // Client was not sent in id_token_hint. We will display logout confirmation screen to the user in this case
-            if (client == null) {
-                clearAuthSessionAfterRequest = false;
-                return displayLogoutConfirmationScreen(loginForm, logoutSession, client);
-            }
-
-            // authenticate identity cookie, but ignore an access token timeout as we're logging out anyways.
-            return doBrowserLogout(logoutSession, clearAuthSessionAfterRequest);
-        } finally {
-            // TODO:mposolda figure the cases related to "clearAuthSessionAfterRequest"
-            if (clearAuthSessionAfterRequest) {
-                new AuthenticationSessionManager(session).removeAuthenticationSession(realm, logoutSession, true);
-            }
+        if (uiLocales != null) {
+            // TODO:mposolda test UI locales for various screens
+            logoutSession.setAuthNote(LocaleSelectorProvider.CLIENT_REQUEST_LOCALE, uiLocales);
         }
+        if (validatedRedirectUri != null) {
+            logoutSession.setAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI, validatedRedirectUri);
+        }
+        if (state != null) {
+            logoutSession.setAuthNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM, state);
+        }
+        if (initiatingIdp != null) {
+            logoutSession.setAuthNote(AuthenticationManager.LOGOUT_INITIATING_IDP, initiatingIdp);
+        }
+        if (idToken != null) {
+            logoutSession.setAuthNote(OIDCLoginProtocol.LOGOUT_VALIDATED_ID_TOKEN_SESSION_STATE, idToken.getSessionState());
+        }
+
+        LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class)
+                .setAuthenticationSession(logoutSession);
+
+        // Client was not sent in id_token_hint. We will display logout confirmation screen to the user in this case
+        if (client == null) {
+            return displayLogoutConfirmationScreen(loginForm, logoutSession, client);
+        }
+
+        // authenticate identity cookie, but ignore an access token timeout as we're logging out anyways.
+        return doBrowserLogout(logoutSession);
     }
 
     private Response displayLogoutConfirmationScreen(LoginFormsProvider loginForm, AuthenticationSessionModel authSession, ClientModel client) {
@@ -258,20 +250,11 @@ public class LogoutEndpoint {
         event.event(EventType.LOGOUT);
         String code = formData.getFirst(SESSION_CODE);
         String clientId = session.getContext().getUri().getQueryParameters().getFirst(Constants.CLIENT_ID);
-
-        // TODO:mposolda not 100% sure I need this variable. But maybe yes as links to "Back to client" should not be displayed in this case
-        boolean systemClientNeeded = false;
-        if (clientId == null) {
-            clientId = SystemClientUtil.getSystemClient(realm).getClientId();
-            systemClientNeeded = true;
-        }
-
         String tabId = session.getContext().getUri().getQueryParameters().getFirst(Constants.TAB_ID);
 
         // TODO:mposolda Probably trace message
         logger.infof("Logout confirmed. sessionCode=%s, clientId=%s, tabId=%s", code, clientId, tabId);
 
-        // TODO:mposolda implement this
         SessionCodeChecks checks = new SessionCodeChecks(realm, session.getContext().getUri(), request, clientConnection, session, event, null, code, null, clientId, tabId, null);
         checks.initialVerify();
         if (!checks.verifyActiveAndValidAction(AuthenticationSessionModel.Action.LOGGING_OUT.name(), ClientSessionCode.ActionType.LOGIN) || !formData.containsKey("confirmLogout")) {
@@ -289,19 +272,16 @@ public class LogoutEndpoint {
             return ErrorPage.error(session, logoutSession, Response.Status.BAD_REQUEST, Messages.FAILED_LOGOUT);
         }
 
-        // TODO:mposolda trace - this false is placeholder
+        // TODO:mposolda trace
         AuthenticationSessionModel logoutSession = checks.getAuthenticationSession();
         logger.infof("Logout code successfully verified. Logout Session is '%s'. Client ID is '%s'. System client: %s", logoutSession.getParentSession().getId(),
                 logoutSession.getClient().getClientId(), logoutSession.getAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT));
-        return doBrowserLogout(logoutSession, false);
+        return doBrowserLogout(logoutSession);
     }
 
 
     // Method triggered after user eventually confirmed that he wants to logout and all other checks were performed
-    // TODO:mposolda figure the cases related to "clearAuthSessionAfterRequest" . Probably it doesn't makes sense to pass it as a parameter here
-    private Response doBrowserLogout(AuthenticationSessionModel logoutSession, boolean clearAuthSessionAfterRequest) {
-        LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class);
-
+    private Response doBrowserLogout(AuthenticationSessionModel logoutSession) {
         UserSessionModel userSession = null;
         String userSessionIdFromIdToken = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_VALIDATED_ID_TOKEN_SESSION_STATE);
         String idTokenIssuedAtStr = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_VALIDATED_ID_TOKEN_ISSUED_AT);
@@ -324,18 +304,15 @@ public class LogoutEndpoint {
         AuthenticationManager.AuthResult authResult = AuthenticationManager.authenticateIdentityCookie(session, realm, false);
         if (authResult != null) {
             userSession = userSession != null ? userSession : authResult.getSession();
-            clearAuthSessionAfterRequest = false;
             return initiateBrowserLogout(userSession);
         } else if (userSession != null) {
             // identity cookie is missing but there's valid id_token_hint which matches session cookie => continue with browser logout
             if (userSessionIdFromIdToken.equals(AuthenticationManager.getSessionIdFromSessionCookie(session))) {
-                clearAuthSessionAfterRequest = false;
                 return initiateBrowserLogout(userSession);
             }
             // check if the user session is not logging out or already logged out
             // this might happen when a backChannelLogout is already initiated from AuthenticationManager.authenticateIdentityCookie
             if (userSession.getState() != LOGGING_OUT && userSession.getState() != LOGGED_OUT) {
-                clearAuthSessionAfterRequest = false;
                 // non browser logout
                 event.event(EventType.LOGOUT);
                 AuthenticationManager.backchannelLogout(session, realm, userSession, session.getContext().getUri(), clientConnection, headers, true);
@@ -343,6 +320,10 @@ public class LogoutEndpoint {
             }
         }
 
+        // TODO:mposolda trace
+        logger.infof("Removing logout session '%s' used during backchannel logout.", logoutSession.getParentSession().getId());
+        RootAuthenticationSessionModel rootAuthSession = logoutSession.getParentSession();
+        rootAuthSession.removeAuthenticationSessionByTabId(logoutSession.getTabId());
         return sendResponseAfterLogoutFinished(session, logoutSession);
     }
 
