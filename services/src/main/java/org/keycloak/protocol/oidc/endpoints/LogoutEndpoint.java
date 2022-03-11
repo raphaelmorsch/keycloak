@@ -245,10 +245,6 @@ public class LogoutEndpoint {
         ClientSessionCode<AuthenticationSessionModel> accessCode = new ClientSessionCode<>(session, realm, authSession);
         accessCode.setAction(AuthenticatedClientSessionModel.Action.LOGGING_OUT.name());
 
-        if (client == null) {
-            loginForm.setAttribute(Constants.SKIP_LINK, true);
-        }
-
         return loginForm
                 .setClientSessionCode(accessCode.getOrGenerateCode())
                 .createLogoutConfirmPage();
@@ -280,22 +276,24 @@ public class LogoutEndpoint {
         checks.initialVerify();
         if (!checks.verifyActiveAndValidAction(AuthenticationSessionModel.Action.LOGGING_OUT.name(), ClientSessionCode.ActionType.LOGIN) || !formData.containsKey("confirmLogout")) {
             // TODO:mposolda probably debug message
-            AuthenticationSessionModel authSession = checks.getAuthenticationSession();
-            logger.infof("Failed verification during logout. sessionCode=%s, clientId=%s, tabId=%s, authSessionId=%s",
-                    authSession != null ? authSession.getParentSession().getId() : "unknown");
+            AuthenticationSessionModel logoutSession = checks.getAuthenticationSession();
+            logger.infof("Failed verification during logout. sessionCode=%s, clientId=%s, tabId=%s, logoutSessionId=%s",
+                    logoutSession != null ? logoutSession.getParentSession().getId() : "unknown");
 
             // TODO:mposolda test this (test that when this is not used, account client URLs are shown, which is incorrect)
-            if (systemClientNeeded) {
+            if (logoutSession == null || "true".equals(logoutSession.getAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT))) {
                 // Cleanup system client URL to avoid links to account management
                 session.getProvider(LoginFormsProvider.class).setAttribute(Constants.SKIP_LINK, true);
             }
 
-            return ErrorPage.error(session, authSession, Response.Status.BAD_REQUEST, Messages.FAILED_LOGOUT);
+            return ErrorPage.error(session, logoutSession, Response.Status.BAD_REQUEST, Messages.FAILED_LOGOUT);
         }
 
-        // TODO:mposolda trace and add more info - this false is placeholder
-        logger.infof("Logout code successfully verified");
-        return doBrowserLogout(checks.getAuthenticationSession(), false);
+        // TODO:mposolda trace - this false is placeholder
+        AuthenticationSessionModel logoutSession = checks.getAuthenticationSession();
+        logger.infof("Logout code successfully verified. Logout Session is '%s'. Client ID is '%s'. System client: %s", logoutSession.getParentSession().getId(),
+                logoutSession.getClient().getClientId(), logoutSession.getAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT));
+        return doBrowserLogout(logoutSession, false);
     }
 
 
@@ -351,23 +349,26 @@ public class LogoutEndpoint {
 
     // TODO:mposolda test both cases when this method is called
     public static Response sendResponseAfterLogoutFinished(KeycloakSession session, AuthenticationSessionModel logoutSession) {
-        String redirectUri = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
-        String state = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM);
+        boolean usedSystemClient = "true".equals(logoutSession.getAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT));
+        if (!usedSystemClient) {
+            String redirectUri = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
+            String state = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM);
 
-        // TODO:mposolda make sure that this automatic redirect is done just in case when "consentRequired=false"
-        if (redirectUri != null) {
-            UriBuilder uriBuilder = UriBuilder.fromUri(redirectUri);
-            if (state != null)
-                uriBuilder.queryParam(OIDCLoginProtocol.STATE_PARAM, state);
-            return Response.status(302).location(uriBuilder.build()).build();
-        } else {
-            // TODO:mposolda test both cases with and without the link
-            LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class).setSuccess(Messages.SUCCESS_LOGOUT);
-            if (session.getContext().getClient() == null) {
-                loginForm.setAttribute(Constants.SKIP_LINK, true);
+            // TODO:mposolda make sure that this automatic redirect is done just in case when "consentRequired=false"
+            if (redirectUri != null) {
+                UriBuilder uriBuilder = UriBuilder.fromUri(redirectUri);
+                if (state != null)
+                    uriBuilder.queryParam(OIDCLoginProtocol.STATE_PARAM, state);
+                return Response.status(302).location(uriBuilder.build()).build();
             }
-            return loginForm.createInfoPage();
         }
+
+        // TODO:mposolda test both cases with and without the link
+        LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class).setSuccess(Messages.SUCCESS_LOGOUT);
+        if (usedSystemClient) {
+            loginForm.setAttribute(Constants.SKIP_LINK, true);
+        }
+        return loginForm.createInfoPage();
     }
 
 

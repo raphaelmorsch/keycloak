@@ -18,18 +18,28 @@
 
 package org.keycloak.forms.login.freemarker.model;
 
+import org.keycloak.services.managers.AuthenticationManager;
+import org.keycloak.services.managers.AuthenticationSessionManager;
+import org.keycloak.sessions.AuthenticationSessionModel;
+
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
 public class LogoutConfirmBean {
 
     private final String code;
+    private final AuthenticationSessionModel logoutSession;
 
-    public LogoutConfirmBean(String code) {
+    public LogoutConfirmBean(String code, AuthenticationSessionModel logoutSession) {
         this.code = code;
+        this.logoutSession = logoutSession;
     }
 
     public String getCode() {
         return code;
+    }
+
+    public boolean isSkipLink() {
+        return logoutSession == null || "true".equals(logoutSession.getAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT));
     }
 }

@@ -286,7 +286,7 @@ public class FreeMarkerLoginFormsProvider implements LoginFormsProvider {
                 attributes.put("logout", new FrontChannelLogoutBean(session));
                 break;
             case LOGOUT_CONFIRM:
-                attributes.put("logoutConfirm", new LogoutConfirmBean(accessCode));
+                attributes.put("logoutConfirm", new LogoutConfirmBean(accessCode, authenticationSession));
                 break;
         }
 
