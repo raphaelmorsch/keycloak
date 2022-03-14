@@ -155,8 +155,6 @@ public class AuthenticationManager {
     public static final String KEYCLOAK_REMEMBER_ME = "KEYCLOAK_REMEMBER_ME";
 
     // ** Logout related notes **/
-    // Flag in the logout session to specify the "logoutSession" inside root authentication session
-    private static final String LOGOUT_SESSION = "LOGOUT_SESSION";
     // Flag in the logout session to specify if we use "system" client or real client
     public static final String LOGOUT_WITH_SYSTEM_CLIENT = "LOGOUT_WITH_SYSTEM_CLIENT";
     // Protocol of the client, which initiated logout
@@ -324,8 +322,7 @@ public class AuthenticationManager {
 
     public static AuthenticationSessionModel createOrJoinLogoutSession(KeycloakSession session, RealmModel realm, final AuthenticationSessionManager asm, UserSessionModel userSession, boolean browserCookie) {
         AuthenticationSessionModel logoutSession = session.getContext().getAuthenticationSession();
-        // TODO:mposolda makes sure these checks are prettier (EG. util method?)
-        if (logoutSession != null && "true".equals(logoutSession.getAuthNote(AuthenticationManager.LOGOUT_SESSION))) {
+        if (logoutSession != null && AuthenticationSessionModel.Action.LOGGING_OUT.name().equals(logoutSession.getAction())) {
             return logoutSession;
         }
 
@@ -366,10 +363,9 @@ public class AuthenticationManager {
         }
 
         // See if we have logoutAuthSession inside current rootSession. Create new if not
-        Optional<AuthenticationSessionModel> found = rootLogoutSession.getAuthenticationSessions().values().stream().filter((AuthenticationSessionModel authSession) -> {
-            return "true".equals(authSession.getAuthNote(AuthenticationManager.LOGOUT_SESSION));
-
-        }).findFirst();
+        Optional<AuthenticationSessionModel> found = rootLogoutSession.getAuthenticationSessions().values().stream()
+                .filter( authSession -> AuthenticationSessionModel.Action.LOGGING_OUT.name().equals(authSession.getAction()))
+                .findFirst();
 
         AuthenticationSessionModel logoutAuthSession;
         if (found.isPresent()) {
@@ -379,8 +375,8 @@ public class AuthenticationManager {
                     "true".equals(logoutAuthSession.getAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT)), rootLogoutSession.getId());
         } else {
             logoutAuthSession = rootLogoutSession.createAuthenticationSession(client);
-            logoutAuthSession.setAuthNote(AuthenticationManager.LOGOUT_SESSION, "true");
             logoutAuthSession.setAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT, String.valueOf(useSystemClient));
+            logoutAuthSession.setAction(AuthenticationSessionModel.Action.LOGGING_OUT.name());
             // TODO:mposolda debug or trace
             logger.infof("Creating logout session for client '%s'. System client=%s, Authentication session id: %s", client.getClientId(), useSystemClient, rootLogoutSession.getId());
         }
@@ -388,7 +384,6 @@ public class AuthenticationManager {
         client = logoutAuthSession.getClient();
         session.getContext().setClient(client);
 
-        logoutAuthSession.setAction(AuthenticationSessionModel.Action.LOGGING_OUT.name());
         return logoutAuthSession;
     }
 

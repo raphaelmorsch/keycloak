@@ -45,6 +45,7 @@ import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.BackchannelLogoutResponse;
 import org.keycloak.protocol.oidc.LogoutTokenValidationCode;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
+import org.keycloak.protocol.oidc.OIDCProviderConfig;
 import org.keycloak.protocol.oidc.TokenManager;
 import org.keycloak.protocol.oidc.utils.AuthorizeClientUtil;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
@@ -109,19 +110,21 @@ public class LogoutEndpoint {
     @Context
     private HttpHeaders headers;
 
-    private TokenManager tokenManager;
-    private RealmModel realm;
-    private EventBuilder event;
+    private final TokenManager tokenManager;
+    private final RealmModel realm;
+    private final EventBuilder event;
+    private final OIDCProviderConfig providerConfig;
 
     // When enabled we cannot search offline sessions by brokerSessionId. We need to search by federated userId and then filter by brokerSessionId.
-    private boolean offlineSessionsLazyLoadingEnabled;
+    private final boolean offlineSessionsLazyLoadingEnabled;
 
     private Cors cors;
 
-    public LogoutEndpoint(TokenManager tokenManager, RealmModel realm, EventBuilder event) {
+    public LogoutEndpoint(TokenManager tokenManager, RealmModel realm, EventBuilder event, OIDCProviderConfig providerConfig) {
         this.tokenManager = tokenManager;
         this.realm = realm;
         this.event = event;
+        this.providerConfig = providerConfig;
         this.offlineSessionsLazyLoadingEnabled = !Config.scope("userSessions").scope("infinispan").getBoolean("preloadOfflineSessionsFromDatabase", false);
     }
 
@@ -152,11 +155,10 @@ public class LogoutEndpoint {
                            @QueryParam("initiating_idp") String initiatingIdp) {
 
 
-        if (deprecatedRedirectUri != null) {
-            // TODO:mposolda implement backwards compatibility switch
+        if (deprecatedRedirectUri != null && !providerConfig.isLegacyLogoutRedirectUri()) {
             event.event(EventType.LOGOUT);
             event.error(Errors.INVALID_REQUEST);
-            logger.warnf("Parameter 'redirect_uri' no longer supported. Please use 'post_logout_redirect_uri' with 'id_token_hint' for this endpoint. Alternatively enable backwards compatibility option.");
+            logger.warnf("Parameter 'redirect_uri' no longer supported. Please use 'post_logout_redirect_uri' with 'id_token_hint' for this endpoint. Alternatively enable backwards compatibility option 'legacy-logout-redirect-uri' of oidc login protocol in the server configuration.");
             return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_PARAMETER, OIDCLoginProtocol.REDIRECT_URI_PARAM);
         }
 
@@ -185,11 +187,10 @@ public class LogoutEndpoint {
         }
 
         String validatedRedirectUri = null;
-        if (postLogoutRedirectUri != null) {
+        if (postLogoutRedirectUri != null || deprecatedRedirectUri != null) {
             if (client != null) {
                 validatedRedirectUri = RedirectUtils.verifyRedirectUri(session, postLogoutRedirectUri, client);
-            } else {
-                // TODO:mposolda make sure this is allowed just if the backwards compatibility switch is enabled!!!
+            } else if (providerConfig.isLegacyLogoutRedirectUri()) {
                 validatedRedirectUri = RedirectUtils.verifyRealmRedirectUri(session, deprecatedRedirectUri);
             }
 
@@ -329,22 +330,18 @@ public class LogoutEndpoint {
 
     // TODO:mposolda test both cases when this method is called
     public static Response sendResponseAfterLogoutFinished(KeycloakSession session, AuthenticationSessionModel logoutSession) {
-        boolean usedSystemClient = "true".equals(logoutSession.getAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT));
-        if (!usedSystemClient) {
-            String redirectUri = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
-            String state = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM);
-
-            // TODO:mposolda make sure that this automatic redirect is done just in case when "consentRequired=false"
-            if (redirectUri != null) {
-                UriBuilder uriBuilder = UriBuilder.fromUri(redirectUri);
-                if (state != null)
-                    uriBuilder.queryParam(OIDCLoginProtocol.STATE_PARAM, state);
-                return Response.status(302).location(uriBuilder.build()).build();
-            }
+        String redirectUri = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
+        String state = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM);
+        if (redirectUri != null) {
+            UriBuilder uriBuilder = UriBuilder.fromUri(redirectUri);
+            if (state != null)
+                uriBuilder.queryParam(OIDCLoginProtocol.STATE_PARAM, state);
+            return Response.status(302).location(uriBuilder.build()).build();
         }
 
         // TODO:mposolda test both cases with and without the link
         LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class).setSuccess(Messages.SUCCESS_LOGOUT);
+        boolean usedSystemClient = "true".equals(logoutSession.getAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT));
         if (usedSystemClient) {
             loginForm.setAttribute(Constants.SKIP_LINK, true);
         }
