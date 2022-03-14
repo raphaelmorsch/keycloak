@@ -226,13 +226,6 @@ public class OAuthClient {
             return this;
         }
 
-        public LogoutUrlBuilder sessionState(String sessionState) {
-            if (sessionState != null) {
-                b.queryParam("session_state", sessionState);
-            }
-            return this;
-        }
-
         public String build() {
             return b.build(realm).toString();
         }

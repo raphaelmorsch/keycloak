@@ -188,6 +188,7 @@ public class AccountFormService extends AbstractSecuredLocalService {
 
             ClientSessionContext clientSessionCtx = DefaultClientSessionContext.fromClientSessionScopeParameter(auth.getClientSession(), session);
             IDToken idToken = new TokenManager().responseBuilder(realm, client, event, session, userSession, clientSessionCtx).accessToken(authResult.getToken()).generateIDToken().getIdToken();
+            idToken.issuedFor(client.getClientId());
             account.setIdTokenHint(session.tokens().encodeAndEncrypt(idToken));
         }
 

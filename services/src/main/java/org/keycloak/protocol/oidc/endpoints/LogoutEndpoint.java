@@ -220,6 +220,7 @@ public class LogoutEndpoint {
         }
         if (idToken != null) {
             logoutSession.setAuthNote(OIDCLoginProtocol.LOGOUT_VALIDATED_ID_TOKEN_SESSION_STATE, idToken.getSessionState());
+            logoutSession.setAuthNote(OIDCLoginProtocol.LOGOUT_VALIDATED_ID_TOKEN_ISSUED_AT, String.valueOf(idToken.getIat()));
         }
 
         LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class)
@@ -316,6 +317,11 @@ public class LogoutEndpoint {
                 // non browser logout
                 event.event(EventType.LOGOUT);
                 AuthenticationManager.backchannelLogout(session, realm, userSession, session.getContext().getUri(), clientConnection, headers, true);
+
+                String redirectUri = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
+                if (redirectUri != null) {
+                    event.detail(Details.REDIRECT_URI, redirectUri);
+                }
                 event.user(userSession.getUser()).session(userSession).success();
             }
         }
