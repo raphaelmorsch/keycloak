@@ -34,17 +34,14 @@ import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.jose.jws.JWSInput;
 import org.keycloak.models.Constants;
-import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.representations.IDToken;
 import org.keycloak.representations.LogoutToken;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
-import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.testsuite.Assert;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
-import org.keycloak.common.util.Retry;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.DisableFeature;
 import org.keycloak.testsuite.pages.AppPage;
@@ -55,6 +52,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
 
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 
@@ -78,7 +76,9 @@ import org.keycloak.testsuite.util.ServerURLs;
 import org.keycloak.testsuite.util.WaitUtils;
 
 /**
- * Test for OIDC RP-Initiated Logout (Logout with the usage of browser)
+ * Test for OIDC RP-Initiated Logout - https://openid.net/specs/openid-connect-rpinitiated-1_0.html
+ *
+ * Logout request is sent from the user's browser in this scenario
  *
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
  * @author Stan Silvert ssilvert@redhat.com (C) 2016 Red Hat Inc.
@@ -103,12 +103,15 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
     @Page
     private ErrorPage errorPage;
 
+    private String APP_REDIRECT_URI;
+
     @Override
     public void configureTestRealm(RealmRepresentation testRealm) {
     }
 
     @Before
     public void clientConfiguration() {
+        APP_REDIRECT_URI = oauth.APP_AUTH_ROOT;
         ClientManager.realm(adminClient.realm("test")).clientId("test-app").directAccessGrant(true);
     }
 
@@ -117,7 +120,7 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         OAuthClient.AccessTokenResponse tokenResponse = loginUser();
         String sessionId = tokenResponse.getSessionState();
 
-        String redirectUri = oauth.APP_AUTH_ROOT + "?logout";
+        String redirectUri = APP_REDIRECT_URI + "?logout";
 
         String idTokenString = tokenResponse.getIdToken();
 
@@ -125,6 +128,7 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         driver.navigate().to(logoutUrl);
 
         events.expectLogout(sessionId).detail(Details.REDIRECT_URI, redirectUri).assertEvent();
+        Assert.assertThat(false, is(isSessionActive(sessionId)));
 
         assertCurrentUrlEquals(redirectUri);
 
@@ -137,6 +141,7 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
 
         driver.navigate().to(logoutUrl);
         events.expectLogout(sessionId2).detail(Details.REDIRECT_URI, redirectUri).assertEvent();
+        Assert.assertThat(false, is(isSessionActive(sessionId2)));
     }
 
 
@@ -167,6 +172,9 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
             assertCurrentUrlDoesntStartWith(invalidRedirectUri);
             errorPage.assertCurrent();
             Assert.assertEquals("Invalid redirect uri", errorPage.getError());
+
+            // Session still active
+            Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));
         } finally {
             // Revert
             clientRes.update(clientRepOrig);
@@ -185,12 +193,13 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
             // expire online user session
             setTimeOffset(9999);
 
-            String logoutUrl = oauth.getLogoutUrl().postLogoutRedirectUri(oauth.APP_AUTH_ROOT).idTokenHint(idTokenString).build();
+            String logoutUrl = oauth.getLogoutUrl().postLogoutRedirectUri(APP_REDIRECT_URI).idTokenHint(idTokenString).build();
             driver.navigate().to(logoutUrl);
 
             // should not throw an internal server error. But no logout event is sent as nothing was logged-out
             appPage.assertCurrent();
             events.assertEmpty();
+            Assert.assertThat(false, is(isSessionActive(tokenResponse.getSessionState())));
 
             // check if the back channel logout succeeded
             driver.navigate().to(oauth.getLoginFormUrl());
@@ -199,38 +208,6 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         }
     }
 
-    @Test
-    public void logoutMultipleSessions() throws IOException {
-        // Login session 1
-        OAuthClient.AccessTokenResponse tokenResponse = loginUser();
-        String idTokenString = tokenResponse.getIdToken();
-        String sessionId = tokenResponse.getSessionState();
-
-        driver.navigate().to(oauth.getLogoutUrl().postLogoutRedirectUri(oauth.APP_AUTH_ROOT).idTokenHint(idTokenString).build());
-        events.expectLogout(sessionId).detail(Details.REDIRECT_URI, oauth.APP_AUTH_ROOT).assertEvent();
-
-         // Check session 1 not logged-in
-        oauth.openLoginForm();
-        loginPage.assertCurrent();
-
-        // Login session 2
-        oauth.doLogin("test-user@localhost", "password");
-        String sessionId2 = events.expectLogin().assertEvent().getSessionId();
-        assertNotEquals(sessionId, sessionId2);
-
-        // Check session 2 logged-in
-        oauth.openLoginForm();
-        events.expectLogin().session(sessionId2).removeDetail(Details.USERNAME).assertEvent();
-
-        //  Logout session 2 by redirect
-        String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
-        tokenResponse = oauth.doAccessTokenRequest(code, "password");
-        events.poll();
-        idTokenString = tokenResponse.getIdToken();
-
-        driver.navigate().to(oauth.getLogoutUrl().postLogoutRedirectUri(oauth.APP_AUTH_ROOT).idTokenHint(idTokenString).build());
-        events.expectLogout(sessionId2).detail(Details.REDIRECT_URI, oauth.APP_AUTH_ROOT).assertEvent();
-    }
 
     //KEYCLOAK-2741
     @Test
@@ -282,12 +259,13 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         String idTokenString = tokenResponse.getIdToken();
 
         adminClient.realm("test").logoutAll();
+        Assert.assertThat(false, is(isSessionActive(sessionId)));
 
         // Try logout even if user already logged-out by admin. Should redirect back to the application, but no logout-event should be triggered
-        String logoutUrl = oauth.getLogoutUrl().postLogoutRedirectUri(oauth.APP_AUTH_ROOT).idTokenHint(idTokenString).build();
+        String logoutUrl = oauth.getLogoutUrl().postLogoutRedirectUri(APP_REDIRECT_URI).idTokenHint(idTokenString).build();
         driver.navigate().to(logoutUrl);
         events.assertEmpty();
-        assertCurrentUrlEquals(oauth.APP_AUTH_ROOT);
+        assertCurrentUrlEquals(APP_REDIRECT_URI);
 
         loginPage.open();
         loginPage.login("test-user@localhost", "password");
@@ -297,7 +275,8 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         assertNotEquals(sessionId, sessionId2);
 
         driver.navigate().to(logoutUrl);
-        events.expectLogout(sessionId2).detail(Details.REDIRECT_URI, oauth.APP_AUTH_ROOT).assertEvent();
+        events.expectLogout(sessionId2).detail(Details.REDIRECT_URI, APP_REDIRECT_URI).assertEvent();
+        Assert.assertThat(false, is(isSessionActive(sessionId2)));
     }
 
 
@@ -319,11 +298,12 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         OAuthClient.AccessTokenResponse tokenResponse = loginUser();
         String accessToken = tokenResponse.getAccessToken();
 
-        events.clear();
-
-        driver.navigate().to(oauth.getLogoutUrl().postLogoutRedirectUri(oauth.APP_AUTH_ROOT).idTokenHint(accessToken).build());
+        driver.navigate().to(oauth.getLogoutUrl().postLogoutRedirectUri(APP_REDIRECT_URI).idTokenHint(accessToken).build());
 
         events.expectLogoutError(OAuthErrorException.INVALID_TOKEN).assertEvent();
+
+        // Session still authenticated
+        Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));
     }
 
     @Test
@@ -336,15 +316,17 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
 
         String logoutUrl = oauth.getLogoutUrl()
                 .idTokenHint(idTokenString)
-                .postLogoutRedirectUri(oauth.APP_AUTH_ROOT)
+                .postLogoutRedirectUri(APP_REDIRECT_URI)
                 .build();
 
         try (CloseableHttpClient c = HttpClientBuilder.create().disableRedirectHandling().build();
              CloseableHttpResponse response = c.execute(new HttpGet(logoutUrl))) {
             assertThat(response, Matchers.statusCodeIsHC(Response.Status.FOUND));
-            assertThat(response.getFirstHeader(HttpHeaders.LOCATION).getValue(), is(oauth.APP_AUTH_ROOT));
+            assertThat(response.getFirstHeader(HttpHeaders.LOCATION).getValue(), is(APP_REDIRECT_URI));
         }
         events.assertEmpty();
+
+        Assert.assertThat(false, is(isSessionActive(tokenResponse.getSessionState())));
     }
 
     @Test
@@ -357,21 +339,38 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         // Logout with HTTP client. Logout should succeed with user already logged out, see KEYCLOAK-3399. But no logout event should be present
         String logoutUrl = oauth.getLogoutUrl()
                 .idTokenHint(idTokenString)
-                .postLogoutRedirectUri(oauth.APP_AUTH_ROOT)
+                .postLogoutRedirectUri(APP_REDIRECT_URI)
                 .build();
 
         try (CloseableHttpClient c = HttpClientBuilder.create().disableRedirectHandling().build();
              CloseableHttpResponse response = c.execute(new HttpGet(logoutUrl))) {
             assertThat(response, Matchers.statusCodeIsHC(Response.Status.FOUND));
-            assertThat(response.getFirstHeader(HttpHeaders.LOCATION).getValue(), is(oauth.APP_AUTH_ROOT));
+            assertThat(response.getFirstHeader(HttpHeaders.LOCATION).getValue(), is(APP_REDIRECT_URI));
         }
         events.assertEmpty();
+
+        Assert.assertThat(false, is(isSessionActive(tokenResponse.getSessionState())));
     }
 
 
+    // Parameter "redirect_uri" is not valid in logoutRequest (See LegacyLogoutTest for the scenario with "redirect_uri" allowed by backwards compatibility switch)
     @Test
     public void logoutWithRedirectUriParameterShoudFail() throws Exception {
+        OAuthClient.AccessTokenResponse tokenResponse = loginUser();
+        String idTokenString = tokenResponse.getIdToken();
 
+        // Logout with "redirect_uri" parameter alone should fail
+        String logoutUrl = oauth.getLogoutUrl().redirectUri(APP_REDIRECT_URI).build();
+        driver.navigate().to(logoutUrl);
+        events.expectLogoutError(OAuthErrorException.INVALID_REQUEST).assertEvent();
+
+        // Logout with "redirect_uri" parameter and with "id_token_hint" should fail
+        oauth.getLogoutUrl().idTokenHint(idTokenString).redirectUri(APP_REDIRECT_URI).build();
+        driver.navigate().to(logoutUrl);
+        events.expectLogoutError(OAuthErrorException.INVALID_REQUEST).assertEvent();
+
+        // Assert user still authenticated
+        Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));
     }
 
     @Test
@@ -445,5 +444,14 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         OAuthClient.AccessTokenResponse tokenResponse = oauth.doAccessTokenRequest(code, "password");
         events.clear();
         return tokenResponse;
+    }
+
+    private boolean isSessionActive(String sessionId) {
+        try {
+            testingClient.testing().getClientSessionsCountInUserSession("test", sessionId);
+            return true;
+        } catch (NotFoundException nfe) {
+            return false;
+        }
     }
 }

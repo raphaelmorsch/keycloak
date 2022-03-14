@@ -219,6 +219,7 @@ public class OAuthClient {
             return this;
         }
 
+        @Deprecated // Use only in backwards compatibility tests
         public LogoutUrlBuilder redirectUri(String redirectUri) {
             if (redirectUri != null) {
                 b.queryParam(OAuth2Constants.REDIRECT_URI, redirectUri);
