@@ -142,8 +142,15 @@ public class LogoutEndpoint {
      * When the logout is initiated by a remote idp, the parameter "initiating_idp" can be supplied. This param will
      * prevent upstream logout (since the logout procedure has already been started in the remote idp).
      *
-     * @param deprecatedRedirectUri
-     * // TODO:mposolda javadoc
+     * This endpoint is aligned with OpenID Connect RP-Initiated Logout specification https://openid.net/specs/openid-connect-rpinitiated-1_0.html#RPLogout
+     *
+     * All parameters are optional. Some combinations of parameters are invalid as described in the specification
+     *
+     * @param deprecatedRedirectUri Parameter "redirect_uri" is not supported by the specification. It is here just for the backwards compatibility
+     * @param encodedIdToken Parameter "id_token_hint" as described in the specification.
+     * @param postLogoutRedirectUri Parameter "post_logout_redirect_uri" as described in the specification with the URL to redirect after logout.
+     * @param state Parameter "state" as described in the specification. Will be used to send "state" when redirecting back to the application after the logout
+     * @param uiLocales Parameter "ui_locales" as described in the specification. Can be used by the client to display pages in specified locale (if any pages are going to be displayed to the user during logout)
      * @param initiatingIdp The alias of the idp initiating the logout.
      * @return
      */
@@ -153,14 +160,13 @@ public class LogoutEndpoint {
                            @QueryParam(OIDCLoginProtocol.ID_TOKEN_HINT) String encodedIdToken,
                            @QueryParam(OIDCLoginProtocol.POST_LOGOUT_REDIRECT_URI_PARAM) String postLogoutRedirectUri,
                            @QueryParam(OIDCLoginProtocol.STATE_PARAM) String state,
-                           @QueryParam(OIDCLoginProtocol.UI_LOCALES_PARAM) String uiLocales, // TODO:mposolda implement ui_locales
+                           @QueryParam(OIDCLoginProtocol.UI_LOCALES_PARAM) String uiLocales,
                            @QueryParam("initiating_idp") String initiatingIdp) {
-
 
         if (deprecatedRedirectUri != null && !providerConfig.isLegacyLogoutRedirectUri()) {
             event.event(EventType.LOGOUT);
             event.error(Errors.INVALID_REQUEST);
-            logger.warnf("Parameter 'redirect_uri' no longer supported. Please use 'post_logout_redirect_uri' with 'id_token_hint' for this endpoint. Alternatively enable backwards compatibility option '%s' of oidc login protocol in the server configuration.",
+            logger.warnf("Parameter 'redirect_uri' no longer supported. Please use 'post_logout_redirect_uri' with 'id_token_hint' for this endpoint. Alternatively you can enable backwards compatibility option '%s' of oidc login protocol in the server configuration.",
                     OIDCLoginProtocolFactory.CONFIG_LEGACY_LOGOUT_REDIRECT_URI);
             return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_PARAMETER, OIDCLoginProtocol.REDIRECT_URI_PARAM);
         }
@@ -206,11 +212,9 @@ public class LogoutEndpoint {
             }
         }
 
-        // TODO:mposolda doublecheck that creating authSession here is really needed
         AuthenticationSessionModel logoutSession = AuthenticationManager.createOrJoinLogoutSession(session, realm, new AuthenticationSessionManager(session), null, true);
         session.getContext().setAuthenticationSession(logoutSession);
         if (uiLocales != null) {
-            // TODO:mposolda test UI locales for various screens
             logoutSession.setAuthNote(LocaleSelectorProvider.CLIENT_REQUEST_LOCALE, uiLocales);
         }
         if (validatedRedirectUri != null) {
@@ -230,15 +234,15 @@ public class LogoutEndpoint {
         LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class)
                 .setAuthenticationSession(logoutSession);
 
-        // Client was not sent in id_token_hint or has consentRequired. We will display logout confirmation screen to the user in this case
+        // Client was not sent in id_token_hint or has consentRequired. Logout confirmation screen will be displayed to the user in this case
         if (client == null || client.isConsentRequired()) {
-            return displayLogoutConfirmationScreen(loginForm, logoutSession, client);
+            return displayLogoutConfirmationScreen(loginForm, logoutSession);
         } else {
             return doBrowserLogout(logoutSession);
         }
     }
 
-    private Response displayLogoutConfirmationScreen(LoginFormsProvider loginForm, AuthenticationSessionModel authSession, ClientModel client) {
+    private Response displayLogoutConfirmationScreen(LoginFormsProvider loginForm, AuthenticationSessionModel authSession) {
         ClientSessionCode<AuthenticationSessionModel> accessCode = new ClientSessionCode<>(session, realm, authSession);
         accessCode.setAction(AuthenticatedClientSessionModel.Action.LOGGING_OUT.name());
 
@@ -337,7 +341,6 @@ public class LogoutEndpoint {
     }
 
 
-    // TODO:mposolda test both cases when this method is called
     public static Response sendResponseAfterLogoutFinished(KeycloakSession session, AuthenticationSessionModel logoutSession) {
         String redirectUri = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
         String state = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM);
@@ -348,7 +351,6 @@ public class LogoutEndpoint {
             return Response.status(302).location(uriBuilder.build()).build();
         }
 
-        // TODO:mposolda test both cases with and without the link
         LoginFormsProvider loginForm = session.getProvider(LoginFormsProvider.class).setSuccess(Messages.SUCCESS_LOGOUT);
         boolean usedSystemClient = "true".equals(logoutSession.getAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT));
         if (usedSystemClient) {

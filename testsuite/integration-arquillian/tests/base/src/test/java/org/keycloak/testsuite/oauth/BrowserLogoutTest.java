@@ -27,7 +27,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
-import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.ClientsResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.common.Profile;
@@ -53,7 +52,6 @@ import org.keycloak.testsuite.pages.LoginPage;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Collections;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.HttpHeaders;
@@ -67,7 +65,6 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.keycloak.testsuite.util.URLAssert.assertCurrentUrlDoesntStartWith;
 import static org.keycloak.testsuite.util.URLAssert.assertCurrentUrlEquals;
 
 import org.keycloak.testsuite.auth.page.account.AccountManagement;
@@ -79,7 +76,6 @@ import org.keycloak.testsuite.updaters.RealmAttributeUpdater;
 import org.keycloak.testsuite.util.InfinispanTestTimeServiceRule;
 import org.keycloak.testsuite.util.Matchers;
 import org.keycloak.testsuite.util.OAuthClient;
-import org.keycloak.testsuite.util.ServerURLs;
 import org.keycloak.testsuite.util.WaitUtils;
 import org.openqa.selenium.NoSuchElementException;
 
@@ -164,42 +160,6 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
     }
 
 
-    // KEYCLOAK-16517 Make sure that just real clients with standardFlow or implicitFlow enabled are considered for redirectUri
-    @Test
-    public void logoutRedirectWithStarRedirectUriForDirectGrantClient() {
-        // Set "*" as redirectUri for some directGrant client
-        ClientResource clientRes = ApiUtil.findClientByClientId(testRealm(), "direct-grant");
-        ClientRepresentation clientRepOrig = clientRes.toRepresentation();
-        ClientRepresentation clientRep = clientRes.toRepresentation();
-        clientRep.setStandardFlowEnabled(false);
-        clientRep.setImplicitFlowEnabled(false);
-        clientRep.setRedirectUris(Collections.singletonList("*"));
-        clientRes.update(clientRep);
-
-        try {
-            OAuthClient.AccessTokenResponse tokenResponse = loginUser();
-
-            String invalidRedirectUri = ServerURLs.getAuthServerContextRoot() + "/bar";
-
-            String idTokenString = tokenResponse.getIdToken();
-
-            String logoutUrl = oauth.getLogoutUrl().postLogoutRedirectUri(invalidRedirectUri).idTokenHint(idTokenString).build();
-            driver.navigate().to(logoutUrl);
-
-            events.expectLogoutError(Errors.INVALID_REDIRECT_URI).assertEvent();
-
-            assertCurrentUrlDoesntStartWith(invalidRedirectUri);
-            errorPage.assertCurrent();
-            Assert.assertEquals("Invalid redirect uri", errorPage.getError());
-
-            // Session still active
-            Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));
-        } finally {
-            // Revert
-            clientRes.update(clientRepOrig);
-        }
-    }
-
     @Test
     public void logoutWithExpiredSession() throws Exception {
         try (AutoCloseable c = new RealmAttributeUpdater(adminClient.realm("test"))
@@ -231,10 +191,8 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
     //KEYCLOAK-2741
     @Test
     @DisableFeature(value = Profile.Feature.ACCOUNT2, skipRestart = true) // TODO remove this (KEYCLOAK-16228)
-    public void logoutWithRememberMe() {
-        setRememberMe(true);
-        
-        try {
+    public void logoutWithRememberMe() throws IOException {
+        try (RealmAttributeUpdater update = new RealmAttributeUpdater(testRealm()).setRememberMe(true).update()) {
             loginPage.open();
             assertFalse(loginPage.isRememberMeChecked());
             loginPage.setRememberMe(true);
@@ -260,16 +218,9 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
             assertTrue(loginPage.isCurrent());
             assertFalse(loginPage.isRememberMeChecked());
             assertNotEquals("test-user@localhost", loginPage.getUsername());
-        } finally {
-            setRememberMe(false);
         }
     }
-    
-    private void setRememberMe(boolean enabled) {
-        RealmRepresentation rep = adminClient.realm("test").toRepresentation();
-        rep.setRememberMe(enabled);
-        adminClient.realm("test").update(rep);
-    }
+
 
     @Test
     public void logoutSessionWhenLoggedOutByAdmin() {
@@ -381,11 +332,13 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         // Logout with "redirect_uri" parameter alone should fail
         String logoutUrl = oauth.getLogoutUrl().redirectUri(APP_REDIRECT_URI).build();
         driver.navigate().to(logoutUrl);
+        errorPage.assertCurrent();
         events.expectLogoutError(OAuthErrorException.INVALID_REQUEST).assertEvent();
 
         // Logout with "redirect_uri" parameter and with "id_token_hint" should fail
         oauth.getLogoutUrl().idTokenHint(idTokenString).redirectUri(APP_REDIRECT_URI).build();
         driver.navigate().to(logoutUrl);
+        errorPage.assertCurrent();
         events.expectLogoutError(OAuthErrorException.INVALID_REQUEST).assertEvent();
 
         // Assert user still authenticated
@@ -401,6 +354,7 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         // Logout with "redirect_uri" parameter alone should fail
         String logoutUrl = oauth.getLogoutUrl().postLogoutRedirectUri(APP_REDIRECT_URI).build();
         driver.navigate().to(logoutUrl);
+        errorPage.assertCurrent();
         events.expectLogoutError(OAuthErrorException.INVALID_REQUEST).assertEvent();
 
         // Assert user still authenticated
@@ -415,11 +369,13 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
 
         // Completely invalid redirect uri
         driver.navigate().to(oauth.getLogoutUrl().postLogoutRedirectUri("https://invalid").idTokenHint(idTokenString).build());
+        errorPage.assertCurrent();
         events.expectLogoutError(OAuthErrorException.INVALID_REDIRECT_URI).detail(Details.REDIRECT_URI, "https://invalid").assertEvent();
 
         // Redirect uri of different client in the realm should fail as well
         String rootUrlClientRedirectUri = UriUtils.getOrigin(APP_REDIRECT_URI) + "/foo/bar";
         driver.navigate().to(oauth.getLogoutUrl().postLogoutRedirectUri(rootUrlClientRedirectUri).idTokenHint(idTokenString).build());
+        errorPage.assertCurrent();
         events.expectLogoutError(OAuthErrorException.INVALID_REDIRECT_URI).detail(Details.REDIRECT_URI, rootUrlClientRedirectUri).assertEvent();
 
         // Session still authenticated
@@ -548,7 +504,7 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         events.assertEmpty();
         logoutConfirmPage.confirmLogout();
 
-        // Redirected back to the application with expected state
+        // Redirected back to the application with expected "state"
         events.expectLogout(tokenResponse.getSessionState()).removeDetail(Details.REDIRECT_URI).assertEvent();
         Assert.assertThat(false, is(isSessionActive(tokenResponse.getSessionState())));
         assertCurrentUrlEquals(APP_REDIRECT_URI + "?state=somethingg");
@@ -569,7 +525,7 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
             String logoutUrl = oauth.getLogoutUrl().idTokenHint(idTokenString).uiLocales("cs").build();
             driver.navigate().to(logoutUrl);
 
-            // Assert logout confirmation page. Session still exists. Assert default language on logout page (English)
+            // Assert logout confirmation page. Session still exists. Assert czech language on logout page
             Assert.assertEquals("Odhlašování", PageUtils.getPageTitle(driver)); // Logging out
             Assert.assertEquals("Čeština", logoutConfirmPage.getLanguageDropdownText());
             Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));

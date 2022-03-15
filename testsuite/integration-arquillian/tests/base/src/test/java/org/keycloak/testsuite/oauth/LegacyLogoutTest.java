@@ -18,6 +18,8 @@
 
 package org.keycloak.testsuite.oauth;
 
+import java.util.Collections;
+
 import javax.ws.rs.NotFoundException;
 
 import org.jboss.arquillian.graphene.page.Page;
@@ -27,14 +29,18 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
+import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.events.Details;
+import org.keycloak.events.Errors;
 import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
+import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
 import org.keycloak.testsuite.Assert;
 import org.keycloak.testsuite.AssertEvents;
+import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.auth.page.account.AccountManagement;
 import org.keycloak.testsuite.pages.AppPage;
 import org.keycloak.testsuite.pages.ErrorPage;
@@ -44,8 +50,10 @@ import org.keycloak.testsuite.pages.LogoutConfirmPage;
 import org.keycloak.testsuite.pages.OAuthGrantPage;
 import org.keycloak.testsuite.util.InfinispanTestTimeServiceRule;
 import org.keycloak.testsuite.util.OAuthClient;
+import org.keycloak.testsuite.util.ServerURLs;
 
 import static org.hamcrest.Matchers.is;
+import static org.keycloak.testsuite.util.URLAssert.assertCurrentUrlDoesntStartWith;
 import static org.keycloak.testsuite.util.URLAssert.assertCurrentUrlEquals;
 
 /**
@@ -136,6 +144,43 @@ public class LegacyLogoutTest extends AbstractTestRealmKeycloakTest {
         events.expectLogout(sessionId).removeDetail(Details.REDIRECT_URI).assertEvent();
         Assert.assertThat(false, is(isSessionActive(sessionId)));
         assertCurrentUrlEquals(APP_REDIRECT_URI);
+    }
+
+
+    // KEYCLOAK-16517 Make sure that just real clients with standardFlow or implicitFlow enabled are considered for redirectUri
+    @Test
+    public void logoutRedirectWithStarRedirectUriForDirectGrantClient() {
+        // Set "*" as redirectUri for some directGrant client
+        ClientResource clientRes = ApiUtil.findClientByClientId(testRealm(), "direct-grant");
+        ClientRepresentation clientRepOrig = clientRes.toRepresentation();
+        ClientRepresentation clientRep = clientRes.toRepresentation();
+        clientRep.setStandardFlowEnabled(false);
+        clientRep.setImplicitFlowEnabled(false);
+        clientRep.setRedirectUris(Collections.singletonList("*"));
+        clientRes.update(clientRep);
+
+        try {
+            OAuthClient.AccessTokenResponse tokenResponse = loginUser();
+
+            String invalidRedirectUri = ServerURLs.getAuthServerContextRoot() + "/bar";
+
+            String idTokenString = tokenResponse.getIdToken();
+
+            String logoutUrl = oauth.getLogoutUrl().redirectUri(invalidRedirectUri).build();
+            driver.navigate().to(logoutUrl);
+
+            events.expectLogoutError(Errors.INVALID_REDIRECT_URI).assertEvent();
+
+            assertCurrentUrlDoesntStartWith(invalidRedirectUri);
+            errorPage.assertCurrent();
+            Assert.assertEquals("Invalid redirect uri", errorPage.getError());
+
+            // Session still active
+            Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));
+        } finally {
+            // Revert
+            clientRes.update(clientRepOrig);
+        }
     }
 
 
