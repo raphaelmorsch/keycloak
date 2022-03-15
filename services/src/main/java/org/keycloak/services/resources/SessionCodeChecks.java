@@ -326,7 +326,7 @@ public class SessionCodeChecks {
     }
 
 
-    private boolean isActionActive(ClientSessionCode.ActionType actionType) {
+    protected boolean isActionActive(ClientSessionCode.ActionType actionType) {
         if (!clientCode.isActionActive(actionType)) {
             event.clone().error(Errors.EXPIRED_CODE);
 

@@ -262,8 +262,8 @@ public class LogoutEndpoint {
         if (!checks.verifyActiveAndValidAction(AuthenticationSessionModel.Action.LOGGING_OUT.name(), ClientSessionCode.ActionType.USER) || !formData.containsKey("confirmLogout")) {
             // TODO:mposolda probably debug message
             AuthenticationSessionModel logoutSession = checks.getAuthenticationSession();
-            logger.infof("Failed verification during logout. sessionCode=%s, clientId=%s, tabId=%s, logoutSessionId=%s",
-                    logoutSession != null ? logoutSession.getParentSession().getId() : "unknown");
+            logger.infof("Failed verification during logout. logoutSessionId=%s, clientId=%s, tabId=%s",
+                    logoutSession != null ? logoutSession.getParentSession().getId() : "unknown", clientId, tabId);
 
             // TODO:mposolda test this (test that when this is not used, account client URLs are shown, which is incorrect)
             if (logoutSession == null || "true".equals(logoutSession.getAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT))) {

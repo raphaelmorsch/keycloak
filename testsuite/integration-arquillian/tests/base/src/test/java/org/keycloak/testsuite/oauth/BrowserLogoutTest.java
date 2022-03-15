@@ -22,7 +22,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.jboss.arquillian.graphene.page.Page;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -500,6 +499,15 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
 
         events.expectLogoutError(Errors.EXPIRED_CODE).assertEvent();
         Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));
+
+        // Link not present
+        try {
+            errorPage.clickBackToApplication();
+            fail();
+        }
+        catch (NoSuchElementException ex) {
+            // expected
+        }
     }
 
     // Test for the scenario when "authenticationSession" itself is expired
@@ -555,7 +563,7 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
     // Test logout request without "post logout redirect uri" . Also test "ui_locales" parameter works as expected
     @Test
     public void logoutConsentRequiredWithoutPostLogoutRedirectUri() throws IOException {
-        try (RealmAttributeUpdater updater = new RealmAttributeUpdater(testRealm()).addSupportedLocale("cs")) {
+        try (RealmAttributeUpdater updater = new RealmAttributeUpdater(testRealm()).addSupportedLocale("cs").update()) {
             oauth.clientId("third-party");
             OAuthClient.AccessTokenResponse tokenResponse = loginUser(true);
             String idTokenString = tokenResponse.getIdToken();
@@ -586,11 +594,33 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
     }
 
     @Test
-    public void logoutConsentRequiredWithExpiredAuthenticationSession() throws IOException {
+    public void logoutConsentRequiredWithExpiredCode() throws IOException {
+        oauth.clientId("third-party");
+        OAuthClient.AccessTokenResponse tokenResponse = loginUser(true);
+        String idTokenString = tokenResponse.getIdToken();
 
+        driver.navigate().to(oauth.getLogoutUrl().idTokenHint(idTokenString).build());
+
+        // Assert logout confirmation page. Session still exists
+        logoutConfirmPage.assertCurrent();
+        Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));
+        events.assertEmpty();
+
+        // Set time offset to expire "action" inside logoutSession
+        setTimeOffset(310);
+        logoutConfirmPage.confirmLogout();
+
+        errorPage.assertCurrent();
+        Assert.assertEquals("Logout failed", errorPage.getError());
+
+        events.expectLogoutError(Errors.EXPIRED_CODE).assertEvent();
+        Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));
+
+        // Link "Back to application" present
+        errorPage.clickBackToApplication();
+        Assert.assertThat(driver.getCurrentUrl(), endsWith("/app/auth"));
     }
 
-    // TODO:mposolda test that with "consentRequired" the link "Back to the application" is present when auth session expires
 
     @Test
     public void testFrontChannelLogoutWithPostLogoutRedirectUri() throws Exception {

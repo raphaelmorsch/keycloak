@@ -18,10 +18,13 @@
 
 package org.keycloak.services.resources;
 
+import java.net.URI;
+
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
 import org.jboss.resteasy.spi.HttpRequest;
+import org.keycloak.authentication.AuthenticationProcessor;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
@@ -29,6 +32,7 @@ import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.services.ErrorPage;
+import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.sessions.RootAuthenticationSessionModel;
 
@@ -53,5 +57,14 @@ public class LogoutSessionCodeChecks extends SessionCodeChecks {
         // Skip restarting authentication session from KC_RESTART cookie during logout
         getEvent().error(Errors.SESSION_EXPIRED);
         return ErrorPage.error(getSession(), null, Response.Status.BAD_REQUEST, Messages.FAILED_LOGOUT);
+    }
+
+    @Override
+    protected boolean isActionActive(ClientSessionCode.ActionType actionType) {
+        if (!getClientCode().isActionActive(actionType)) {
+            getEvent().clone().error(Errors.EXPIRED_CODE);
+            return false;
+        }
+        return true;
     }
 }
