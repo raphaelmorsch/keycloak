@@ -22,6 +22,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.jboss.arquillian.graphene.page.Page;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -29,6 +30,7 @@ import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.ClientsResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.common.Profile;
 import org.keycloak.common.util.UriUtils;
 import org.keycloak.events.Details;
@@ -71,6 +73,8 @@ import static org.keycloak.testsuite.util.URLAssert.assertCurrentUrlEquals;
 
 import org.keycloak.testsuite.auth.page.account.AccountManagement;
 import org.keycloak.testsuite.pages.LogoutConfirmPage;
+import org.keycloak.testsuite.pages.OAuthGrantPage;
+import org.keycloak.testsuite.pages.PageUtils;
 import org.keycloak.testsuite.updaters.ClientAttributeUpdater;
 import org.keycloak.testsuite.updaters.RealmAttributeUpdater;
 import org.keycloak.testsuite.util.ClientManager;
@@ -102,6 +106,9 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
 
     @Page
     protected LoginPage loginPage;
+
+    @Page
+    protected OAuthGrantPage grantPage;
 
     @Page
     protected LogoutConfirmPage logoutConfirmPage;
@@ -466,7 +473,7 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         events.expectLogout(tokenResponse.getSessionState()).removeDetail(Details.REDIRECT_URI).assertEvent();
         Assert.assertThat(false, is(isSessionActive(tokenResponse.getSessionState())));
 
-        logoutConfirmPage.clickBackToApplicationLink();
+        infoPage.clickBackToApplicationLink();
         WaitUtils.waitForPageToLoad();
         Assert.assertThat(driver.getCurrentUrl(), endsWith("/app/auth"));
     }
@@ -518,7 +525,72 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
         Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));
     }
 
-    // TODO:mposolda test that with "consentRequired" the link "Back to9 the application" is present when auth session expires
+    // Test logout with "consentRequired" . All of "post_logout_redirect_uri", "id_token_hint" and "state" parameters are present in the logout request
+    @Test
+    public void logoutConsentRequired() {
+        oauth.clientId("third-party");
+        OAuthClient.AccessTokenResponse tokenResponse = loginUser(true);
+        String idTokenString = tokenResponse.getIdToken();
+
+        String logoutUrl = oauth.getLogoutUrl().postLogoutRedirectUri(APP_REDIRECT_URI).idTokenHint(idTokenString).state("somethingg").build();
+        driver.navigate().to(logoutUrl);
+
+        // Assert logout confirmation page. Session still exists. Assert default language on logout page (English)
+        logoutConfirmPage.assertCurrent();
+        Assert.assertEquals("English", logoutConfirmPage.getLanguageDropdownText());
+        Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));
+        events.assertEmpty();
+        logoutConfirmPage.confirmLogout();
+
+        // Redirected back to the application with expected state
+        events.expectLogout(tokenResponse.getSessionState()).removeDetail(Details.REDIRECT_URI).assertEvent();
+        Assert.assertThat(false, is(isSessionActive(tokenResponse.getSessionState())));
+        assertCurrentUrlEquals(APP_REDIRECT_URI + "?state=somethingg");
+
+        UserResource user = ApiUtil.findUserByUsernameId(testRealm(), "test-user@localhost");
+        user.revokeConsent("third-party");
+    }
+
+
+    // Test logout request without "post logout redirect uri" . Also test "ui_locales" parameter works as expected
+    @Test
+    public void logoutConsentRequiredWithoutPostLogoutRedirectUri() throws IOException {
+        try (RealmAttributeUpdater updater = new RealmAttributeUpdater(testRealm()).addSupportedLocale("cs")) {
+            oauth.clientId("third-party");
+            OAuthClient.AccessTokenResponse tokenResponse = loginUser(true);
+            String idTokenString = tokenResponse.getIdToken();
+
+            String logoutUrl = oauth.getLogoutUrl().idTokenHint(idTokenString).uiLocales("cs").build();
+            driver.navigate().to(logoutUrl);
+
+            // Assert logout confirmation page. Session still exists. Assert default language on logout page (English)
+            Assert.assertEquals("Odhlašování", PageUtils.getPageTitle(driver)); // Logging out
+            Assert.assertEquals("Čeština", logoutConfirmPage.getLanguageDropdownText());
+            Assert.assertThat(true, is(isSessionActive(tokenResponse.getSessionState())));
+            events.assertEmpty();
+            logoutConfirmPage.confirmLogout();
+
+            // Info page present with the link "Back to application"
+            events.expectLogout(tokenResponse.getSessionState()).removeDetail(Details.REDIRECT_URI).assertEvent();
+            Assert.assertThat(false, is(isSessionActive(tokenResponse.getSessionState())));
+
+            infoPage.assertCurrent();
+            Assert.assertEquals("Odhlášení bylo úspěšné", infoPage.getInfo()); // Logout success message
+            infoPage.clickBackToApplicationLinkCs();
+            WaitUtils.waitForPageToLoad();
+            Assert.assertThat(driver.getCurrentUrl(), endsWith("/app/auth"));
+
+            UserResource user = ApiUtil.findUserByUsernameId(testRealm(), "test-user@localhost");
+            user.revokeConsent("third-party");
+        }
+    }
+
+    @Test
+    public void logoutConsentRequiredWithExpiredAuthenticationSession() throws IOException {
+
+    }
+
+    // TODO:mposolda test that with "consentRequired" the link "Back to the application" is present when auth session expires
 
     @Test
     public void testFrontChannelLogoutWithPostLogoutRedirectUri() throws Exception {
@@ -583,7 +655,16 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
 
 
     private OAuthClient.AccessTokenResponse loginUser() {
+        return loginUser(false);
+    }
+
+    private OAuthClient.AccessTokenResponse loginUser(boolean consentRequired) {
         oauth.doLogin("test-user@localhost", "password");
+
+        if (consentRequired) {
+            grantPage.assertCurrent();
+            grantPage.accept();
+        }
 
         String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
 

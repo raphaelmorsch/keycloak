@@ -26,9 +26,6 @@ import org.openqa.selenium.support.FindBy;
  */
 public class LogoutConfirmPage extends LanguageComboboxAwarePage {
 
-    @FindBy(id = "device-user-code")
-    private WebElement userCodeInput;
-
     @FindBy(css = "input[type=\"submit\"]")
     private WebElement confirmLogoutButton;
 
