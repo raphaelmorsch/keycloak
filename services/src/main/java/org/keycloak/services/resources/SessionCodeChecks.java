@@ -219,7 +219,7 @@ public class SessionCodeChecks {
             return false;
         }
 
-        event.client(client);
+        setClientToEvent(client);
         session.getContext().setClient(client);
 
         if (!client.isEnabled()) {
@@ -292,6 +292,11 @@ public class SessionCodeChecks {
             }
             return true;
         }
+    }
+
+    // Client is not null
+    protected void setClientToEvent(ClientModel client) {
+        event.client(client);
     }
 
 
@@ -368,7 +373,7 @@ public class SessionCodeChecks {
     }
 
 
-    private Response restartAuthenticationSessionFromCookie(RootAuthenticationSessionModel existingRootSession) {
+    protected Response restartAuthenticationSessionFromCookie(RootAuthenticationSessionModel existingRootSession) {
         logger.debug("Authentication session not found. Trying to restart from cookie.");
         AuthenticationSessionModel authSession = null;
 
@@ -435,5 +440,13 @@ public class SessionCodeChecks {
     private Response showPageExpired(AuthenticationSessionModel authSession) {
         return new AuthenticationFlowURLHelper(session, realm, uriInfo)
                 .showPageExpired(authSession);
+    }
+
+    protected KeycloakSession getSession() {
+        return session;
+    }
+
+    protected EventBuilder getEvent() {
+        return event;
     }
 }

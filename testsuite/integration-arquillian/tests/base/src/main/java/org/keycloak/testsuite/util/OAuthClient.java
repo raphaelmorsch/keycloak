@@ -207,14 +207,14 @@ public class OAuthClient {
 
         public LogoutUrlBuilder idTokenHint(String idTokenHint) {
             if (idTokenHint != null) {
-                b.queryParam("id_token_hint", idTokenHint);
+                b.queryParam(OIDCLoginProtocol.ID_TOKEN_HINT, idTokenHint);
             }
             return this;
         }
 
         public LogoutUrlBuilder postLogoutRedirectUri(String redirectUri) {
             if (redirectUri != null) {
-                b.queryParam("post_logout_redirect_uri", redirectUri);
+                b.queryParam(OIDCLoginProtocol.POST_LOGOUT_REDIRECT_URI_PARAM, redirectUri);
             }
             return this;
         }
@@ -223,6 +223,20 @@ public class OAuthClient {
         public LogoutUrlBuilder redirectUri(String redirectUri) {
             if (redirectUri != null) {
                 b.queryParam(OAuth2Constants.REDIRECT_URI, redirectUri);
+            }
+            return this;
+        }
+
+        public LogoutUrlBuilder state(String state) {
+            if (state != null) {
+                b.queryParam(OIDCLoginProtocol.STATE_PARAM, state);
+            }
+            return this;
+        }
+
+        public LogoutUrlBuilder uiLocales(String uiLocales) {
+            if (uiLocales != null) {
+                b.queryParam(OIDCLoginProtocol.UI_LOCALES_PARAM,  uiLocales);
             }
             return this;
         }

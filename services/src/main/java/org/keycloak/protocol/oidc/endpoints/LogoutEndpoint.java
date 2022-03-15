@@ -65,6 +65,7 @@ import org.keycloak.services.managers.UserSessionManager;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.services.resources.Cors;
 import org.keycloak.services.resources.LoginActionsService;
+import org.keycloak.services.resources.LogoutSessionCodeChecks;
 import org.keycloak.services.resources.SessionCodeChecks;
 import org.keycloak.services.util.MtlsHoKTokenUtil;
 import org.keycloak.sessions.AuthenticationSessionModel;
@@ -256,9 +257,9 @@ public class LogoutEndpoint {
         // TODO:mposolda Probably trace message
         logger.infof("Logout confirmed. sessionCode=%s, clientId=%s, tabId=%s", code, clientId, tabId);
 
-        SessionCodeChecks checks = new SessionCodeChecks(realm, session.getContext().getUri(), request, clientConnection, session, event, null, code, null, clientId, tabId, null);
+        SessionCodeChecks checks = new LogoutSessionCodeChecks(realm, session.getContext().getUri(), request, clientConnection, session, event, code, clientId, tabId);
         checks.initialVerify();
-        if (!checks.verifyActiveAndValidAction(AuthenticationSessionModel.Action.LOGGING_OUT.name(), ClientSessionCode.ActionType.LOGIN) || !formData.containsKey("confirmLogout")) {
+        if (!checks.verifyActiveAndValidAction(AuthenticationSessionModel.Action.LOGGING_OUT.name(), ClientSessionCode.ActionType.USER) || !formData.containsKey("confirmLogout")) {
             // TODO:mposolda probably debug message
             AuthenticationSessionModel logoutSession = checks.getAuthenticationSession();
             logger.infof("Failed verification during logout. sessionCode=%s, clientId=%s, tabId=%s, logoutSessionId=%s",
