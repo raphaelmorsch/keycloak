@@ -45,6 +45,7 @@ import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.BackchannelLogoutResponse;
 import org.keycloak.protocol.oidc.LogoutTokenValidationCode;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
+import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
 import org.keycloak.protocol.oidc.OIDCProviderConfig;
 import org.keycloak.protocol.oidc.TokenManager;
 import org.keycloak.protocol.oidc.utils.AuthorizeClientUtil;
@@ -159,7 +160,8 @@ public class LogoutEndpoint {
         if (deprecatedRedirectUri != null && !providerConfig.isLegacyLogoutRedirectUri()) {
             event.event(EventType.LOGOUT);
             event.error(Errors.INVALID_REQUEST);
-            logger.warnf("Parameter 'redirect_uri' no longer supported. Please use 'post_logout_redirect_uri' with 'id_token_hint' for this endpoint. Alternatively enable backwards compatibility option 'legacy-logout-redirect-uri' of oidc login protocol in the server configuration.");
+            logger.warnf("Parameter 'redirect_uri' no longer supported. Please use 'post_logout_redirect_uri' with 'id_token_hint' for this endpoint. Alternatively enable backwards compatibility option '%s' of oidc login protocol in the server configuration.",
+                    OIDCLoginProtocolFactory.CONFIG_LEGACY_LOGOUT_REDIRECT_URI);
             return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_PARAMETER, OIDCLoginProtocol.REDIRECT_URI_PARAM);
         }
 
@@ -190,7 +192,8 @@ public class LogoutEndpoint {
         String validatedRedirectUri = null;
         if (postLogoutRedirectUri != null || deprecatedRedirectUri != null) {
             if (client != null) {
-                validatedRedirectUri = RedirectUtils.verifyRedirectUri(session, postLogoutRedirectUri, client);
+                String redirectUri = postLogoutRedirectUri != null ? postLogoutRedirectUri : deprecatedRedirectUri;
+                validatedRedirectUri = RedirectUtils.verifyRedirectUri(session, redirectUri, client);
             } else if (providerConfig.isLegacyLogoutRedirectUri()) {
                 validatedRedirectUri = RedirectUtils.verifyRealmRedirectUri(session, deprecatedRedirectUri);
             }
@@ -265,7 +268,6 @@ public class LogoutEndpoint {
             logger.infof("Failed verification during logout. logoutSessionId=%s, clientId=%s, tabId=%s",
                     logoutSession != null ? logoutSession.getParentSession().getId() : "unknown", clientId, tabId);
 
-            // TODO:mposolda test this (test that when this is not used, account client URLs are shown, which is incorrect)
             if (logoutSession == null || "true".equals(logoutSession.getAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT))) {
                 // Cleanup system client URL to avoid links to account management
                 session.getProvider(LoginFormsProvider.class).setAttribute(Constants.SKIP_LINK, true);

@@ -18,12 +18,144 @@
 
 package org.keycloak.testsuite.oauth;
 
+import javax.ws.rs.NotFoundException;
+
+import org.jboss.arquillian.graphene.page.Page;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.keycloak.OAuth2Constants;
+import org.keycloak.OAuthErrorException;
+import org.keycloak.events.Details;
+import org.keycloak.protocol.LoginProtocol;
+import org.keycloak.protocol.oidc.OIDCLoginProtocol;
+import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
+import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.testsuite.AbstractTestRealmKeycloakTest;
+import org.keycloak.testsuite.Assert;
+import org.keycloak.testsuite.AssertEvents;
+import org.keycloak.testsuite.auth.page.account.AccountManagement;
+import org.keycloak.testsuite.pages.AppPage;
+import org.keycloak.testsuite.pages.ErrorPage;
+import org.keycloak.testsuite.pages.InfoPage;
+import org.keycloak.testsuite.pages.LoginPage;
+import org.keycloak.testsuite.pages.LogoutConfirmPage;
+import org.keycloak.testsuite.pages.OAuthGrantPage;
+import org.keycloak.testsuite.util.InfinispanTestTimeServiceRule;
+import org.keycloak.testsuite.util.OAuthClient;
+
+import static org.hamcrest.Matchers.is;
+import static org.keycloak.testsuite.util.URLAssert.assertCurrentUrlEquals;
+
 /**
  * Test logout endpoint with deprecated "redirect_uri" parameter
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public class LegacyLogoutTest {
+public class LegacyLogoutTest extends AbstractTestRealmKeycloakTest {
 
-    // TODO:mposolda implement
+    @Rule
+    public AssertEvents events = new AssertEvents(this);
+
+    @Rule
+    public InfinispanTestTimeServiceRule ispnTestTimeService = new InfinispanTestTimeServiceRule(this);
+
+    @Page
+    protected AppPage appPage;
+
+    @Page
+    protected LoginPage loginPage;
+
+    @Page
+    protected OAuthGrantPage grantPage;
+
+    @Page
+    protected LogoutConfirmPage logoutConfirmPage;
+
+    @Page
+    protected InfoPage infoPage;
+
+    @Page
+    protected AccountManagement accountManagementPage;
+
+    @Page
+    private ErrorPage errorPage;
+
+    private String APP_REDIRECT_URI;
+
+    @Override
+    public void configureTestRealm(RealmRepresentation testRealm) {
+    }
+
+    @Before
+    public void configLegacyRedirectUriEnabled() {
+        getTestingClient().testing().reinitializeProviderFactoryWithSystemPropertiesScope(LoginProtocol.class.getName(), OIDCLoginProtocol.LOGIN_PROTOCOL, "oidc.");
+        getTestingClient().testing().setSystemPropertyOnServer("oidc." + OIDCLoginProtocolFactory.CONFIG_LEGACY_LOGOUT_REDIRECT_URI, "true");
+
+        APP_REDIRECT_URI = oauth.APP_AUTH_ROOT;
+    }
+
+    @After
+    public void revertConfiguration() {
+        getTestingClient().testing().setSystemPropertyOnServer("oidc." + OIDCLoginProtocolFactory.CONFIG_LEGACY_LOGOUT_REDIRECT_URI, "false");
+    }
+
+
+    // Test logout with deprecated "redirect_uri" and with "id_token_hint" . Should od automatic redirect
+    @Test
+    public void logoutWithLegacyRedirectUriAndIdTokenHint() throws Exception {
+        OAuthClient.AccessTokenResponse tokenResponse = loginUser();
+        String idTokenString = tokenResponse.getIdToken();
+        String sessionId = tokenResponse.getSessionState();
+
+        String logoutUrl = oauth.getLogoutUrl().redirectUri(APP_REDIRECT_URI).idTokenHint(idTokenString).build();
+        driver.navigate().to(logoutUrl);
+
+        events.expectLogout(sessionId).detail(Details.REDIRECT_URI, APP_REDIRECT_URI).assertEvent();
+        Assert.assertThat(false, is(isSessionActive(sessionId)));
+        assertCurrentUrlEquals(APP_REDIRECT_URI);
+    }
+
+    // Test logout with deprecated "redirect_uri" and without "id_token_hint" . User should confirm logout
+    @Test
+    public void logoutWithLegacyRedirectUriAndWithoutIdTokenHint() throws Exception {
+        OAuthClient.AccessTokenResponse tokenResponse = loginUser();
+        String sessionId = tokenResponse.getSessionState();
+
+        String logoutUrl = oauth.getLogoutUrl().redirectUri(APP_REDIRECT_URI).build();
+        driver.navigate().to(logoutUrl);
+
+        // Assert logout confirmation page. Session still exists. Assert default language on logout page (English)
+        logoutConfirmPage.assertCurrent();
+        Assert.assertThat(true, is(isSessionActive(sessionId)));
+        events.assertEmpty();
+        logoutConfirmPage.confirmLogout();
+
+        // Redirected back to the application with expected state
+        events.expectLogout(sessionId).removeDetail(Details.REDIRECT_URI).assertEvent();
+        Assert.assertThat(false, is(isSessionActive(sessionId)));
+        assertCurrentUrlEquals(APP_REDIRECT_URI);
+    }
+
+
+
+    private OAuthClient.AccessTokenResponse loginUser() {
+        oauth.doLogin("test-user@localhost", "password");
+        String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
+
+        oauth.clientSessionState("client-session");
+        OAuthClient.AccessTokenResponse tokenResponse = oauth.doAccessTokenRequest(code, "password");
+        events.clear();
+        return tokenResponse;
+    }
+
+    private boolean isSessionActive(String sessionId) {
+        try {
+            testingClient.testing().getClientSessionsCountInUserSession("test", sessionId);
+            return true;
+        } catch (NotFoundException nfe) {
+            return false;
+        }
+    }
 }

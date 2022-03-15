@@ -32,6 +32,6 @@ public class OIDCProviderConfig {
     }
 
     public boolean isLegacyLogoutRedirectUri() {
-        return config.getBoolean("legacy-logout-redirect-uri", false);
+        return config.getBoolean(OIDCLoginProtocolFactory.CONFIG_LEGACY_LOGOUT_REDIRECT_URI, false);
     }
 }

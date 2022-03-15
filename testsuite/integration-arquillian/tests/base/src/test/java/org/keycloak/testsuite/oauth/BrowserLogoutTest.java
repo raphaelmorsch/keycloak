@@ -76,7 +76,6 @@ import org.keycloak.testsuite.pages.OAuthGrantPage;
 import org.keycloak.testsuite.pages.PageUtils;
 import org.keycloak.testsuite.updaters.ClientAttributeUpdater;
 import org.keycloak.testsuite.updaters.RealmAttributeUpdater;
-import org.keycloak.testsuite.util.ClientManager;
 import org.keycloak.testsuite.util.InfinispanTestTimeServiceRule;
 import org.keycloak.testsuite.util.Matchers;
 import org.keycloak.testsuite.util.OAuthClient;
@@ -130,7 +129,6 @@ public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
     @Before
     public void clientConfiguration() {
         APP_REDIRECT_URI = oauth.APP_AUTH_ROOT;
-        ClientManager.realm(adminClient.realm("test")).clientId("test-app").directAccessGrant(true);
     }
 
     @Test
