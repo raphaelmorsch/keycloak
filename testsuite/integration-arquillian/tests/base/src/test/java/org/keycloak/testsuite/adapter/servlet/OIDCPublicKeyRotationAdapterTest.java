@@ -125,12 +125,7 @@ public class OIDCPublicKeyRotationAdapterTest extends AbstractServletsAdapterTes
         loginToTokenMinTtlApp();
 
         // Logout
-        String logoutUri = OIDCLoginProtocolService.logoutUrl(authServerPage.createUriBuilder())
-                .queryParam(OAuth2Constants.POST_LOGOUT_REDIRECT_URI, tokenMinTTLPage.toString())
-                .queryParam(OAuth2Constants.ID_TOKEN_HINT, "Doug")
-                .build("demo").toString();
-        driver.navigate().to(logoutUri);
-        assertCurrentUrlStartsWithLoginUrlOf(testRealmPage);
+        ApiUtil.findUserByUsernameId(adminClient.realm("demo"), "bburke@redhat.com").logout();
 
         // Generate new realm key
         generateNewRealmKey();
@@ -143,14 +138,13 @@ public class OIDCPublicKeyRotationAdapterTest extends AbstractServletsAdapterTes
         URLAssert.assertCurrentUrlStartsWith(tokenMinTTLPage.getInjectedUrl().toString());
         Assert.assertNull(tokenMinTTLPage.getAccessToken());
 
-        driver.navigate().to(logoutUri);
-        assertCurrentUrlStartsWithLoginUrlOf(testRealmPage);
+        ApiUtil.findUserByUsernameId(adminClient.realm("demo"), "bburke@redhat.com").logout();
 
         setAdapterAndServerTimeOffset(300, tokenMinTTLPage.toString() + "/unsecured/foo");
 
         // Try to login. Should work now due to realm key change
         loginToTokenMinTtlApp();
-        driver.navigate().to(logoutUri);
+        ApiUtil.findUserByUsernameId(adminClient.realm("demo"), "bburke@redhat.com").logout();
 
         // Revert public keys change
         resetKeycloakDeploymentForAdapter(tokenMinTTLPage.toString() + "/unsecured/foo");
@@ -189,11 +183,7 @@ public class OIDCPublicKeyRotationAdapterTest extends AbstractServletsAdapterTes
         assertTrue(pageSource.contains("Bill Burke") && pageSource.contains("Stian Thorgersen"));
 
         // Logout
-        String logoutUri = OIDCLoginProtocolService.logoutUrl(authServerPage.createUriBuilder())
-                .queryParam(OAuth2Constants.POST_LOGOUT_REDIRECT_URI, tokenMinTTLPage.toString())
-                .queryParam(OAuth2Constants.ID_TOKEN_HINT, "Doug")
-                .build("demo").toString();
-        driver.navigate().to(logoutUri);
+        ApiUtil.findUserByUsernameId(adminClient.realm("demo"), "bburke@redhat.com").logout();
     }
 
 
