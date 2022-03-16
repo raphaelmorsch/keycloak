@@ -149,6 +149,7 @@ public class AccountFormService extends AbstractSecuredLocalService {
     }
 
     public void init() {
+        session.getContext().setClient(client);
         eventStore = session.getProvider(EventStoreProvider.class);
 
         account = session.getProvider(AccountProvider.class).setRealm(realm).setUriInfo(session.getContext().getUri()).setHttpHeaders(headers);
