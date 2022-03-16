@@ -161,7 +161,7 @@ public class LogoutEndpoint {
                            @QueryParam(OIDCLoginProtocol.POST_LOGOUT_REDIRECT_URI_PARAM) String postLogoutRedirectUri,
                            @QueryParam(OIDCLoginProtocol.STATE_PARAM) String state,
                            @QueryParam(OIDCLoginProtocol.UI_LOCALES_PARAM) String uiLocales,
-                           @QueryParam("initiating_idp") String initiatingIdp) {
+                           @QueryParam(AuthenticationManager.INITIATING_IDP_PARAM) String initiatingIdp) {
 
         if (deprecatedRedirectUri != null && !providerConfig.isLegacyLogoutRedirectUri()) {
             event.event(EventType.LOGOUT);

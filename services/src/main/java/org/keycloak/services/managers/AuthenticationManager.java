@@ -162,6 +162,9 @@ public class AuthenticationManager {
     // Filled in case that logout was triggered with "initiating idp"
     public static final String LOGOUT_INITIATING_IDP = "LOGOUT_INITIATING_IDP";
 
+    // Parameter of LogoutEndpoint
+    public static final String INITIATING_IDP_PARAM = "initiating_idp";
+
     private static final TokenTypeCheck VALIDATE_IDENTITY_COOKIE = new TokenTypeCheck(TokenUtil.TOKEN_TYPE_KEYCLOAK_ID);
 
     public static boolean isSessionValid(RealmModel realm, UserSessionModel userSession) {
