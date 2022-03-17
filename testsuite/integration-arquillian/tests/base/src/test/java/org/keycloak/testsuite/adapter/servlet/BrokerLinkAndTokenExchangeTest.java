@@ -87,6 +87,8 @@ import java.util.List;
 import static org.keycloak.testsuite.admin.ApiUtil.createUserAndResetPasswordWithAdminClient;
 
 /**
+ * TODO:mposolda remove all ignored tests
+ *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
  */

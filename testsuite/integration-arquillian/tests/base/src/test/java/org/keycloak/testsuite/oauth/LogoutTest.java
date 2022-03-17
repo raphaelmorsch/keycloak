@@ -23,10 +23,8 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import org.keycloak.OAuth2Constants;
-import org.keycloak.OAuthErrorException;
 import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.ClientsResource;
-import org.keycloak.common.Profile;
 import org.keycloak.common.util.Retry;
 import org.keycloak.common.util.Time;
 import org.keycloak.events.Details;
@@ -41,9 +39,8 @@ import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.Assert;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
-import org.keycloak.testsuite.arquillian.annotation.DisableFeature;
+import org.keycloak.testsuite.pages.AppPage;
 import org.keycloak.testsuite.pages.LoginPage;
-import org.keycloak.testsuite.util.*;
 
 import java.util.List;
 import javax.ws.rs.core.HttpHeaders;
@@ -54,11 +51,18 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.keycloak.testsuite.updaters.RealmAttributeUpdater;
+import org.keycloak.testsuite.util.ClientManager;
+import org.keycloak.testsuite.util.Matchers;
+import org.keycloak.testsuite.util.OAuthClient;
+import org.keycloak.testsuite.util.RealmBuilder;
+import org.keycloak.testsuite.util.TokenSignatureUtil;
+import org.keycloak.testsuite.util.WaitUtils;
+import org.openqa.selenium.NoSuchElementException;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
-import static org.keycloak.testsuite.util.URLAssert.assertCurrentUrlEquals;
 
 /**
  * Tests mostly for backchannel logout scenarios with refresh token (Legacy Logout endpoint not compliant with OIDC specification) and admin logout scenarios
@@ -81,6 +85,7 @@ public class LogoutTest extends AbstractKeycloakTest {
     @Before
     public void clientConfiguration() {
         ClientManager.realm(adminClient.realm("test")).clientId("test-app").directAccessGrant(true);
+        new RealmAttributeUpdater(adminClient.realm("test")).setNotBefore(0).update();
     }
 
     @Override

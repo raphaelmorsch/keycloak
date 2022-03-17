@@ -297,6 +297,8 @@ public class AuthenticationManager {
             userSessionOnlyHasLoggedOutClients =
                     checkUserSessionOnlyHasLoggedOutClients(realm, userSession, logoutAuthSession);
         } finally {
+            // TODO:mposolda debug or trace (Same like message in AuthenticationManager.createOrJoinLogoutSession )
+            logger.infof("Removing logout session '%s' after backchannel logout", logoutAuthSession.getParentSession().getId());
             RootAuthenticationSessionModel rootAuthSession = logoutAuthSession.getParentSession();
             rootAuthSession.removeAuthenticationSessionByTabId(logoutAuthSession.getTabId());
         }
@@ -380,12 +382,11 @@ public class AuthenticationManager {
             logoutAuthSession = rootLogoutSession.createAuthenticationSession(client);
             logoutAuthSession.setAuthNote(AuthenticationManager.LOGOUT_WITH_SYSTEM_CLIENT, String.valueOf(useSystemClient));
             logoutAuthSession.setAction(AuthenticationSessionModel.Action.LOGGING_OUT.name());
+            session.getContext().setClient(client);
             // TODO:mposolda debug or trace
             logger.infof("Creating logout session for client '%s'. System client=%s, Authentication session id: %s", client.getClientId(), useSystemClient, rootLogoutSession.getId());
         }
         session.getContext().setAuthenticationSession(logoutAuthSession);
-        client = logoutAuthSession.getClient();
-        session.getContext().setClient(client);
 
         return logoutAuthSession;
     }
@@ -1450,7 +1451,7 @@ public class AuthenticationManager {
             AccessToken token = verifier.verify().getToken();
             if (checkActive) {
                 if (!token.isActive() || token.getIssuedAt() < realm.getNotBefore()) {
-                    logger.debug("Identity cookie expired");
+                    logger.debugf("Identity cookie expired. Token expiration: %d, Current Time: %d. token issued at: %d, realm not before: %d", token.getExp(), Time.currentTime(), token.getIssuedAt(), realm.getNotBefore());
                     return null;
                 }
             }
