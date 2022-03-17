@@ -87,7 +87,6 @@ import java.util.List;
 import static org.keycloak.testsuite.admin.ApiUtil.createUserAndResetPasswordWithAdminClient;
 
 /**
- * TODO:mposolda remove all ignored tests
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
@@ -202,14 +201,14 @@ public class BrokerLinkAndTokenExchangeTest extends AbstractServletsAdapterTest 
 
     }
 
-    // @Test
+    @Test
     @DisableFeature(value = Profile.Feature.TOKEN_EXCHANGE, skipRestart = true)
     @UncaughtServerErrorExpected
     public void testFeatureDisabled() throws Exception {
         checkFeature(Response.Status.NOT_IMPLEMENTED.getStatusCode());
     }
 
-    // @Test
+    @Test
     public void testFeatureEnabled() throws Exception {
         checkFeature(Response.Status.OK.getStatusCode());
     }
@@ -424,6 +423,7 @@ public class BrokerLinkAndTokenExchangeTest extends AbstractServletsAdapterTest 
             Assert.assertNotEquals(externalToken, tokenResponse.getToken());
 
 
+            resetTimeOffset();
             logoutAll();
 
 
@@ -503,7 +503,7 @@ public class BrokerLinkAndTokenExchangeTest extends AbstractServletsAdapterTest 
      * 
      * @throws Exception
      */
-    // @Test
+    @Test
     @UncaughtServerErrorExpected
     public void testExportImport() throws Exception {
         ContainerAssume.assumeNotAuthServerRemote();
@@ -526,7 +526,7 @@ public class BrokerLinkAndTokenExchangeTest extends AbstractServletsAdapterTest 
         testExternalExchange();
     }
 
-    // @Test
+    @Test
     @UncaughtServerErrorExpected
     public void testExternalExchange() throws Exception {
         RealmResource childRealm = adminClient.realms().realm(CHILD_IDP);
@@ -719,7 +719,7 @@ public class BrokerLinkAndTokenExchangeTest extends AbstractServletsAdapterTest 
     /**
      * KEYCLOAK-14577, see also KEYCLOAK-10932
      */
-    // @Test
+    @Test
     public void testExternalExchange_extractIdentityFromProfile() throws Exception {
         RealmResource childRealm = adminClient.realms().realm(CHILD_IDP);
 
