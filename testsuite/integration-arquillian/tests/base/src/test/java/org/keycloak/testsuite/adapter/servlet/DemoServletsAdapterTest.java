@@ -1107,7 +1107,6 @@ public class DemoServletsAdapterTest extends AbstractServletsAdapterTest {
                 .build();
         driver.navigate().to(logoutUrl);
 
-        // Needs to confirm logout if id_token_hint was not provided
         logoutConfirmPage.assertCurrent();
         logoutConfirmPage.confirmLogout();
         infoPage.assertCurrent();

@@ -82,12 +82,12 @@ import org.openqa.selenium.NoSuchElementException;
 /**
  * Test for OIDC RP-Initiated Logout - https://openid.net/specs/openid-connect-rpinitiated-1_0.html
  *
- * Logout request is sent from the user's browser in this scenario
+ * This is handled on server-side by the LogoutEndpoint.logout method
  *
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
  * @author Stan Silvert ssilvert@redhat.com (C) 2016 Red Hat Inc.
  */
-public class BrowserLogoutTest extends AbstractTestRealmKeycloakTest {
+public class RPInitiatedLogoutTest extends AbstractTestRealmKeycloakTest {
 
     @Rule
     public AssertEvents events = new AssertEvents(this);
