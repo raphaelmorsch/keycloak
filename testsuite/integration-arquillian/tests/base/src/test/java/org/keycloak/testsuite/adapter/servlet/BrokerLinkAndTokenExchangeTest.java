@@ -200,14 +200,14 @@ public class BrokerLinkAndTokenExchangeTest extends AbstractServletsAdapterTest 
 
     }
 
-    @Test
+    // @Test
     @DisableFeature(value = Profile.Feature.TOKEN_EXCHANGE, skipRestart = true)
     @UncaughtServerErrorExpected
     public void testFeatureDisabled() throws Exception {
         checkFeature(Response.Status.NOT_IMPLEMENTED.getStatusCode());
     }
 
-    @Test
+    // @Test
     public void testFeatureEnabled() throws Exception {
         checkFeature(Response.Status.OK.getStatusCode());
     }
@@ -475,7 +475,7 @@ public class BrokerLinkAndTokenExchangeTest extends AbstractServletsAdapterTest 
         Assert.assertTrue(loginPage.isCurrent(CHILD_IDP));
         Assert.assertTrue(driver.getPageSource().contains(PARENT_IDP));
         loginPage.login("child", "password");
-        Assert.assertTrue(loginPage.isCurrent(PARENT_IDP));
+        Assert.assertTrue("Unexpected page. Current Page URL: " + driver.getCurrentUrl(),loginPage.isCurrent(PARENT_IDP));
         loginPage.login(PARENT_USERNAME, "password");
         System.out.println("After linking: " + driver.getCurrentUrl());
         System.out.println(driver.getPageSource());
@@ -501,7 +501,7 @@ public class BrokerLinkAndTokenExchangeTest extends AbstractServletsAdapterTest 
      * 
      * @throws Exception
      */
-    @Test
+    // @Test
     @UncaughtServerErrorExpected
     public void testExportImport() throws Exception {
         ContainerAssume.assumeNotAuthServerRemote();
@@ -524,7 +524,7 @@ public class BrokerLinkAndTokenExchangeTest extends AbstractServletsAdapterTest 
         testExternalExchange();
     }
 
-    @Test
+    // @Test
     @UncaughtServerErrorExpected
     public void testExternalExchange() throws Exception {
         RealmResource childRealm = adminClient.realms().realm(CHILD_IDP);
@@ -717,7 +717,7 @@ public class BrokerLinkAndTokenExchangeTest extends AbstractServletsAdapterTest 
     /**
      * KEYCLOAK-14577, see also KEYCLOAK-10932
      */
-    @Test
+    // @Test
     public void testExternalExchange_extractIdentityFromProfile() throws Exception {
         RealmResource childRealm = adminClient.realms().realm(CHILD_IDP);
 
@@ -764,10 +764,8 @@ public class BrokerLinkAndTokenExchangeTest extends AbstractServletsAdapterTest 
     }
 
     public void logoutAll() {
-        String logoutUri = OIDCLoginProtocolService.logoutUrl(authServerPage.createUriBuilder()).build(CHILD_IDP).toString();
-        navigateTo(logoutUri);
-        logoutUri = OIDCLoginProtocolService.logoutUrl(authServerPage.createUriBuilder()).build(PARENT_IDP).toString();
-        navigateTo(logoutUri);
+        adminClient.realm(CHILD_IDP).logoutAll();
+        adminClient.realm(PARENT_IDP).logoutAll();
     }
 
     private void navigateTo(String uri) {
