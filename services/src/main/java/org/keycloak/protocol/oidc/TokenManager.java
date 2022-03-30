@@ -570,7 +570,8 @@ public class TokenManager {
         clientSession.setTimestamp(Time.currentTime());
 
         // Remove authentication session now
-        new AuthenticationSessionManager(session).removeAuthenticationSession(userSession.getRealm(), authSession, true);
+        // TODO:mposolda switch this to true!!!
+        new AuthenticationSessionManager(session).removeAuthenticationSession(userSession.getRealm(), authSession, false);
 
         ClientSessionContext clientSessionCtx = DefaultClientSessionContext.fromClientSessionAndClientScopeIds(clientSession, clientScopeIds, session);
         return clientSessionCtx;

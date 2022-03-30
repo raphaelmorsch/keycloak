@@ -16,6 +16,8 @@
  */
 package org.keycloak.scripting;
 
+import java.util.Map;
+
 import javax.script.Bindings;
 import javax.script.Compilable;
 import javax.script.CompiledScript;
@@ -24,6 +26,7 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
 import org.keycloak.models.ScriptModel;
+import org.keycloak.services.ServicesLogger;
 
 /**
  * A {@link ScriptingProvider} that uses a {@link ScriptEngineManager} to evaluate scripts with a {@link ScriptEngine}.
@@ -33,13 +36,15 @@ import org.keycloak.models.ScriptModel;
 public class DefaultScriptingProvider implements ScriptingProvider {
 
     private final ScriptEngineManager scriptEngineManager;
+    private final Map<String, ScriptEngine> scriptEngineCache;
 
-    DefaultScriptingProvider(ScriptEngineManager scriptEngineManager) {
+    DefaultScriptingProvider(ScriptEngineManager scriptEngineManager, Map<String, ScriptEngine> scriptEngineCache) {
         if (scriptEngineManager == null) {
             throw new IllegalStateException("scriptEngineManager must not be null!");
         }
 
         this.scriptEngineManager = scriptEngineManager;
+        this.scriptEngineCache = scriptEngineCache;
     }
 
     /**
@@ -69,7 +74,7 @@ public class DefaultScriptingProvider implements ScriptingProvider {
             throw new IllegalArgumentException("script must not be null or empty");
         }
 
-        ScriptEngine engine = createPreparedScriptEngine(scriptModel);
+        ScriptEngine engine = getPreparedScriptEngine(scriptModel);
 
         if (engine instanceof Compilable) {
             return new CompiledEvaluatableScriptAdapter(scriptModel, tryCompile(scriptModel, (Compilable) engine));
@@ -99,7 +104,7 @@ public class DefaultScriptingProvider implements ScriptingProvider {
     /**
      * Looks-up a {@link ScriptEngine} with prepared {@link Bindings} for the given {@link ScriptModel Script}.
      */
-    private ScriptEngine createPreparedScriptEngine(ScriptModel script) {
+    private ScriptEngine getPreparedScriptEngine(ScriptModel script) {
         ScriptEngine scriptEngine = lookupScriptEngineFor(script);
 
         if (scriptEngine == null) {
@@ -113,10 +118,22 @@ public class DefaultScriptingProvider implements ScriptingProvider {
      * Looks-up a {@link ScriptEngine} based on the MIME-type provided by the given {@link Script}.
      */
     private ScriptEngine lookupScriptEngineFor(ScriptModel script) {
+        // Try to lookup shared engine in the cache first
+        ScriptEngine scriptEngine = scriptEngineCache.get(script.getMimeType());
+        if (scriptEngine != null) return scriptEngine;
+
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
         try {
             Thread.currentThread().setContextClassLoader(DefaultScriptingProvider.class.getClassLoader());
-            return scriptEngineManager.getEngineByMimeType(script.getMimeType());
+            scriptEngine = scriptEngineManager.getEngineByMimeType(script.getMimeType());
+            ServicesLogger.LOGGER.scriptEngineCreated(scriptEngine.getFactory().getEngineName(), scriptEngine.getFactory().getEngineVersion());
+
+            // Nashorn scriptEngine is ok to cache and share across multiple threads
+            if (scriptEngine.getFactory().getEngineName().toUpperCase().contains("NASHORN")) {
+                scriptEngineCache.put(script.getMimeType(), scriptEngine);
+            }
+
+            return scriptEngine;
         }
         finally {
             Thread.currentThread().setContextClassLoader(cl);

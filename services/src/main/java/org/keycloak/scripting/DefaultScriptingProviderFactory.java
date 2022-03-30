@@ -16,10 +16,14 @@
  */
 package org.keycloak.scripting;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.keycloak.Config;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 
+import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 
 /**
@@ -31,11 +35,14 @@ public class DefaultScriptingProviderFactory implements ScriptingProviderFactory
 
     private ScriptEngineManager scriptEngineManager;
 
+    // Key is mime-type. Value is engine for the particular mime-type. Cache can be used when the scriptEngine can be shared across multiple threads / requests (which is the case for nashorn)
+    private Map<String, ScriptEngine> scriptEngineCache;
+
     @Override
     public ScriptingProvider create(KeycloakSession session) {
         lazyInit();
 
-        return new DefaultScriptingProvider(scriptEngineManager);
+        return new DefaultScriptingProvider(scriptEngineManager, scriptEngineCache);
     }
 
     @Override
@@ -63,6 +70,7 @@ public class DefaultScriptingProviderFactory implements ScriptingProviderFactory
             synchronized (this) {
                 if (scriptEngineManager == null) {
                     scriptEngineManager = new ScriptEngineManager();
+                    scriptEngineCache = new ConcurrentHashMap<>();
                 }
             }
         }
