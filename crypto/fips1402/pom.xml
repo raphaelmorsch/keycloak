@@ -94,4 +94,21 @@
         </dependency>
     </dependencies>
 
+    <!-- TODO:mposolda This is temporary and should be removed -->
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <!--<version>3.0.0-M7</version>-->
+                <configuration>
+                    <systemPropertyVariables>
+                        <com.redhat.fips>true</com.redhat.fips>
+                        <!--<java.security.properties>=/home/mposolda/trellix.kc.2.java.security</java.security.properties>-->
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

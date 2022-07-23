@@ -2,6 +2,8 @@ package org.keycloak.crypto.fips.test;
 
 import java.security.SecureRandom;
 
+import org.bouncycastle.crypto.CryptoServicesRegistrar;
+import org.bouncycastle.crypto.fips.FipsStatus;
 import org.jboss.logging.Logger;
 import org.junit.Assume;
 import org.junit.Before;
@@ -22,7 +24,8 @@ public class FIPS1402SecureRandomTest {
     @Before
     public void before() {
         // Run this test just if java is in FIPS mode
-        Assume.assumeTrue("Java is not in FIPS mode. Skipping the test.", Environment.isJavaInFipsMode());
+        // TODO:mposolda remove this or add better detection of FIPS mode
+        //Assume.assumeTrue("Java is not in FIPS mode. Skipping the test.", Environment.isJavaInFipsMode());
     }
 
     protected static final Logger logger = Logger.getLogger(FIPS1402SecureRandomTest.class);
@@ -30,6 +33,8 @@ public class FIPS1402SecureRandomTest {
     @Test
     public void testSecureRandom() throws Exception {
         logger.info(CryptoIntegration.dumpJavaSecurityProviders());
+
+        logger.info("BC FIPS approved mode: " + CryptoServicesRegistrar.isInApprovedOnlyMode() + ", FIPS Status: " + FipsStatus.getStatusMessage());
 
         SecureRandom sc1 = new SecureRandom();
         logger.infof(dumpSecureRandom("new SecureRandom()", sc1));
