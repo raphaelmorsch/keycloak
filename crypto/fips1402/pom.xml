@@ -104,7 +104,7 @@
                 <configuration>
                     <systemPropertyVariables>
                         <com.redhat.fips>true</com.redhat.fips>
-                        <!--<java.security.properties>=/home/mposolda/trellix.kc.2.java.security</java.security.properties>-->
+                        <java.security.properties>=/home/mposolda/trellix.kc.2.java.security</java.security.properties>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

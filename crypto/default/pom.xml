@@ -76,8 +76,8 @@
                 <!--<version>3.0.0-M7</version>-->
                 <configuration>
                     <systemPropertyVariables>
-                        <!--<com.redhat.fips>true</com.redhat.fips>
-                        <java.security.properties>=/home/mposolda/trellix.kc.java.security</java.security.properties>-->
+                        <!--<com.redhat.fips>true</com.redhat.fips>-->
+                        <!--<java.security.properties>=/home/mposolda/trellix.kc.2.java.security</java.security.properties>-->
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
