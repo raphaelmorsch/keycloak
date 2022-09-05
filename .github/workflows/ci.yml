@@ -111,12 +111,19 @@ jobs:
         with:
           path: ~/.m2/repository/org/keycloak/
           name: keycloak-artifacts.zip
-      - name: Run crypto tests
+      - name: Run crypto tests (BCFIPS non-approved mode)
         run: |
           if ! ./mvnw install -nsu -B -f crypto/pom.xml -Dcom.redhat.fips=true; then
-            find . -path '*/target/surefire-reports/*.xml' | zip -q reports-crypto-tests.zip -@
+            find . -path 'crypto/target/surefire-reports/*.xml' | zip -q reports-crypto-tests.zip -@
             exit 1
           fi
+
+      - name: Run crypto tests (BCFIPS approved mode)
+        run: |
+          if ! ./mvnw install -nsu -B -f crypto/pom.xml -Dcom.redhat.fips=true -Dorg.bouncycastle.fips.approved_only=true; then
+            find . -path 'crypto/target/surefire-reports/*.xml' | zip -q reports-crypto-tests.zip -@
+            exit 1
+          fi          
 
       - name: Crypto test reports
         uses: actions/upload-artifact@v3
