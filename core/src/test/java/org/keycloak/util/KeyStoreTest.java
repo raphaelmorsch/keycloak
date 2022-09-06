@@ -1,5 +1,6 @@
 package org.keycloak.util;
 
+import java.io.File;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.Security;
@@ -23,6 +24,9 @@ public abstract class KeyStoreTest {
     @Test
     public void testKeystore() throws Exception {
         logger.infof("Default keystore type: %s", KeyStore.getDefaultType());
+        String userDir = System.getProperty("user.dir");
+        logger.infof("user.dir: %s", userDir);
+        logger.infof("File exists 1: %s, File exists 2: %s, File exists: 3: %s", new File(userDir).exists(), new File(userDir + "/test-classes"), new File(userDir + "/test-classes/kc.java.security"));
 
         logKeyStore("JKS");
         logKeyStore("PKCS12");
