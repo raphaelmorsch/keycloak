@@ -1,6 +1,7 @@
 package org.keycloak.crypto.fips.test;
 
 import java.security.SecureRandom;
+import java.util.Enumeration;
 
 import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.fips.FipsStatus;
@@ -32,6 +33,16 @@ public class FIPS1402SecureRandomTest {
 
     @Test
     public void testSecureRandom() throws Exception {
+        logger.infof("java.security.properties=%s", System.getProperty("java.security.properties"));
+
+        Enumeration<?> keys = System.getProperties().keys();
+        StringBuilder builder = new StringBuilder();
+        while (keys.hasMoreElements()) {
+            String key = keys.nextElement().toString();
+            builder.append(String.format("%s=%s\n", key, System.getProperty(key)));
+        }
+        logger.info(builder.toString());
+
         logger.info(CryptoIntegration.dumpJavaSecurityProviders());
 
         logger.infof("BC FIPS approved mode: %b, FIPS Status: %s", CryptoServicesRegistrar.isInApprovedOnlyMode(), FipsStatus.getStatusMessage());
