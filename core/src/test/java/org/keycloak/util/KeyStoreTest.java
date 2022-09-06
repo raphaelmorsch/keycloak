@@ -1,6 +1,8 @@
 package org.keycloak.util;
 
 import java.security.KeyStore;
+import java.security.MessageDigest;
+import java.security.Security;
 
 import org.jboss.logging.Logger;
 import org.junit.ClassRule;
