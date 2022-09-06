@@ -26,7 +26,8 @@ public abstract class KeyStoreTest {
         logger.infof("Default keystore type: %s", KeyStore.getDefaultType());
         String userDir = System.getProperty("user.dir");
         logger.infof("user.dir: %s", userDir);
-        logger.infof("File exists 1: %s, File exists 2: %s, File exists: 3: %s", new File(userDir).exists(), new File(userDir + "/test-classes").exists(), new File(userDir + "/test-classes/kc.java.security").exists());
+        logger.infof("File exists 1: %s, File exists 2: %s, File exists: 3: %s, File exists: 4: %s", new File(userDir).exists(), new File(userDir + "/target").exists() ,
+                new File(userDir + "/target/test-classes").exists(), new File(userDir + "/target/test-classes/kc.java.security").exists());
 
         logKeyStore("JKS");
         logKeyStore("PKCS12");
