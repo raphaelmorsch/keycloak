@@ -7,15 +7,17 @@
 #
 # List of providers and their preference orders (see above). Used on the host without FIPS (EG. when running the tests on GH actions)
 #
-security.provider.1=SunEC
-security.provider.2=
+security.provider.1=
+# security.provider.2=
 
 #
 # Security providers used when global crypto-policies are set to FIPS.
 #
-fips.provider.1=SunPKCS11 ${java.home}/conf/security/nss.fips.cfg
-fips.provider.2=SunEC
-fips.provider.3=com.sun.net.ssl.internal.ssl.Provider SunPKCS11-NSS-FIPS
+
+fips.provider.1=
+#fips.provider.1=SunPKCS11 ${java.home}/conf/security/nss.fips.cfg
+#fips.provider.2=SunEC
+#fips.provider.3=com.sun.net.ssl.internal.ssl.Provider SunPKCS11-NSS-FIPS
 
 # Commented this provider for now as it uses lots of non-FIPS services. See https://access.redhat.com/documentation/en-us/openjdk/11/html-single/configuring_openjdk_11_on_rhel_with_fips/index#ref_openjdk-default-fips-configuration_openjdk
 # fips.provider.2=SUN
