@@ -36,6 +36,10 @@ public class FIPS1402SecureRandomTest {
 
         logger.infof("BC FIPS approved mode: %b, FIPS Status: %s", CryptoServicesRegistrar.isInApprovedOnlyMode(), FipsStatus.getStatusMessage());
 
+        CryptoServicesRegistrar.setApprovedOnlyMode(false);
+
+        logger.infof("BC FIPS approved mode: %b, FIPS Status: %s", CryptoServicesRegistrar.isInApprovedOnlyMode(), FipsStatus.getStatusMessage());
+
         SecureRandom sc1 = new SecureRandom();
         logger.infof(dumpSecureRandom("new SecureRandom()", sc1));
 
@@ -48,6 +52,9 @@ public class FIPS1402SecureRandomTest {
         logger.infof(dumpSecureRandom("SecureRandom.getInstance(\"SHA1PRNG\")", sc3));
         Assert.assertEquals("SHA1PRNG", sc3.getAlgorithm());
         Assert.assertEquals("BCFIPS", sc3.getProvider().getName());
+
+        CryptoServicesRegistrar.setApprovedOnlyMode(true);
+        logger.infof("BC FIPS approved mode: %b, FIPS Status: %s", CryptoServicesRegistrar.isInApprovedOnlyMode(), FipsStatus.getStatusMessage());
     }
 
 
