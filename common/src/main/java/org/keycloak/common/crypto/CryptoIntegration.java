@@ -69,6 +69,7 @@ public class CryptoIntegration {
     }
 
     public static void setProvider(CryptoProvider provider) {
+        logger.debugf("Using the crypto provider: %s", provider.getClass().getName());
         cryptoProvider = provider;
     }
 }

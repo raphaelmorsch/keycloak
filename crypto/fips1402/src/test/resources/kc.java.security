@@ -25,5 +25,9 @@ fips.provider.1=
 #
 # Default keystore type.
 #
-keystore.type=PKCS11
-fips.keystore.type=PKCS11
+keystore.type=PKCS12
+fips.keystore.type=PKCS12
+
+# This is needed just if we cannot add security provider "com.sun.net.ssl.internal.ssl.Provider BCFIPS" as a security provider
+ssl.KeyManagerFactory.algorithm=PKIX
+fips.ssl.KeyManagerFactory.algorithm=PKIX
