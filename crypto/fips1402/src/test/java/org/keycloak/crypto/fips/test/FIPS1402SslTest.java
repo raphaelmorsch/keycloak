@@ -41,8 +41,7 @@ public class FIPS1402SslTest {
 
     @BeforeClass
     public static void dumpSecurityProviders() throws Exception {
-        // TODO:mposolda remove this lines and insert providers differently at the initialization of CryptoProvider
-        Security.insertProviderAt(new org.bouncycastle.jsse.provider.BouncyCastleJsseProvider("fips:BCFIPS"), 3);
+        // This is needed to support KeyManagerFactory of "SunX509" algorithm
         Class<?> clazz = Class.forName("com.sun.net.ssl.internal.ssl.Provider");
         Constructor<?> constr = clazz.getConstructor(String.class);
         Provider sunJSSEProvider = (Provider) constr.newInstance("BCFIPS");
