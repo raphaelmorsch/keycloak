@@ -9,10 +9,13 @@ To run Keycloak quarkus distribution, on the FIPS enabled host and FIPS enabled 
 - Make sure to start the server with the FIPS mode.
 
 1) Copy BCFIPS dependencies to your Keycloak distribution. 
-You can use for example commands like this to copy the appropriate BCFIPS jars to the Keycloak distribution.
-Replace the BCFIPS versions with the appropriate versions from pom.xml.
-Assumption is that you have already these BCFIPS in your local maven repository, which can be achieved for example by
-building `crypto/fips1402` module (See the section for running the unit tests below):
+You can either download them from BouncyCastle page and add it manually to the directory `KEYCLOAK_HOME/providers`(make sure to
+use proper versions compatible with BouncyCastle Keycloak dependencies).
+
+Or you can use for example commands like this to copy the appropriate BCFIPS jars to the Keycloak distribution. Again, replace
+the BCFIPS versions with the appropriate versions from pom.xml. Assumption is that you have already these BCFIPS in
+your local maven repository, which can be achieved for example by building `crypto/fips1402` module (See the section for
+running the unit tests below):
 
 ```
 cd $KEYCLOAK_HOME/bin
@@ -86,6 +89,30 @@ Then run `build` and `start` commands as above, but with additional property for
 ```
 -Djava.security.properties=$KEYCLOAK_SOURCES/crypto/fips1402/src/test/resources/kc.java.security
 ```
+At the server startup, you should see the message like this in the log and you can check if correct providers are present and not any others:
+```
+2022-10-10 08:23:07,097 TRACE [org.keycloak.common.crypto.CryptoIntegration] (main) Java security providers: [ 
+ KC(BCFIPS version 1.000203) version 1.0 - class org.keycloak.crypto.fips.KeycloakFipsSecurityProvider, 
+ BCFIPS version 1.000203 - class org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider, 
+ BCJSSE version 1.001202 - class org.bouncycastle.jsse.provider.BouncyCastleJsseProvider, 
+]
+```
+
+NOTE: If you want to use BouncyCastle approved mode, then it is recommended to change/add these properties into the `kc.java.security`
+file:
+```
+keystore.type=BCFKS
+fips.keystore.type=BCFKS
+org.bouncycastle.fips.approved_only=true
+```
+and then check that startup log contains `KC` provider contains KC provider with the note about `Approved Mode` like this:
+```
+KC(BCFIPS version 1.000203 Approved Mode) version 1.0 - class org.keycloak.crypto.fips.KeycloakFipsSecurityProvider,
+```
+Note that in approved mode, there are few limitations at the moment like for example:
+- User passwords must be at least 14 characters long
+- Keystore/truststore must be of type bcfks due the both of `jks` and `pkcs12` don't work
+- Some warnings in the server.log at startup
 
 
 [//]: # (TODO:mposolda Maybe remove this section)
