@@ -15,6 +15,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLSessionContext;
 
+import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.jboss.logging.Logger;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -58,6 +59,8 @@ public class FIPS1402SslTest {
 
     @Test
     public void testPkcs12KeyStoreWithPKIXKeyMgrFactory() throws Exception {
+        // PKCS12 keystore works just in non-approved mode
+        Assume.assumeFalse(CryptoServicesRegistrar.isInApprovedOnlyMode());
         String type = "PKCS12";
         String password = "passwordpassword";
 
@@ -70,7 +73,32 @@ public class FIPS1402SslTest {
     // This works with BCFIPS, but requires addition of security provider "com.sun.net.ssl.internal.ssl.Provider BCFIPS" to Java Security providers
     @Test
     public void testPkcs12KeyStoreWithSunX509KeyMgrFactory() throws Exception {
+        // PKCS12 keystore works just in non-approved mode
+        Assume.assumeFalse(CryptoServicesRegistrar.isInApprovedOnlyMode());
         String type = "PKCS12";
+        String password = "passwordpassword";
+
+        KeyStore keystore = loadKeystore(type, password);
+        String keyMgrDefaultAlgorithm = "SunX509";
+        KeyManagerFactory keyMgrFact = getKeyMgrFactory(password, keystore, keyMgrDefaultAlgorithm);
+        testSSLContext(keyMgrFact);
+    }
+
+    @Test
+    public void testBcfksKeyStoreWithPKIXKeyMgrFactory() throws Exception {
+        String type = "BCFKS";
+        String password = "passwordpassword";
+
+        KeyStore keystore = loadKeystore(type, password);
+        String keyMgrDefaultAlgorithm = KeyManagerFactory.getDefaultAlgorithm();
+        KeyManagerFactory keyMgrFact = getKeyMgrFactory(password, keystore, keyMgrDefaultAlgorithm);
+        testSSLContext(keyMgrFact);
+    }
+
+    // This works with BCFIPS, but requires addition of security provider "com.sun.net.ssl.internal.ssl.Provider BCFIPS" to Java Security providers
+    @Test
+    public void testBcfksKeyStoreWithSunX509KeyMgrFactory() throws Exception {
+        String type = "BCFKS";
         String password = "passwordpassword";
 
         KeyStore keystore = loadKeystore(type, password);
@@ -81,7 +109,7 @@ public class FIPS1402SslTest {
 
     private KeyStore loadKeystore(String type, String password) throws Exception {
         KeyStore keystore = KeyStore.getInstance(type);
-        InputStream in = FIPS1402SslTest.class.getClassLoader().getResourceAsStream("bcfips-keystore.pkcs12");
+        InputStream in = FIPS1402SslTest.class.getClassLoader().getResourceAsStream("bcfips-keystore." + type.toLowerCase());
         keystore.load(in, password != null ? password.toCharArray() : null);
         logger.infof("Keystore loaded successfully. Type: %s, provider: %s", keystore.getProvider().getName());
         return keystore;
