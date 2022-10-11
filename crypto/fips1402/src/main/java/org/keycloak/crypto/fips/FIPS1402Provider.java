@@ -75,12 +75,9 @@ public class FIPS1402Provider implements CryptoProvider {
             Security.insertProviderAt(this.bcFipsProvider, 2);
             Provider bcJsseProvider = new BouncyCastleJsseProvider("fips:BCFIPS");
             Security.insertProviderAt(bcJsseProvider, 3);
-            // TODO:mposolda Change to debug
-            log.infof("Inserted security providers: %s", Arrays.asList(this.bcFipsProvider.getName(),bcJsseProvider.getName()));
-
+            log.debugf("Inserted security providers: %s", Arrays.asList(this.bcFipsProvider.getName(),bcJsseProvider.getName()));
         } else {
-            // TODO:mposolda Change to debug
-            log.infof("Security provider %s already loaded", existingBcFipsProvider.getName());
+            log.debugf("Security provider %s already loaded", existingBcFipsProvider.getName());
         }
     }
 

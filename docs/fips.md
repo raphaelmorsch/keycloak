@@ -35,8 +35,8 @@ Note that for keystore generation, it is needed to use the BouncyCastle FIPS lib
 will remove default SUN and SunPKCS11 providers as it doesn't work to create keystore with them on FIPS enabled OpenJDK11 due
 the limitation described here https://access.redhat.com/solutions/6954451 and in the related bugzilla https://bugzilla.redhat.com/show_bug.cgi?id=2048582.
 ```
-#export KEYSTORE_FILE=keycloak-server.pkcs12
-export KEYSTORE_FILE=keycloak-server.bcfks
+export KEYSTORE_FILE=keycloak-server.pkcs12
+#export KEYSTORE_FILE=keycloak-server.bcfks
 export KEYCLOAK_SOURCES=$HOME/IdeaProjects/keycloak
 
 export KEYSTORE_FORMAT=$(echo $KEYSTORE_FILE | cut -d. -f2)
@@ -113,78 +113,6 @@ Note that in approved mode, there are few limitations at the moment like for exa
 - User passwords must be at least 14 characters long
 - Keystore/truststore must be of type bcfks due the both of `jks` and `pkcs12` don't work
 - Some warnings in the server.log at startup
-
-
-[//]: # (TODO:mposolda Maybe remove this section)
-
-[//]: # (Build with FIPS)
-
-[//]: # (---------------)
-
-[//]: # ()
-[//]: # (With OpenJDK 11 on the classpath, run this from the project root directory:)
-
-[//]: # ()
-[//]: # (```)
-
-[//]: # (mvn clean install -DskipTests=true -Dfips140-2 -Pquarkus)
-
-[//]: # (```)
-
-[//]: # (The property `fips140-2` is used to trigger maven profile to build keycloak+quarkus distribution with `bouncycastle-fips` dependencies instead of plain `bouncycastle`)
-
-[//]: # (and also with `keycloak-crypto-fips1402` module containing some security code dependent on bouncycastle-fips APIs.)
-
-[//]: # ()
-[//]: # (Note, that if you ommit the `fips140-2` property from the command above, then the quarkus distribution will be built)
-
-[//]: # (with the plain non-fips bouncycastle dependencies and with `keycloak-crypto-default` module.)
-
-[//]: # ()
-[//]: # (Then unzip and check only bouncycastle-fips libraries are inside "lib" directory:)
-
-[//]: # (```)
-
-[//]: # (tar xf $KEYCLOAK_SOURCES/quarkus/dist/target/keycloak-999-SNAPSHOT.tar.gz)
-
-[//]: # (ls keycloak-999-SNAPSHOT/lib/lib/main/org.bouncycastle.bc*)
-
-[//]: # (```)
-
-[//]: # (Output should be something like:)
-
-[//]: # (```)
-
-[//]: # (keycloak-999-SNAPSHOT/lib/lib/main/org.bouncycastle.bc-fips-1.0.2.jar      keycloak-999-SNAPSHOT/lib/lib/main/org.bouncycastle.bctls-fips-1.0.11.jar)
-
-[//]: # (keycloak-999-SNAPSHOT/lib/lib/main/org.bouncycastle.bcpkix-fips-1.0.3.jar)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (Similarly the JAR keycloak-fips-integration should be available:)
-
-[//]: # (```)
-
-[//]: # (ls keycloak-999-SNAPSHOT/lib/lib/main/org.keycloak.keycloak-fips-integration-999-SNAPSHOT.jar)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (Now run the server on the FIPS enabled machine with FIPS-enabled OpenJDK &#40;Tested on RHEL 8.6&#41;:)
-
-[//]: # (```)
-
-[//]: # (cd keycloak-999-SNAPSHOT/bin)
-
-[//]: # (./kc.sh start-dev)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (NOTE: Right now, server should start, and you should be able to use `http://localhost:8080` and login to admin console etc.)
-
-[//]: # (Keycloak will now use bouncycastle-fips libraries and the `CryptoIntegration` will use `FIPS1402Provider`.)
 
 Run the tests in the FIPS environment
 -------------------------------------

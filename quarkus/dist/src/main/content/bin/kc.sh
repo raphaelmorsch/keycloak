@@ -36,7 +36,15 @@ SERVER_OPTS="-Dkc.home.dir='$(abs_path '..')'"
 SERVER_OPTS="$SERVER_OPTS -Djboss.server.config.dir='$(abs_path '../conf')'"
 SERVER_OPTS="$SERVER_OPTS -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 SERVER_OPTS="$SERVER_OPTS -Dquarkus-log-max-startup-records=10000"
-CLASSPATH_OPTS="'$(abs_path "../lib/quarkus-run.jar")'"
+
+CLASSPATH_OPTS="'$(abs_path "../lib/quarkus-run.jar")"
+BOOTSTRAP_LIB_DIR="$(abs_path "../lib/bootstrap")"
+if [[ -d $BOOTSTRAP_LIB_DIR ]] && [[ $(ls $BOOTSTRAP_LIB_DIR | wc -l) -gt 0 ]]; then
+  for I in $BOOTSTRAP_LIB_DIR/*.jar; do
+    CLASSPATH_OPTS="$CLASSPATH_OPTS:$I"
+  done
+fi
+CLASSPATH_OPTS="$CLASSPATH_OPTS'"
 
 DEBUG_MODE="${DEBUG:-false}"
 DEBUG_PORT="${DEBUG_PORT:-8787}"
