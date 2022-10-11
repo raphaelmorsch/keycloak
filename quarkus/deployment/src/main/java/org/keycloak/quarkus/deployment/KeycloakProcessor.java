@@ -89,6 +89,7 @@ import org.jboss.logging.Logger;
 import org.jboss.resteasy.plugins.server.servlet.ResteasyContextParameters;
 import org.jboss.resteasy.spi.ResteasyDeployment;
 import org.keycloak.Config;
+import org.keycloak.common.crypto.FipsMode;
 import org.keycloak.config.SecurityOptions;
 import org.keycloak.config.StorageOptions;
 import org.keycloak.connections.jpa.JpaConnectionProvider;
@@ -576,9 +577,9 @@ class KeycloakProcessor {
     @BuildStep
     @Record(ExecutionTime.STATIC_INIT)
     void setCryptoProvider(KeycloakRecorder recorder) {
-        SecurityOptions.FipsMode fipsMode = Configuration.getOptionalValue(
+        FipsMode fipsMode = Configuration.getOptionalValue(
                 MicroProfileConfigProvider.NS_KEYCLOAK_PREFIX + SecurityOptions.FIPS_MODE.getKey()).map(
-                SecurityOptions.FipsMode::valueOf).orElse(SecurityOptions.FipsMode.disabled);
+                FipsMode::valueOf).orElse(FipsMode.disabled);
 
         recorder.setCryptoProvider(fipsMode);
     }

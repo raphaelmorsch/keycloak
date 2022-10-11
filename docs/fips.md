@@ -114,8 +114,8 @@ Note that in approved mode, there are few limitations at the moment like for exa
 - Keystore/truststore must be of type bcfks due the both of `jks` and `pkcs12` don't work
 - Some warnings in the server.log at startup
 
-Run the tests in the FIPS environment
--------------------------------------
+Run the unit tests in the FIPS environment
+------------------------------------------
 This instruction is about running automated tests on the FIPS enabled RHEL 8.6 system with the FIPS enabled OpenJDK 11.
 
 So far only the unit tests inside the `crypto` module are supported. More effort is needed to have whole testsuite passing.
@@ -133,3 +133,8 @@ The tests should work also with the BouncyCastle approved mode, which is more st
 ```
 mvn clean install -f crypto/fips1402 -Dorg.bouncycastle.fips.approved_only=true
 ```
+
+Run the integration tests in the FIPS environment
+-------------------------------------------------
+See the FIPS section in the [MySQL docker image](../testsuite/integration-arquillian/HOW-TO-RUN.md)
+
