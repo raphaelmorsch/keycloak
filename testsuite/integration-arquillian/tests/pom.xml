@@ -529,6 +529,7 @@
                             <auth.server.keystore>${auth.server.keystore}</auth.server.keystore>
                             <auth.server.keystore.password>${auth.server.keystore.password}</auth.server.keystore.password>
                             <auth.server.keystore.type>${auth.server.keystore.type}</auth.server.keystore.type>
+                            <auth.server.java.security.file>${auth.server.java.security.file}</auth.server.java.security.file>
                             <auth.server.jvm.args.extra>${auth.server.jvm.args.extra}</auth.server.jvm.args.extra>
 
                             <auth.server.profile>${auth.server.profile}</auth.server.profile>
@@ -1587,13 +1588,15 @@
             <properties>
                 <auth.server.fips.mode>enabled</auth.server.fips.mode>
 
-                <auth.server.truststore.type>pkcs12</auth.server.truststore.type>
-                <auth.server.truststore>${auth.server.config.dir}/keycloak-fips.truststore.${auth.server.truststore.type}</auth.server.truststore>
-                <auth.server.truststore.password>passwordpassword</auth.server.truststore.password>
-
                 <auth.server.keystore.type>pkcs12</auth.server.keystore.type>
                 <auth.server.keystore>${auth.server.config.dir}/keycloak-fips.keystore.${auth.server.keystore.type}</auth.server.keystore>
                 <auth.server.keystore.password>passwordpassword</auth.server.keystore.password>
+
+                <auth.server.truststore.type>${auth.server.keystore.type}</auth.server.truststore.type>
+                <auth.server.truststore>${auth.server.config.dir}/keycloak-fips.truststore.${auth.server.truststore.type}</auth.server.truststore>
+                <auth.server.truststore.password>passwordpassword</auth.server.truststore.password>
+
+                <auth.server.java.security.file>${auth.server.config.dir}/kc.java.security</auth.server.java.security.file>
             </properties>
         </profile>
 

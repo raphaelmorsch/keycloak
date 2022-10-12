@@ -306,7 +306,7 @@ class KeycloakProcessor {
      *
      * @param recorder
      */
-    @Consume(BootstrapConfigSetupCompleteBuildItem.class)
+    @Consume(CryptoProviderInitBuildItem.class)
     @Record(ExecutionTime.STATIC_INIT)
     @BuildStep
     KeycloakSessionFactoryPreInitBuildItem configureProviders(KeycloakRecorder recorder, List<PersistenceXmlDescriptorBuildItem> descriptors) {
@@ -573,15 +573,16 @@ class KeycloakProcessor {
         }));
     }
 
-    @Consume(KeycloakSessionFactoryPreInitBuildItem.class)
+    @Consume(BootstrapConfigSetupCompleteBuildItem.class)
     @BuildStep
     @Record(ExecutionTime.STATIC_INIT)
-    void setCryptoProvider(KeycloakRecorder recorder) {
+    CryptoProviderInitBuildItem setCryptoProvider(KeycloakRecorder recorder) {
         FipsMode fipsMode = Configuration.getOptionalValue(
                 MicroProfileConfigProvider.NS_KEYCLOAK_PREFIX + SecurityOptions.FIPS_MODE.getKey()).map(
                 FipsMode::valueOf).orElse(FipsMode.disabled);
 
         recorder.setCryptoProvider(fipsMode);
+        return new CryptoProviderInitBuildItem();
     }
 
     @BuildStep(onlyIf = IsDevelopment.class)

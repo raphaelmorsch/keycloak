@@ -278,10 +278,10 @@ public class KeycloakQuarkusServerDeployableContainer implements DeployableConta
         commands.add("--https-trust-store-password=" + configuration.getTruststorePassword());
         commands.add("--spi-truststore-file-file=" + configuration.getTruststoreFile());
         commands.add("--spi-truststore-file-password=" + configuration.getTruststorePassword());
+        commands.add("--spi-truststore-file-type=" + configuration.getTruststoreType());
         commands.add("--log-level=INFO,org.keycloak.common.crypto:TRACE,org.keycloak.crypto:TRACE");
 
-        // TODO:mposolda not hardcoded!!!
-        configuration.appendJavaOpts("-Djava.security.properties=/home/mposolda/IdeaProjects/keycloak/crypto/fips1402/src/test/resources/kc.java.security");
+        configuration.appendJavaOpts("-Djava.security.properties=" + System.getProperty("auth.server.java.security.file"));
     }
 
     private void waitForReadiness() throws MalformedURLException, LifecycleException {

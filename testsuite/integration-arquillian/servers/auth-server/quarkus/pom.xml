@@ -331,8 +331,7 @@
                                         <resource>
                                             <directory>${common.resources}/fips</directory>
                                             <includes>
-                                                <include>keycloak-fips.keystore.pkcs12</include>
-                                                <include>keycloak-fips.truststore.pkcs12</include>
+                                                <include>**</include>
                                             </includes>
                                         </resource>
                                     </resources>
