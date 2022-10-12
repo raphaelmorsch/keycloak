@@ -34,3 +34,6 @@ fips.keystore.type=PKCS12
 # or changing default algorithm as describer here
 ssl.KeyManagerFactory.algorithm=PKIX
 fips.ssl.KeyManagerFactory.algorithm=PKIX
+
+ssl.TrustManagerFactory.algorithm=PKIX
+fips.ssl.TrustManagerFactory.algorithm=PKIX
