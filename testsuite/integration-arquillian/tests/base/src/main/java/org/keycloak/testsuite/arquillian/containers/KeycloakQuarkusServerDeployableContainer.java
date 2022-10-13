@@ -279,7 +279,7 @@ public class KeycloakQuarkusServerDeployableContainer implements DeployableConta
         commands.add("--spi-truststore-file-file=" + configuration.getTruststoreFile());
         commands.add("--spi-truststore-file-password=" + configuration.getTruststorePassword());
         commands.add("--spi-truststore-file-type=" + configuration.getTruststoreType());
-        commands.add("--log-level=INFO,org.keycloak.common.crypto:TRACE,org.keycloak.crypto:TRACE");
+        commands.add("--log-level=INFO,org.keycloak.common.crypto:TRACE,org.keycloak.crypto:TRACE,org.keycloak.truststore:TRACE");
 
         configuration.appendJavaOpts("-Djava.security.properties=" + System.getProperty("auth.server.java.security.file"));
     }

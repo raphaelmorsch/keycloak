@@ -69,7 +69,7 @@ public class FileTruststoreProviderFactory implements TruststoreProviderFactory 
         String storepath = config.get("file");
         String pass = config.get("password");
         String policy = config.get("hostname-verification-policy");
-        String type = config.get("type");
+        String configuredType = config.get("type");
 
         // if "truststore" . "file" is not configured then it is disabled
         if (storepath == null && pass == null && policy == null) {
@@ -86,10 +86,11 @@ public class FileTruststoreProviderFactory implements TruststoreProviderFactory 
             throw new RuntimeException("Attribute 'password' missing in 'truststore':'file' configuration");
         }
 
+        String type = getTruststoreType(storepath, configuredType);
         try {
             truststore = loadStore(storepath, type, pass == null ? null :pass.toCharArray());
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize TruststoreProviderFactory: " + new File(storepath).getAbsolutePath(), e);
+            throw new RuntimeException("Failed to initialize TruststoreProviderFactory: " + new File(storepath).getAbsolutePath() + ", truststore type: " + type, e);
         }
         if (policy == null) {
             verificationPolicy = HostnameVerificationPolicy.WILDCARD;
@@ -105,11 +106,10 @@ public class FileTruststoreProviderFactory implements TruststoreProviderFactory 
         provider = new FileTruststoreProvider(truststore, verificationPolicy, Collections.unmodifiableMap(certsLoader.trustedRootCerts)
                 , Collections.unmodifiableMap(certsLoader.intermediateCerts));
         TruststoreProviderSingleton.set(provider);
-        log.debug("File truststore provider initialized: " + new File(storepath).getAbsolutePath());
+        log.debugf("File truststore provider initialized: %s, Truststore type: %s",  new File(storepath).getAbsolutePath(), type);
     }
 
-    private KeyStore loadStore(String path, String configuredType, char[] password) throws Exception {
-        String type = getTruststoreType(path, configuredType);
+    private KeyStore loadStore(String path, String type, char[] password) throws Exception {
         KeyStore ks = KeyStore.getInstance(type);
         InputStream is = new FileInputStream(path);
         try {
