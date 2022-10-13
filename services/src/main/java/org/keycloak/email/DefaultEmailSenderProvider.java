@@ -19,6 +19,7 @@ package org.keycloak.email;
 
 import com.sun.mail.smtp.SMTPMessage;
 import org.jboss.logging.Logger;
+import org.keycloak.common.crypto.CryptoIntegration;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.ServicesLogger;
@@ -206,6 +207,8 @@ public class DefaultEmailSenderProvider implements EmailSenderProvider {
 
     private static String getSupportedSslProtocols() {
         try {
+            // TODO:mposolda remove this or change to trace
+            logger.error(CryptoIntegration.dumpSecurityProperties());
             String[] protocols = SSLContext.getDefault().getSupportedSSLParameters().getProtocols();
             if (protocols != null) {
                 return String.join(" ", protocols);

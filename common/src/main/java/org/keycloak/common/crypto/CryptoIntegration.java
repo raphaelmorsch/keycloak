@@ -34,12 +34,7 @@ public class CryptoIntegration {
 
         if (logger.isTraceEnabled()) {
             logger.tracef(dumpJavaSecurityProviders());
-            // TODO:mposolda consider removing this or remove dump of system properties
-            logger.tracef("Default keystore type: %s, truststore type system property: %s, keystore type system property: %s, truststore system property: %s",
-                    KeyStore.getDefaultType(),
-                    System.getProperty("javax.net.ssl.trustStoreType"),
-                    System.getProperty("javax.net.ssl.keyStoreType"),
-                    System.getProperty("javax.net.ssl.trustStore"));
+            logger.tracef(dumpSecurityProperties());
         }
     }
 
@@ -73,6 +68,20 @@ public class CryptoIntegration {
             builder.append(" " + p.toString() + " - " + p.getClass() + ", \n");
         }
         return builder.append("]").toString();
+    }
+
+    // TODO:mposolda consider removing some of the properties
+    public static String dumpSecurityProperties() {
+        return String.format("Default keystore type: %s, truststore type system property: %s, keystore type system property: %s, truststore system property: %s, keystore type compat: %s, " +
+                        "security properties: %s, truststore provider type: %s",
+                KeyStore.getDefaultType(),
+                System.getProperty("javax.net.ssl.trustStoreType"),
+                System.getProperty("javax.net.ssl.keyStoreType"),
+                System.getProperty("javax.net.ssl.trustStore"),
+                Security.getProperty("keystore.type.compat"),
+                System.getProperty("java.security.properties"),
+                System.getProperty("javax.net.ssl.trustStoreProvider")
+        );
     }
 
     public static void setProvider(CryptoProvider provider) {
