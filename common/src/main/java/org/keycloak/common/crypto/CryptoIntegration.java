@@ -35,10 +35,11 @@ public class CryptoIntegration {
         if (logger.isTraceEnabled()) {
             logger.tracef(dumpJavaSecurityProviders());
             // TODO:mposolda consider removing this or remove dump of system properties
-            logger.tracef("Default keystore type: %s, truststore type system property: %s, keystore type system property: %s",
+            logger.tracef("Default keystore type: %s, truststore type system property: %s, keystore type system property: %s, truststore system property: %s",
                     KeyStore.getDefaultType(),
                     System.getProperty("javax.net.ssl.trustStoreType"),
-                    System.getProperty("javax.net.ssl.keyStoreType"));
+                    System.getProperty("javax.net.ssl.keyStoreType"),
+                    System.getProperty("javax.net.ssl.trustStore"));
         }
     }
 

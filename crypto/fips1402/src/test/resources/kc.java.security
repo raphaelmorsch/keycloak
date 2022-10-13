@@ -37,3 +37,15 @@ fips.ssl.KeyManagerFactory.algorithm=PKIX
 
 ssl.TrustManagerFactory.algorithm=PKIX
 fips.ssl.TrustManagerFactory.algorithm=PKIX
+
+#
+# Controls compatibility mode for JKS and PKCS12 keystore types.
+#
+# When set to 'true', both JKS and PKCS12 keystore types support loading
+# keystore files in either JKS or PKCS12 format. When set to 'false' the
+# JKS keystore type supports loading only JKS keystore files and the PKCS12
+# keystore type supports loading only PKCS12 keystore files.
+#
+# This is set to false as BCFIPS providers don't support JKS
+keystore.type.compat=false
+fips.keystore.type.compat=false
