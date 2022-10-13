@@ -19,7 +19,6 @@ package org.keycloak.email;
 
 import com.sun.mail.smtp.SMTPMessage;
 import org.jboss.logging.Logger;
-import org.keycloak.common.crypto.CryptoIntegration;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.ServicesLogger;
@@ -39,8 +38,8 @@ import javax.mail.internet.MimeMultipart;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import java.io.UnsupportedEncodingException;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
+import java.security.KeyStore;
+import java.security.Security;
 import java.util.Date;
 import java.util.Map;
 import java.util.Properties;
@@ -207,8 +206,18 @@ public class DefaultEmailSenderProvider implements EmailSenderProvider {
 
     private static String getSupportedSslProtocols() {
         try {
-            // TODO:mposolda remove this or change to trace
-            logger.error(CryptoIntegration.dumpSecurityProperties());
+            // TODO:mposolda remove this or replace with CryptoIntegration.dumpSecurityProviders
+            String s = String.format("Default keystore type: %s, truststore type system property: %s, keystore type system property: %s, truststore system property: %s, keystore type compat: %s, " +
+                            "security properties: %s, truststore provider type: %s",
+                    KeyStore.getDefaultType(),
+                    System.getProperty("javax.net.ssl.trustStoreType"),
+                    System.getProperty("javax.net.ssl.keyStoreType"),
+                    System.getProperty("javax.net.ssl.trustStore"),
+                    Security.getProperty("keystore.type.compat"),
+                    System.getProperty("java.security.properties"),
+                    System.getProperty("javax.net.ssl.trustStoreProvider")
+            );
+            logger.error(s);
             String[] protocols = SSLContext.getDefault().getSupportedSSLParameters().getProtocols();
             if (protocols != null) {
                 return String.join(" ", protocols);
