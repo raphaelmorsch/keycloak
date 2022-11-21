@@ -23,6 +23,11 @@ public class CertificatePemIdentityExtractorTest {
     public void testExtractsCertInPemFormat() throws Exception {
         InputStream is = getClass().getResourceAsStream("/certs/UPN-cert.pem");
         X509Certificate x509Certificate = PemUtils.decodeCertificate(StreamUtil.readString(is, Charset.defaultCharset()));
+
+        // TODO:mposolda
+        String name1 = x509Certificate.getSubjectDN().getName();
+        String name2 = x509Certificate.getSubjectX500Principal().getName();
+
         String certificatePem = PemUtils.encodeCertificate(x509Certificate);
 
         //X509AuthenticatorConfigModel config = new X509AuthenticatorConfigModel();

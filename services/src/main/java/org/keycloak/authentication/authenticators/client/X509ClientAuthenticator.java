@@ -41,15 +41,18 @@ public class X509ClientAuthenticator extends AbstractClientAuthenticator {
     // These are not recognized by default in RFC1779 or RFC2253 and hence not read in the java by default
     private static final Map<String, String> CUSTOM_OIDS = new HashMap<>();
     private static final Map<String, String> CUSTOM_OIDS_REVERSED = new HashMap<>();
+    // TODO:mposolda doublecheck attributes and maybe have some better mechanism for this... Maybe extract this to keycloak-common or crypto modules..
     static {
         CUSTOM_OIDS.put("2.5.4.5", "serialNumber".toUpperCase());
         CUSTOM_OIDS.put("2.5.4.15", "businessCategory".toUpperCase());
         CUSTOM_OIDS.put("1.3.6.1.4.1.311.60.2.1.3", "jurisdictionCountryName".toUpperCase());
+        CUSTOM_OIDS.put("1.2.840.113549.1.9.1", "emailAddress".toUpperCase());
 
         // Reverse map
         for (Map.Entry<String, String> entry : CUSTOM_OIDS.entrySet()) {
             CUSTOM_OIDS_REVERSED.put(entry.getValue(), entry.getKey());
         }
+        CUSTOM_OIDS_REVERSED.put("E", "1.2.840.113549.1.9.1");
     }
 
     protected static ServicesLogger logger = ServicesLogger.LOGGER;
