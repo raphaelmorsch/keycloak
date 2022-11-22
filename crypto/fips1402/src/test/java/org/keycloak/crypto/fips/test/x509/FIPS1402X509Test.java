@@ -17,7 +17,7 @@
  *
  */
 
-package org.keycloak.crypto.fips.test;
+package org.keycloak.crypto.fips.test.x509;
 
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -28,19 +28,13 @@ import java.util.Map;
 import javax.security.auth.x500.X500Principal;
 
 import org.jboss.logging.Logger;
-import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.keycloak.common.crypto.CryptoConstants;
-import org.keycloak.common.crypto.CryptoIntegration;
-import org.keycloak.common.crypto.UserIdentityExtractor;
 import org.keycloak.common.util.Environment;
 import org.keycloak.common.util.PemUtils;
 import org.keycloak.common.util.StreamUtil;
-import org.keycloak.crypto.fips.FIPSAesKeyWrapAlgorithmProvider;
-import org.keycloak.jose.jwe.alg.JWEAlgorithmProvider;
 import org.keycloak.rule.CryptoInitRule;
 
 import static org.junit.Assert.assertEquals;
