@@ -26,7 +26,6 @@ import org.jboss.logging.Logger;
 import org.keycloak.common.constants.KerberosConstants;
 import org.keycloak.common.util.Base64;
 import org.keycloak.common.util.KerberosSerializationUtils;
-import org.keycloak.federation.kerberos.CommonKerberosConfig;
 
 import javax.security.auth.Subject;
 import javax.security.auth.kerberos.KerberosTicket;
@@ -44,7 +43,6 @@ public class SPNEGOAuthenticator {
 
     private final KerberosServerSubjectAuthenticator kerberosSubjectAuthenticator;
     private final String spnegoToken;
-    private final CommonKerberosConfig kerberosConfig;
 
     private boolean authenticated = false;
     private String authenticatedKerberosPrincipal = null;
@@ -52,8 +50,8 @@ public class SPNEGOAuthenticator {
     private KerberosTicket kerberosTicket;
     private String responseToken = null;
 
-    public SPNEGOAuthenticator(CommonKerberosConfig kerberosConfig, KerberosServerSubjectAuthenticator kerberosSubjectAuthenticator, String spnegoToken) {
-        this.kerberosConfig = kerberosConfig;
+    // TODO:mposolda doublecheck if "configuration" should be removed from this constructor or whether to revert this change and add "configuration" back
+    public SPNEGOAuthenticator(KerberosServerSubjectAuthenticator kerberosSubjectAuthenticator, String spnegoToken) {
         this.kerberosSubjectAuthenticator = kerberosSubjectAuthenticator;
         this.spnegoToken = spnegoToken;
     }

@@ -291,9 +291,9 @@ public class KeycloakQuarkusServerDeployableContainer implements DeployableConta
         commands.add("--spi-truststore-file-file=" + configuration.getTruststoreFile());
         commands.add("--spi-truststore-file-password=" + configuration.getTruststorePassword());
         commands.add("--spi-truststore-file-type=" + configuration.getTruststoreType());
-        commands.add("--log-level=INFO,org.keycloak.common.crypto:TRACE,org.keycloak.crypto:TRACE,org.keycloak.truststore:TRACE");
+        commands.add("--log-level=INFO,org.keycloak.common.crypto:TRACE,org.keycloak.crypto:TRACE,org.keycloak.truststore:TRACE,org.keycloak.federation.kerberos:TRACE,org.keycloak.authentication.authenticators.browser.SpnegoAuthenticator:TRACE"); // TODO:mposolda kerberos logging needed?
 
-        configuration.appendJavaOpts("-Djava.security.properties=" + System.getProperty("auth.server.java.security.file"));
+        configuration.appendJavaOpts("-Djava.security.properties=" + System.getProperty("auth.server.java.security.file") + " -Dsun.security.krb5.debug=true -Dsun.security.spnego.debug=true");
     }
 
     private void waitForReadiness() throws MalformedURLException, LifecycleException {
