@@ -133,7 +133,7 @@ public class KerberosFederationProviderFactory implements UserStorageProviderFac
 
     protected SPNEGOAuthenticator createSPNEGOAuthenticator(String spnegoToken, CommonKerberosConfig kerberosConfig) {
         KerberosServerSubjectAuthenticator kerberosAuth = createKerberosSubjectAuthenticator(kerberosConfig);
-        return new SPNEGOAuthenticator(kerberosConfig, kerberosAuth, spnegoToken);
+        return new SPNEGOAuthenticator(kerberosAuth, spnegoToken);
     }
 
     protected KerberosServerSubjectAuthenticator createKerberosSubjectAuthenticator(CommonKerberosConfig kerberosConfig) {
