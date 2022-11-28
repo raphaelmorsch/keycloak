@@ -53,6 +53,11 @@
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-services</artifactId>
         </dependency>
+        <!-- TODO:mposolda Not sure if to keep this one -->
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-saml-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
