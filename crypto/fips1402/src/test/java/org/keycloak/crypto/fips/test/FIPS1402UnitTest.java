@@ -1,5 +1,6 @@
 package org.keycloak.crypto.fips.test;
 
+import org.bouncycastle.asn1.ASN1Integer;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -21,5 +22,8 @@ public class FIPS1402UnitTest {
     public void testFips() throws Exception {
         JWEAlgorithmProvider jweAlg = CryptoIntegration.getProvider().getAlgorithmProvider(JWEAlgorithmProvider.class, CryptoConstants.A128KW);
         Assert.assertEquals(jweAlg.getClass(), FIPSAesKeyWrapAlgorithmProvider.class);
+
+        int icvLen = 13;
+        ASN1Integer asn = new ASN1Integer(icvLen);
     }
 }

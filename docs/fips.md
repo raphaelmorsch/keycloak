@@ -65,9 +65,9 @@ keytool -keystore $KEYSTORE_FILE \
 For the `fips-mode`, he alternative is to use `--fips-mode=strict` in which case BouncyCastle FIPS will use "approved mode",
 which means even stricter security algorithms. As mentioned above, strict mode won't work with `pkcs12` keystore:
 
+# TODO:mposolda doublecheck this
 ```
-./kc.sh build --fips-mode=enabled
-./kc.sh start --optimized --hostname=localhost \
+./kc.sh start --fips-mode=enabled --hostname=localhost \
   --https-key-store-file=$PWD/$KEYSTORE_FILE \
   --https-key-store-type=$KEYSTORE_FORMAT \
   --https-key-store-password=passwordpassword \

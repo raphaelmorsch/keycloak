@@ -148,7 +148,7 @@ public class DefaultCryptoProvider implements CryptoProvider {
     @Override
     public KeyStore getKeyStore(KeystoreFormat format) throws KeyStoreException, NoSuchProviderException {
         if (format == KeystoreFormat.JKS) {
-            throw new KeyStoreException("Temporarily switch JKS to not be available for testing purpose");
+            return KeyStore.getInstance(format.toString());
         } else {
             return KeyStore.getInstance(format.toString(), BouncyIntegration.PROVIDER);
         }
