@@ -352,7 +352,7 @@
                                     <goal>copy-dependencies</goal>
                                 </goals>
                                 <configuration>
-                                    <outputDirectory>${auth.server.home}/providers</outputDirectory>
+                                    <outputDirectory>${auth.server.home}/lib/bootstrap</outputDirectory>
                                     <includeArtifactIds>bc-fips,bctls-fips,bcpkix-fips</includeArtifactIds>
                                 </configuration>
                             </execution>
