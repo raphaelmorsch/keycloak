@@ -260,30 +260,28 @@ public class FIPS1402Provider implements CryptoProvider {
         };
     }
 
-    // TODO:mposolda cleanup logging and report bug to OpenJDK (and then update the comment with bug reference)
-    // BCFIPS require "strong secure random algorithm" to be available. But it may not be available on RHEL 8 on OpenJDK 17 due the TODO:mposolda
+    // BCFIPS require "SecureRandom.getInstanceStrong" to be available. But it may not be available on RHEL 8 on OpenJDK 17 due the TODO:mposolda
     private void checkSecureRandom(Runnable insertBcFipsProvider) {
         try {
             SecureRandom sr = SecureRandom.getInstanceStrong();
-            // TODO:mposolda debug/trace
-            log.infof("Strong secure random available. Algorithm: %s, Provider: %s", sr.getAlgorithm(), sr.getProvider());
+            log.debugf("Strong secure random available. Algorithm: %s, Provider: %s", sr.getAlgorithm(), sr.getProvider());
             insertBcFipsProvider.run();
         } catch (NoSuchAlgorithmException nsae) {
+
+            // Fallback to regular SecureRandom
             SecureRandom secRandom = new SecureRandom();
             String origStrongAlgs = Security.getProperty("securerandom.strongAlgorithms");
-            // TODO:mposolda debug/trace
             String usedAlg = secRandom.getAlgorithm() + ":" + secRandom.getProvider().getName();
-            log.infof("Strong secure random not available. Tried algorithms: %s. Using algorithm as a fallback for strong secure random: %s", origStrongAlgs, usedAlg);
+            log.debugf("Strong secure random not available. Tried algorithms: %s. Using algorithm as a fallback for strong secure random: %s", origStrongAlgs, usedAlg);
+
             String strongAlgs = origStrongAlgs == null ? usedAlg : usedAlg + "," + origStrongAlgs;
             Security.setProperty("securerandom.strongAlgorithms", strongAlgs);
 
-            // Need to insert BCFIPS provider to security providers with "strong algorithm" available
-            insertBcFipsProvider.run();
-
             try {
+                // Need to insert BCFIPS provider to security providers with "strong algorithm" available
+                insertBcFipsProvider.run();
                 SecureRandom.getInstance("DEFAULT", "BCFIPS");
-                // TODO:mposolda debug or trace
-                log.infof("Initialized BCFIPS secured random");
+                log.debugf("Initialized BCFIPS secured random");
             } catch (NoSuchAlgorithmException | NoSuchProviderException nsaee) {
                 throw new IllegalStateException("Not possible to initiate BCFIPS secure random", nsaee);
             } finally {
