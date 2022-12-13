@@ -515,8 +515,7 @@ public class KcRegTest extends AbstractRegCliTest {
         testCRUDWithOnTheFlyUserAuthWithSignedJwtClient(KeystoreUtil.KeystoreFormat.PKCS12.getFileExtension());
     }
 
-    @Test
-    public void testCRUDWithOnTheFlyUserAuthWithSignedJwtClient(String keystoreFileExtension) throws IOException {
+    private void testCRUDWithOnTheFlyUserAuthWithSignedJwtClient(String keystoreFileExtension) throws IOException {
         /*
          *  Test create, get, update, and delete using on-the-fly authentication - without using any config file.
          *  Login is performed by each operation again, and again using username, password, and client JWT signature.
