@@ -351,5 +351,7 @@ public abstract class AbstractQuarkusDeployableContainer implements DeployableCo
         commands.add("--log-level=INFO,org.keycloak.common.crypto:TRACE,org.keycloak.crypto:TRACE,org.keycloak.truststore:TRACE");
 
         configuration.appendJavaOpts("-Djava.security.properties=" + System.getProperty("auth.server.java.security.file"));
+        // TODO:mposolda probably remove?
+        configuration.appendJavaOpts("-Dsun.security.jgss.native=true");
     }
 }

@@ -135,7 +135,8 @@ public abstract class AbstractKerberosTest extends AbstractAuthTest {
 
     @BeforeClass
     public static void checkKerberosSupportedByAuthServer() {
-        KerberosUtils.assumeKerberosSupportExpected();
+        // TODO:mposolda uncomment
+        //KerberosUtils.assumeKerberosSupportExpected();
     }
 
     @Before
