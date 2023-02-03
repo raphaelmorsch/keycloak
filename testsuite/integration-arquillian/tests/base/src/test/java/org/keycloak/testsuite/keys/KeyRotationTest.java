@@ -268,7 +268,8 @@ public class KeyRotationTest extends AbstractKeycloakTest {
     }
 
     private Map<String, String> createKeys(String priority) throws Exception {
-        KeyPair keyPair = KeyUtils.generateRsaKeyPair(org.keycloak.testsuite.util.KeyUtils.getLowestSupportedRsaKeySize());
+        // TODO:mposolda this is just for illustration. It should fail in BCFIPS approved mode
+        KeyPair keyPair = KeyUtils.generateRsaKeyPair(1024);
         String privateKeyPem = PemUtils.encodeKey(keyPair.getPrivate());
         PublicKey publicKey = keyPair.getPublic();
 

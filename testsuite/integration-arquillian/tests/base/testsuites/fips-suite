@@ -22,3 +22,4 @@ KcSamlSignedBrokerTest
 KcSamlSpDescriptorTest
 KerberosLdapTest
 TrustStoreEmailTest
+KeyRotationTest
