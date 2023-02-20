@@ -196,4 +196,34 @@ ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
 
 Then build FIPS optimized docker image and start it as described in the <@links.server id="containers"/>. Assumption is to use arguments as described above when starting the image.
 
+== Migration from non-fips environment
+
+If you previously used Keycloak in the non-fips environment, it is possible to migrate it to FIPS environment including it's data. However there are restrictions and considerations as
+mentioned above. To highlight some of them:
+
+* Make sure all the Keycloak functionality relying on keystores uses only supported keystore types. This differs based on whether strict or non-strict mode is used.
+* Kerberos authentication may not work. If your authentication flow uses `Kerberos` authenticator, this authenticator will be automatically switched to `DISABLED` when migrated to FIPS
+environment. It is recommended to remove any `Kerberos` user storage providers from your realm and disable `Kerberos` related functionality in LDAP providers before switching to FIPS environment.
+
+In addition to the above, it is recommended to doublecheck this before switching to FIPS strict mode:
+
+* Make sure that all the Keycloak functionality relying on keys (EG. realm or client keys) use RSA keys of at least 2048 bits
+
+* Make sure that clients relying on `Signed JWT with Client Secret` use at least 14 characters long secrets (ideally generated secrets)
+
+* Password length restriction as described above. In case your users have shorter passwords, it is needed to start the server with the max padding length set to 14 of PBKDF2 provider as mentioned
+above. If you prefer to avoid this option, you can for instance ask all your users to reset their password (for example by `Forget password` link) during first authentication in the new environment.
+
+
+== Keycloak FIPS mode on the non-fips system
+
+Keycloak is tested on FIPS enabled RHEL 9 system and `ubi9` image. Running on the non-RHEL compatible platform or on the non-FIPS enabled platform, the FIPS compliance cannot be
+strictly guaranteed and cannot be officially supported.
+
+If you are still restricted to run Keycloak on such system, you can for instance at least update your security providers configured in `java.security` file. This does not mean FIPS comliance, but
+at least the setup is closer to it. It can be done by providing custom security file with only overriden list of security providers as described above. The list of recommended providers can be
+seen from the https://access.redhat.com/documentation/en-us/openjdk/17/html/configuring_openjdk_17_on_rhel_with_fips/openjdk-default-fips-configuration[OpenJDK 17 documentation].
+
+You can check Keycloak server log at startup if correct security providers are used (TRACE logging should be enabled for crypto related Keycloak packages as described in the Keycloak startup command above).
+
 </@tmpl.guide>
