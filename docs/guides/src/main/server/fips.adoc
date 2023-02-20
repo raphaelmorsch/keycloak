@@ -15,7 +15,51 @@ See https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9/htm
 for the details. When system is in FIPS mode, it will automatically make sure that underlying OpenJDK is in FIPS mode as well and would use only
 https://access.redhat.com/documentation/en-us/openjdk/17/html/configuring_openjdk_17_on_rhel_with_fips/openjdk-default-fips-configuration[FIPS enabled security providers].
 
+== BouncyCastle library
 
+Keycloak internally uses BouncyCastle library for lots of cryptography utilities. The thing is, that the default flavour of the BouncyCastle library shipped with Keycloak is not FIPS compliant.
+However BouncyCastle also provides FIPS validated version of it's library. The FIPS validated BouncyCastle library cannot be shipped with Keycloak by default for the licence purpose and
+Keycloak cannot provide official support of it. So the requirement is, that to run in FIPS compliant mode, you need to download BouncyCastle-FIPS bits and add them to the Keycloak distribution.
+When Keycloak executes in fips-mode, it will use the BCFIPS bits instead of the default BouncyCastle bits, which achieves FIPS compliance.
 
+=== BouncyCastle FIPS bits
+
+BouncyCastle FIPS can be downloaded from https://www.bouncycastle.org/fips-java/[BouncyCastle official page]. Then you can add them to the directory
+`KEYCLOAK_HOME/providers` of your distribution. Make sure to use proper versions compatible with BouncyCastle Keycloak dependencies. The supported BCFIPS bits needed are:
+
+* `bc-fips-1.0.2.3.jar`
+* `bctls-fips-1.0.14.jar`
+* `bcpkix-fips-1.0.7.jar`
+
+== Generating keystore
+
+You can create either `pkcs12` or `bcfks` keystore to be used for Keycloak server SSL. The `pkcs12` works fine just in BCFIPS non-approved mode.
+
+PKCS12 keystore can be generated with OpenJDK 17 Java on RHEL 9 in the standard way.
+
+For the BCFKS keystore generation, it is needed to use the BouncyCastle FIPS libraries and use custom security file.
+
+You can start with create some helper file, for instance `/tmp/kc.keystore-create.java.security`. The content of the file just needs to have this single property
+```
+securerandom.strongAlgorithms=PKCS11:SunPKCS11-NSS-FIPS
+```
+
+Then use the command like this to generate the keystore:
+```
+keytool -keystore $KEYCLOAK_HOME/conf/server.keystore \
+  -storetype bcfks \
+  -providername BCFIPS \
+  -providerclass org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider \
+  -provider org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider \
+  -providerpath $KEYCLOAK_HOME/providers/bc-fips-*.jar \
+  -alias localhost \
+  -genkeypair -sigalg SHA512withRSA -keyalg RSA -storepass passwordpassword \
+  -dname CN=localhost -keypass passwordpassword \
+  -J-Djava.security.properties=/tmp/kc.keystore-create.java.security
+```
+
+WARNING: Using self-signed certificates is for demonstration purposes only, please make sure to use proper certificates in production instead
+
+Similar options are needed when you are doing any other manipulation with keystore/truststore of `bcfks` type.
 
 </@tmpl.guide>
