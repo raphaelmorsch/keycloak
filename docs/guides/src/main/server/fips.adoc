@@ -1,0 +1,21 @@
+<#import "/templates/guide.adoc" as tmpl>
+<#import "/templates/kc.adoc" as kc>
+<#import "/templates/links.adoc" as links>
+
+<@tmpl.guide
+title="FIPS 140-2 support"
+summary="How to configure Keycloak server for FIPS compliance"
+includedOptions="">
+
+The Federal Information Processing Standard Publication 140-2, (FIPS 140-2), is a U.S. government computer security standard used to approve cryptographic modules. Keycloak supports to
+run in FIPS 140-2 compliant mode. In this case, Keycloak will use only FIPS approved cryptography algorithms for it's functionality.
+
+In order to run in FIPS 140-2, Keycloak should run on FIPS 140-2 enabled system. This usually assumes RHEL or Fedora where FIPS was enabled during installation.
+See https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9/html-single/security_hardening/index#assembly_installing-the-system-in-fips-mode_security-hardening[RHEL documentation]
+for the details. When system is in FIPS mode, it will automatically make sure that underlying OpenJDK is in FIPS mode as well and would use only
+https://access.redhat.com/documentation/en-us/openjdk/17/html/configuring_openjdk_17_on_rhel_with_fips/openjdk-default-fips-configuration[FIPS enabled security providers].
+
+
+
+
+</@tmpl.guide>
