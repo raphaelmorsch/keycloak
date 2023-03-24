@@ -86,3 +86,4 @@ quarkus/data/*.db
 
 # Node.js for frontend-maven-plugin #
 node
+examples/.vscode/settings.json
