@@ -1,3 +1,11 @@
+# Mecanismo de Visibilidade (Session Tracking)
+
+Este é um exemplo rudimentar de como ampliar a Visibilidade de Eventos que ocorrem com as Sessões do Infinispan. É possível encontrar a Referência de Implementação em [HelloResourceProvider](https://github.com/raphaelmorsch/keycloak/commit/740cbe8d6590549bdf6c4e045bf78d35069fd180)
+
+O tracking pode ser feito por userId e também por sessionId
+
+# Disclaimer: A solução para um mecanismo ampliado de visibilidade funciona baseada em um custom provider e roda em uma solução upstream (Infinispan). Cabe ressaltar que esse é um cenário não suportado pela Red Hat.
+
 # Keycloak
 
 Keycloak is an Open Source Identity and Access Management solution for modern Applications and Services.
