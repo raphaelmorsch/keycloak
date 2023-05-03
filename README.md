@@ -5,6 +5,7 @@ Este é um exemplo rudimentar de como ampliar a Visibilidade de Eventos que ocor
 O tracking pode ser feito por userId e também por sessionId
 
 ### Disclaimer: A solução para um mecanismo ampliado de visibilidade funciona baseada em um custom provider e roda em uma solução upstream (Infinispan). Cabe ressaltar que esse é um cenário não suportado pela Red Hat.
+### Deve-se avaliar uma solução para despejo dos logs gerados (Kafka, por exemplo) já que provavelmente as informações devem gerar uma quantidade grande de dados (dependendo da visibilidade)
 
 # Keycloak
 
